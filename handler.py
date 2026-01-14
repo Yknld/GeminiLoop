@@ -13,14 +13,16 @@ import logging
 import traceback
 from pathlib import Path
 from typing import Dict, Any
-import runpod
 
-# Import orchestrator
-from orchestrator.main import run_loop
-from orchestrator.run_state import RunConfig
-
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+# Import runpod first (required for serverless)
+try:
+    import runpod
+    logger = logging.getLogger(__name__)
+    logging.basicConfig(level=logging.INFO)
+    logger.info("✅ RunPod handler starting...")
+except Exception as e:
+    print(f"❌ Failed to import runpod: {e}")
+    raise
 
 
 def handler(job: Dict[str, Any]) -> Dict[str, Any]:
@@ -53,6 +55,18 @@ def handler(job: Dict[str, Any]) -> Dict[str, Any]:
     try:
         logger.info("🚀 GeminiLoop Serverless Handler Started")
         logger.info(f"Job: {json.dumps(job, indent=2)}")
+        
+        # Import orchestrator here (after container is healthy)
+        try:
+            from orchestrator.main import run_loop
+            logger.info("✅ Orchestrator imported")
+        except Exception as e:
+            logger.error(f"❌ Failed to import orchestrator: {e}")
+            return {
+                "error": f"Failed to import orchestrator: {str(e)}",
+                "traceback": traceback.format_exc(),
+                "status": "error"
+            }
         
         # Extract input from job
         input_data = job.get("input", {})
