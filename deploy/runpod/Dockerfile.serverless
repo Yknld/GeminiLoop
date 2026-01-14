@@ -1,0 +1,58 @@
+# GeminiLoop RunPod Serverless Dockerfile
+# 
+# Optimized for serverless deployment with fast cold starts
+# Based on RunPod's Python 3.11 base image
+
+FROM runpod/base:0.4.0-cuda11.8.0
+
+# Set environment variables
+ENV DEBIAN_FRONTEND=noninteractive \
+    PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PIP_NO_CACHE_DIR=1 \
+    NODE_VERSION=18 \
+    DISPLAY=:99
+
+# Install system dependencies (minimal for serverless)
+RUN apt-get update && apt-get install -y \
+    curl \
+    wget \
+    git \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Node.js 18
+RUN curl -fsSL https://deb.nodesource.com/setup_18.x | bash - && \
+    apt-get install -y nodejs && \
+    npm install -g npm@latest && \
+    rm -rf /var/lib/apt/lists/*
+
+# Set working directory
+WORKDIR /app
+
+# Copy package files first (for layer caching)
+COPY requirements.txt package.json ./
+
+# Install Python dependencies
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Install Node.js dependencies
+COPY package.json package-lock.json* ./
+RUN npm install --production
+
+# Install Playwright with Chromium
+RUN npx playwright install chromium && \
+    npx playwright install-deps chromium
+
+# Copy application code
+COPY orchestrator/ ./orchestrator/
+COPY services/ ./services/
+COPY handler.py ./
+
+# Create runs directory on volume
+RUN mkdir -p /runpod-volume/runs
+
+# Expose port for preview server (if needed)
+EXPOSE 8080
+
+# Set the handler
+CMD ["python", "-u", "handler.py"]
