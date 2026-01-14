@@ -9,37 +9,23 @@ echo "🚀 GeminiLoop RunPod Setup"
 echo "=================================="
 echo
 
-# Step 1: Check we're on RunPod
-if [ ! -d "/workspace" ]; then
-    echo "❌ Error: /workspace not found. Are you on RunPod?"
-    exit 1
-fi
+# Get the directory where script is located
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+cd "$SCRIPT_DIR"
 
-cd /workspace
+echo "Working directory: $(pwd)"
 
-# Step 2: Clone repo (if not already cloned)
-if [ ! -d "GeminiLoop" ]; then
-    echo "📥 Cloning GeminiLoop..."
-    git clone https://github.com/Yknld/GeminiLoop.git
-else
-    echo "✅ GeminiLoop already cloned"
-    cd GeminiLoop
-    git pull
-fi
-
-cd GeminiLoop
-
-# Step 3: Set API key
+# Check API key
 echo
-echo "🔑 Setting API key..."
+echo "🔑 Checking API key..."
 if [ -z "$GOOGLE_AI_STUDIO_API_KEY" ]; then
-    echo "⚠️  GOOGLE_AI_STUDIO_API_KEY not set!"
+    echo "❌ GOOGLE_AI_STUDIO_API_KEY not set!"
     echo "Please run: export GOOGLE_AI_STUDIO_API_KEY=your_key"
     exit 1
 fi
 echo "✅ API key is set"
 
-# Step 4: Build Docker image
+# Build Docker image
 echo
 echo "🐳 Building Docker image (this takes ~5 minutes)..."
 docker build -f deploy/runpod/Dockerfile -t gemini-loop:runpod .
@@ -47,7 +33,7 @@ docker build -f deploy/runpod/Dockerfile -t gemini-loop:runpod .
 echo
 echo "✅ Docker image built!"
 
-# Step 5: Run container
+# Run container
 echo
 echo "🚀 Starting container..."
 
@@ -65,12 +51,12 @@ docker run -d \
 
 echo "✅ Container started!"
 
-# Step 6: Wait for startup
+# Wait for startup
 echo
 echo "⏳ Waiting for services to start..."
 sleep 10
 
-# Step 7: Test health
+# Test health
 echo
 echo "🏥 Testing health endpoint..."
 HEALTH=$(curl -s http://localhost:8080/health)
