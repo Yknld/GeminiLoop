@@ -2,7 +2,7 @@
 # 
 # Optimized for serverless deployment with fast cold starts
 # Based on RunPod's Python 3.11 base image
-# Updated: 2026-01-14 - Fixed Node.js installation
+# Updated: 2026-01-14 - RunPod serverless compliant
 
 FROM python:3.11-slim
 
