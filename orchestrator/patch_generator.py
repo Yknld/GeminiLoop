@@ -97,36 +97,98 @@ def _build_instructions(
     score: int,
     issues: List[Dict[str, Any]]
 ) -> str:
-    """Build high-level instructions for OpenHands"""
+    """Build extremely detailed instructions for OpenHands"""
     
-    instructions = f"""TASK: Improve the generated code based on evaluation feedback.
+    instructions = f"""CRITICAL TASK: Fix ALL issues to achieve 80+ score
 
-ORIGINAL TASK:
-{task}
+ORIGINAL TASK: {task}
+CURRENT SCORE: {score}/100 ❌ UNACCEPTABLE
+TARGET SCORE: 80+/100 ✅ REQUIRED
 
-CURRENT SCORE: {score}/100
-
-EVALUATION FEEDBACK:
+=====================================================
+EVALUATION FEEDBACK
+=====================================================
 {feedback}
 
-SPECIFIC ISSUES TO FIX:
+=====================================================
+SPECIFIC ISSUES THAT MUST BE FIXED
+=====================================================
 """
     
     if issues:
         for i, issue in enumerate(issues, 1):
-            instructions += f"{i}. [{issue['category']}] {issue['issue']}\n"
+            instructions += f"""
+{i}. ISSUE: [{issue['category'].upper()}]
+   Problem: {issue['issue']}
+   Severity: {issue.get('severity', 'HIGH')}
+   Action Required: Fix this immediately
+"""
     else:
-        instructions += "- Improve overall quality to meet requirements\n"
+        instructions += "\n- Multiple quality issues detected\n- See feedback above for details\n"
     
     instructions += """
-REQUIREMENTS:
-- Address all issues mentioned in the feedback
-- Maintain clean, modern design
-- Ensure all interactive elements work properly
-- Improve visual polish and user experience
-- Keep the code self-contained (no external dependencies)
+=====================================================
+DETAILED REQUIREMENTS FOR FIXES
+=====================================================
 
-Apply fixes to achieve a score of 70+ out of 100.
+1. FUNCTIONALITY (CRITICAL):
+   - Add missing JavaScript event handlers
+   - Implement ALL form submission logic
+   - Make EVERY button work (no non-functional UI)
+   - Add proper validation and error messages
+   - Show success/feedback after user actions
+   - Test that clicking every element does something
+   
+2. STYLING & VISUAL DESIGN (HIGH PRIORITY):
+   - Fix color contrast to meet WCAG AA (4.5:1 minimum)
+   - Use professional color palette:
+     * Primary: #667eea (purple-blue)
+     * Success: #48bb78 (green)
+     * Error: #e53e3e (red)
+     * Text: #2d3748 (dark gray)
+     * Background: #f7fafc (light gray)
+   - Add proper spacing (8px grid: 8, 16, 24, 32, 40px)
+   - Improve typography:
+     * Headings: font-weight 700
+     * Body: font-weight 400
+     * Line-height: 1.6 for readability
+   - Add hover effects on ALL interactive elements
+   - Add focus indicators (outline: 2px solid)
+   
+3. RESPONSIVE DESIGN (HIGH PRIORITY):
+   - Test at 375px mobile width
+   - Test at 768px tablet width  
+   - Test at 1440px desktop width
+   - Use CSS media queries
+   - Stack elements vertically on mobile
+   - Increase tap target sizes to 44px minimum
+   - Prevent horizontal scrolling
+   
+4. ACCESSIBILITY (REQUIRED):
+   - Use semantic HTML (header, main, nav, section, article)
+   - Add ARIA labels to interactive elements
+   - Ensure keyboard tab order is logical
+   - Add role attributes where needed
+   - Make focus indicators clearly visible
+   
+5. CODE QUALITY (REQUIRED):
+   - Remove ALL console errors
+   - Add comments explaining functionality
+   - Use modern JavaScript (ES6+)
+   - Keep code organized and readable
+   - Validate HTML and CSS
+
+=====================================================
+SUCCESS CRITERIA
+=====================================================
+✅ All buttons and forms work perfectly
+✅ Color contrast passes WCAG AA
+✅ Looks good on mobile, tablet, and desktop
+✅ No console errors
+✅ Professional, polished appearance
+✅ Score improves to 80+/100
+
+APPLY ALL FIXES NOW. BE THOROUGH AND COMPLETE.
 """
     
     return instructions

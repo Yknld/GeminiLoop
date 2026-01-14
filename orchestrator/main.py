@@ -32,7 +32,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-async def run_loop(task: str, max_iterations: int = 2, base_dir: Path = None) -> RunState:
+async def run_loop(task: str, max_iterations: int = 5, base_dir: Path = None) -> RunState:
     """
     Main orchestration loop with complete lifecycle
     
@@ -203,33 +203,85 @@ async def run_loop(task: str, max_iterations: int = 2, base_dir: Path = None) ->
             gen_start_time = time.time()
             trace.generation_start(task)
             
-            generation_result = await generator.generate(
-                task=task,
-                workspace_dir=state.workspace_dir
-            )
+            if iteration == 1:
+                # First iteration: OpenHands generates from scratch
+                print("🤖 OpenHands: Generating initial code from detailed requirements...")
+                
+                # Build detailed requirements
+                detailed_requirements = {
+                    "task": task,
+                    "functionality": [
+                        "All interactive elements must be fully functional with JavaScript",
+                        "Form submissions should show clear feedback",
+                        "No broken buttons or links"
+                    ],
+                    "styling": [
+                        "WCAG AA compliant color contrast (minimum 4.5:1)",
+                        "Modern, professional design",
+                        "Consistent spacing",
+                        "Hover and focus states"
+                    ],
+                    "responsive": [
+                        "Perfect on mobile (375px)",
+                        "Perfect on desktop (1440px)",
+                        "Touch-friendly tap targets (44px+)"
+                    ],
+                    "accessibility": [
+                        "Semantic HTML5",
+                        "ARIA labels",
+                        "Keyboard navigation"
+                    ],
+                    "technical": [
+                        "Single HTML file, all inline",
+                        "No external dependencies",
+                        "No console errors"
+                    ]
+                }
+                
+                generation_result = openhands.generate_code(
+                    task=task,
+                    workspace_path=str(state.workspace_dir),
+                    detailed_requirements=detailed_requirements
+                )
+                
+                if generation_result["success"]:
+                    files_generated = generation_result.get("files_generated", [])
+                    diffs = generation_result.get("diffs", [])
+                    
+                    print(f"✅ OpenHands generated: {', '.join(files_generated)}")
+                    if diffs:
+                        print(f"📝 Diffs: {len(diffs)}")
+                    
+                    # Copy to site
+                    for filename in files_generated:
+                        workspace_file = state.workspace_dir / filename
+                        if workspace_file.exists():
+                            site_file = state.site_dir / filename
+                            site_file.write_text(workspace_file.read_text())
+                    
+                    iter_result.files_generated = {f: str(state.workspace_dir / f) for f in files_generated}
+                    iter_result.code_generated = f"OpenHands: {','.join(files_generated)}"
+                else:
+                    print(f"⚠️  Using Gemini fallback")
+                    fallback_result = await generator.generate(task=task, workspace_dir=state.workspace_dir)
+                    code = fallback_result["code"]
+                    filename = fallback_result["filename"]
+                    workspace_file = state.workspace_dir / filename
+                    workspace_file.write_text(code)
+                    site_file = state.site_dir / filename
+                    site_file.write_text(code)
+                    iter_result.code_generated = code
+                    iter_result.files_generated = {filename: str(workspace_file)}
+                    files_generated = [filename]
+            else:
+                print("🔄 Using patched files from previous iteration")
+                files_generated = list(iter_result.files_generated.keys()) if iter_result.files_generated else ["index.html"]
             
-            # Save generated code
-            code = generation_result["code"]
-            filename = generation_result["filename"]
-            
-            # Save to workspace
-            workspace_file = state.workspace_dir / filename
-            workspace_file.write_text(code)
-            
-            # Copy to site for serving
-            site_file = state.site_dir / filename
-            site_file.write_text(code)
-            
-            iter_result.code_generated = code
-            iter_result.files_generated = {filename: str(workspace_file)}
             iter_result.generation_time_seconds = time.time() - gen_start_time
-            
-            print(f"✅ Generated: {filename}")
-            print(f"   Lines: {len(code.split(chr(10)))}")
             print(f"   Time: {iter_result.generation_time_seconds:.2f}s")
             
             trace.generation_end(
-                files_generated=[filename],
+                files_generated=files_generated if isinstance(files_generated, list) else [files_generated],
                 duration=iter_result.generation_time_seconds
             )
             

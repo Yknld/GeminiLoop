@@ -26,6 +26,28 @@ class OpenHandsClient(ABC):
     """
     
     @abstractmethod
+    def generate_code(self, task: str, workspace_path: str, detailed_requirements: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Generate initial code from scratch using OpenHands
+        
+        Args:
+            task: User's task description
+            workspace_path: Path to workspace directory
+            detailed_requirements: Detailed requirements including:
+                {
+                    "task": "Create a quiz",
+                    "functionality": ["submit button", "score display", ...],
+                    "styling": ["good contrast", "responsive", ...],
+                    "accessibility": ["ARIA labels", "keyboard nav", ...],
+                    "technical": ["vanilla JS", "self-contained", ...]
+                }
+        
+        Returns:
+            Result dict with files generated and any diffs
+        """
+        pass
+    
+    @abstractmethod
     def apply_patch_plan(self, workspace_path: str, patch_plan: Dict[str, Any]) -> Dict[str, Any]:
         """
         Apply a patch plan to the workspace
@@ -50,6 +72,7 @@ class OpenHandsClient(ABC):
                 {
                     "success": bool,
                     "files_modified": List[str],
+                    "diffs": List[Dict],  # Before/after diffs
                     "stdout": str,
                     "stderr": str,
                     "duration_seconds": float
@@ -68,6 +91,10 @@ class LocalSubprocessOpenHandsClient(OpenHandsClient):
     def __init__(self, artifacts_dir: Optional[Path] = None):
         self.artifacts_dir = Path(artifacts_dir) if artifacts_dir else Path.cwd() / "artifacts"
         self.artifacts_dir.mkdir(parents=True, exist_ok=True)
+        
+        # Create diffs directory
+        self.diffs_dir = self.artifacts_dir / "diffs"
+        self.diffs_dir.mkdir(parents=True, exist_ok=True)
         
         # Check if openhands CLI is available
         try:
@@ -214,6 +241,123 @@ class LocalSubprocessOpenHandsClient(OpenHandsClient):
             for f in patch_plan.get("files", [])
             if f.get("action") in ["modify", "create"]
         ]
+    
+    def _capture_workspace_state(self, workspace_path: Path) -> Dict[str, str]:
+        """Capture current state of all files in workspace"""
+        
+        files_state = {}
+        
+        if not workspace_path.exists():
+            return files_state
+        
+        for file_path in workspace_path.rglob("*"):
+            if file_path.is_file() and not file_path.name.startswith('.'):
+                try:
+                    relative_path = file_path.relative_to(workspace_path)
+                    content = file_path.read_text()
+                    files_state[str(relative_path)] = content
+                except:
+                    pass  # Skip files that can't be read
+        
+        return files_state
+    
+    def _generate_diffs(self, before: Dict[str, str], after: Dict[str, str], operation: str) -> List[Dict]:
+        """Generate diffs between before and after states"""
+        
+        diffs = []
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        
+        # New files
+        for filepath, content in after.items():
+            if filepath not in before:
+                diff_file = self.diffs_dir / f"{operation}_{timestamp}_{filepath.replace('/', '_')}.diff"
+                diff_content = f"NEW FILE: {filepath}\n\n{content}"
+                diff_file.write_text(diff_content)
+                
+                diffs.append({
+                    "file": filepath,
+                    "type": "created",
+                    "diff_file": str(diff_file),
+                    "lines_added": len(content.split('\n'))
+                })
+        
+        # Modified files
+        for filepath, new_content in after.items():
+            if filepath in before:
+                old_content = before[filepath]
+                if old_content != new_content:
+                    # Generate unified diff
+                    import difflib
+                    diff_lines = list(difflib.unified_diff(
+                        old_content.splitlines(keepends=True),
+                        new_content.splitlines(keepends=True),
+                        fromfile=f"a/{filepath}",
+                        tofile=f"b/{filepath}",
+                        lineterm=''
+                    ))
+                    
+                    if diff_lines:
+                        diff_file = self.diffs_dir / f"{operation}_{timestamp}_{filepath.replace('/', '_')}.diff"
+                        diff_file.write_text(''.join(diff_lines))
+                        
+                        diffs.append({
+                            "file": filepath,
+                            "type": "modified",
+                            "diff_file": str(diff_file),
+                            "lines_added": len([l for l in diff_lines if l.startswith('+') and not l.startswith('+++')]),
+                            "lines_removed": len([l for l in diff_lines if l.startswith('-') and not l.startswith('---')])
+                        })
+        
+        # Deleted files
+        for filepath in before:
+            if filepath not in after:
+                diffs.append({
+                    "file": filepath,
+                    "type": "deleted",
+                    "lines_removed": len(before[filepath].split('\n'))
+                })
+        
+        return diffs
+    
+    def _fallback_generate(self, task: str, workspace_path: Path, requirements: Dict[str, Any]) -> Dict[str, Any]:
+        """Fallback generation when OpenHands isn't available"""
+        
+        logger.warning("Using fallback generation (OpenHands not available)")
+        
+        # Create a basic HTML template
+        html_content = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{task}</title>
+    <style>
+        * {{ margin: 0; padding: 0; box-sizing: border-box; }}
+        body {{ font-family: system-ui, -apple-system, sans-serif; padding: 20px; background: #f5f5f5; }}
+        .container {{ max-width: 800px; margin: 0 auto; background: white; padding: 40px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }}
+        h1 {{ color: #333; margin-bottom: 20px; }}
+        p {{ color: #666; line-height: 1.6; }}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>{task}</h1>
+        <p>This is a fallback template. OpenHands should generate better code.</p>
+    </div>
+</body>
+</html>"""
+        
+        filepath = workspace_path / "index.html"
+        filepath.write_text(html_content)
+        
+        return {
+            "success": True,
+            "files_generated": ["index.html"],
+            "diffs": [],
+            "stdout": "Fallback template created",
+            "stderr": "OpenHands not available",
+            "duration_seconds": 0.1
+        }
 
 
 class MockOpenHandsClient(OpenHandsClient):
@@ -227,6 +371,46 @@ class MockOpenHandsClient(OpenHandsClient):
         self.artifacts_dir = Path(artifacts_dir) if artifacts_dir else Path.cwd() / "artifacts"
         self.artifacts_dir.mkdir(parents=True, exist_ok=True)
         logger.info("🎭 Using MockOpenHandsClient (regex-based edits)")
+    
+    def generate_code(self, task: str, workspace_path: str, detailed_requirements: Dict[str, Any]) -> Dict[str, Any]:
+        """Mock code generation - creates basic template"""
+        
+        logger.info("🎭 Mock generation - creating basic template")
+        
+        # Use LocalSubprocessOpenHandsClient's fallback
+        workspace_path = Path(workspace_path)
+        html_content = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{task}</title>
+    <style>
+        * {{ margin: 0; padding: 0; box-sizing: border-box; }}
+        body {{ font-family: system-ui, -apple-system, sans-serif; padding: 20px; background: #f5f5f5; }}
+        .container {{ max-width: 800px; margin: 0 auto; background: white; padding: 40px; border-radius: 8px; }}
+        h1 {{ color: #333; }}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>{task}</h1>
+        <p>Mock generated content</p>
+    </div>
+</body>
+</html>"""
+        
+        filepath = workspace_path / "index.html"
+        filepath.write_text(html_content)
+        
+        return {
+            "success": True,
+            "files_generated": ["index.html"],
+            "diffs": [],
+            "stdout": "Mock template created",
+            "stderr": "",
+            "duration_seconds": 0.1
+        }
     
     def apply_patch_plan(self, workspace_path: str, patch_plan: Dict[str, Any]) -> Dict[str, Any]:
         """Apply patch plan using mock regex-based edits"""
