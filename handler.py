@@ -13,6 +13,7 @@ import logging
 import traceback
 from pathlib import Path
 from typing import Dict, Any
+import runpod
 
 # Import orchestrator
 from orchestrator.main import run_loop
@@ -22,43 +23,39 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-def handler(event: Dict[str, Any]) -> Dict[str, Any]:
+def handler(job: Dict[str, Any]) -> Dict[str, Any]:
     """
     RunPod serverless handler
     
-    Expected input:
+    Expected input (job["input"]):
     {
-        "input": {
-            "task": "Create a landing page",
-            "max_iterations": 2,
-            "github_token": "optional",
-            "github_repo": "optional",
-            "base_branch": "optional"
-        }
+        "task": "Create a landing page",
+        "max_iterations": 2,
+        "github_token": "optional",
+        "github_repo": "optional",
+        "base_branch": "optional"
     }
     
     Returns:
     {
-        "output": {
-            "run_id": "...",
-            "status": "completed",
-            "final_score": 85,
-            "final_passed": true,
-            "preview_url": "...",
-            "report": {...},
-            "manifest": {...},
-            "screenshots": ["url1", "url2"],
-            "github_branch_url": "..." (if enabled)
-        }
+        "run_id": "...",
+        "status": "completed",
+        "final_score": 85,
+        "final_passed": true,
+        "preview_url": "...",
+        "report": {...},
+        "manifest": {...},
+        "screenshots": ["url1", "url2"],
+        "github_branch_url": "..." (if enabled)
     }
     """
     
     try:
         logger.info("🚀 GeminiLoop Serverless Handler Started")
-        logger.info(f"Event: {json.dumps(event, indent=2)}")
+        logger.info(f"Job: {json.dumps(job, indent=2)}")
         
-        # Extract input
-        input_data = event.get("input", {})
+        # Extract input from job
+        input_data = job.get("input", {})
         task = input_data.get("task")
         
         if not task:
@@ -168,5 +165,5 @@ def test_handler():
 
 
 if __name__ == "__main__":
-    # Test locally
-    test_handler()
+    # Start RunPod serverless handler
+    runpod.serverless.start({"handler": handler})
