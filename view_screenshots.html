@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GeminiLoop Screenshots Viewer</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            background: #0f172a;
+            color: #e2e8f0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        h1 {
+            margin-bottom: 10px;
+            color: #f1f5f9;
+        }
+        .info {
+            background: #1e293b;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+        }
+        .info-row {
+            display: flex;
+            gap: 30px;
+            flex-wrap: wrap;
+        }
+        .info-item {
+            flex: 1;
+            min-width: 200px;
+        }
+        .label {
+            color: #94a3b8;
+            font-size: 12px;
+            text-transform: uppercase;
+            margin-bottom: 5px;
+        }
+        .value {
+            font-size: 18px;
+            font-weight: 600;
+        }
+        .iterations {
+            display: flex;
+            flex-direction: column;
+            gap: 30px;
+        }
+        .iteration {
+            background: #1e293b;
+            border-radius: 8px;
+            padding: 20px;
+            border-left: 4px solid #3b82f6;
+        }
+        .iteration.passed {
+            border-left-color: #10b981;
+        }
+        .iteration-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        .iteration-title {
+            font-size: 20px;
+            font-weight: 700;
+        }
+        .score {
+            font-size: 32px;
+            font-weight: 700;
+            padding: 10px 20px;
+            background: #334155;
+            border-radius: 6px;
+        }
+        .score.good { color: #10b981; }
+        .score.medium { color: #f59e0b; }
+        .score.bad { color: #ef4444; }
+        .feedback {
+            background: #334155;
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+        .screenshots {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(600px, 1fr));
+            gap: 20px;
+        }
+        .screenshot-card {
+            background: #334155;
+            border-radius: 6px;
+            overflow: hidden;
+        }
+        .screenshot-label {
+            padding: 10px 15px;
+            font-weight: 600;
+            background: #475569;
+        }
+        .screenshot-img {
+            width: 100%;
+            display: block;
+            border-top: 1px solid #475569;
+        }
+        .input-section {
+            background: #1e293b;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+        }
+        textarea {
+            width: 100%;
+            height: 200px;
+            background: #334155;
+            border: 1px solid #475569;
+            color: #e2e8f0;
+            padding: 15px;
+            border-radius: 6px;
+            font-family: monospace;
+            font-size: 12px;
+            resize: vertical;
+        }
+        button {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        button:hover {
+            background: #2563eb;
+        }
+        .error {
+            background: #7f1d1d;
+            color: #fca5a5;
+            padding: 15px;
+            border-radius: 6px;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎨 GeminiLoop Screenshots Viewer</h1>
+        
+        <div class="input-section">
+            <div class="label">Paste API Response JSON:</div>
+            <textarea id="jsonInput" placeholder='Paste the full JSON response from your API call here...'></textarea>
+            <button onclick="loadScreenshots()">Load Screenshots</button>
+            <div id="error"></div>
+        </div>
+        
+        <div id="content"></div>
+    </div>
+
+    <script>
+        function loadScreenshots() {
+            const jsonInput = document.getElementById('jsonInput').value;
+            const errorDiv = document.getElementById('error');
+            const contentDiv = document.getElementById('content');
+            
+            errorDiv.innerHTML = '';
+            contentDiv.innerHTML = '';
+            
+            try {
+                const data = JSON.parse(jsonInput);
+                const output = data.output || data;
+                
+                // Info section
+                const info = document.createElement('div');
+                info.className = 'info';
+                info.innerHTML = `
+                    <div class="info-row">
+                        <div class="info-item">
+                            <div class="label">Run ID</div>
+                            <div class="value">${output.run_id || 'N/A'}</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="label">Task</div>
+                            <div class="value">${output.task || 'N/A'}</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="label">Final Score</div>
+                            <div class="value ${output.final_score >= 70 ? 'score good' : output.final_score >= 50 ? 'score medium' : 'score bad'}">${output.final_score}/100</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="label">Iterations</div>
+                            <div class="value">${output.iterations || 0}</div>
+                        </div>
+                    </div>
+                `;
+                contentDiv.appendChild(info);
+                
+                // Iterations
+                if (output.iterations_data && output.iterations_data.length > 0) {
+                    const iterationsDiv = document.createElement('div');
+                    iterationsDiv.className = 'iterations';
+                    
+                    output.iterations_data.forEach(iter => {
+                        const iterDiv = document.createElement('div');
+                        iterDiv.className = `iteration ${iter.passed ? 'passed' : ''}`;
+                        
+                        let screenshotsHTML = '';
+                        if (iter.screenshots) {
+                            screenshotsHTML = '<div class="screenshots">';
+                            
+                            if (iter.screenshots.desktop) {
+                                screenshotsHTML += `
+                                    <div class="screenshot-card">
+                                        <div class="screenshot-label">🖥️ Desktop (1440x900)</div>
+                                        <img class="screenshot-img" src="${iter.screenshots.desktop}" alt="Desktop screenshot">
+                                    </div>
+                                `;
+                            }
+                            
+                            if (iter.screenshots.mobile) {
+                                screenshotsHTML += `
+                                    <div class="screenshot-card">
+                                        <div class="screenshot-label">📱 Mobile (375px)</div>
+                                        <img class="screenshot-img" src="${iter.screenshots.mobile}" alt="Mobile screenshot">
+                                    </div>
+                                `;
+                            }
+                            
+                            screenshotsHTML += '</div>';
+                        }
+                        
+                        const scoreClass = iter.score >= 70 ? 'good' : iter.score >= 50 ? 'medium' : 'bad';
+                        
+                        iterDiv.innerHTML = `
+                            <div class="iteration-header">
+                                <div class="iteration-title">Iteration ${iter.iteration}</div>
+                                <div class="score ${scoreClass}">${iter.score}/100</div>
+                            </div>
+                            ${iter.feedback ? `<div class="feedback">${iter.feedback}</div>` : ''}
+                            ${screenshotsHTML}
+                        `;
+                        
+                        iterationsDiv.appendChild(iterDiv);
+                    });
+                    
+                    contentDiv.appendChild(iterationsDiv);
+                } else {
+                    contentDiv.innerHTML += '<p>No iteration data found in response.</p>';
+                }
+                
+            } catch (e) {
+                errorDiv.innerHTML = `<div class="error">❌ Error parsing JSON: ${e.message}</div>`;
+                console.error(e);
+            }
+        }
+    </script>
+</body>
+</html>
