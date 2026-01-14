@@ -134,12 +134,19 @@ class RunResult:
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dict"""
         data = asdict(self)
-        data['start_time'] = data['start_time'].isoformat()
-        if data['end_time']:
+        # Convert all datetime objects to ISO format strings
+        if 'start_time' in data and hasattr(data['start_time'], 'isoformat'):
+            data['start_time'] = data['start_time'].isoformat()
+        if 'end_time' in data and data['end_time'] and hasattr(data['end_time'], 'isoformat'):
             data['end_time'] = data['end_time'].isoformat()
         
-        # Convert iterations
-        data['iterations'] = [iter.to_dict() if hasattr(iter, 'to_dict') else iter for iter in data['iterations']]
+        # Convert iterations (which have their own to_dict methods)
+        data['iterations'] = [iter.to_dict() if hasattr(iter, 'to_dict') else asdict(iter) for iter in data['iterations']]
+        
+        # Ensure all iteration timestamps are converted
+        for iteration in data['iterations']:
+            if 'timestamp' in iteration and hasattr(iteration['timestamp'], 'isoformat'):
+                iteration['timestamp'] = iteration['timestamp'].isoformat()
         
         return data
     
