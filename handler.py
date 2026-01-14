@@ -11,6 +11,7 @@ import os
 import json
 import logging
 import traceback
+import base64
 from pathlib import Path
 from typing import Dict, Any
 
@@ -23,6 +24,18 @@ try:
 except Exception as e:
     print(f"❌ Failed to import runpod: {e}")
     raise
+
+
+def _encode_image_base64(image_path: Path) -> str:
+    """Encode image to base64 data URI"""
+    try:
+        with open(image_path, 'rb') as f:
+            image_data = f.read()
+            base64_data = base64.b64encode(image_data).decode('utf-8')
+            return f"data:image/png;base64,{base64_data}"
+    except Exception as e:
+        logger.error(f"Failed to encode image {image_path}: {e}")
+        return None
 
 
 async def handler(job: Dict[str, Any]) -> Dict[str, Any]:
@@ -119,16 +132,32 @@ async def handler(job: Dict[str, Any]) -> Dict[str, Any]:
             response["github_branch"] = state.result.github_branch
             response["github_branch_url"] = state.result.github_branch_url
         
-        # Include report data
+        # Include report data with screenshots
         if state.result.iterations:
             response["iterations_data"] = []
             for iter_result in state.result.iterations:
-                response["iterations_data"].append({
+                iter_data = {
                     "iteration": iter_result.iteration,
                     "score": iter_result.score,
                     "passed": iter_result.passed,
-                    "feedback": iter_result.feedback[:200] if iter_result.feedback else ""
-                })
+                    "feedback": iter_result.feedback[:200] if iter_result.feedback else "",
+                    "screenshots": {}
+                }
+                
+                # Add screenshots for this iteration
+                screenshots_dir = Path(f"/runpod-volume/runs/{state.result.run_id}/artifacts/screenshots/iter_{iter_result.iteration}")
+                if screenshots_dir.exists():
+                    # Desktop screenshot
+                    desktop_path = screenshots_dir / "desktop.png"
+                    if desktop_path.exists():
+                        iter_data["screenshots"]["desktop"] = _encode_image_base64(desktop_path)
+                    
+                    # Mobile screenshot
+                    mobile_path = screenshots_dir / "mobile.png"
+                    if mobile_path.exists():
+                        iter_data["screenshots"]["mobile"] = _encode_image_base64(mobile_path)
+                
+                response["iterations_data"].append(iter_data)
         
         # Add manifest if available
         if hasattr(state, 'manifest'):
