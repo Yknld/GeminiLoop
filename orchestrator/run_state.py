@@ -140,14 +140,27 @@ class RunResult:
         if 'end_time' in data and data['end_time'] and hasattr(data['end_time'], 'isoformat'):
             data['end_time'] = data['end_time'].isoformat()
         
-        # Convert iterations (which have their own to_dict methods)
-        data['iterations'] = [iter.to_dict() if hasattr(iter, 'to_dict') else asdict(iter) for iter in data['iterations']]
+        # Convert iterations - they're IterationResult dataclass instances
+        converted_iterations = []
+        for iter_obj in self.iterations:
+            if hasattr(iter_obj, 'to_dict'):
+                # Use the to_dict method if available
+                converted_iterations.append(iter_obj.to_dict())
+            elif isinstance(iter_obj, dict):
+                # Already converted
+                converted_iterations.append(iter_obj)
+            else:
+                # Fallback: convert to dict manually
+                iter_dict = {
+                    'iteration': iter_obj.iteration,
+                    'timestamp': iter_obj.timestamp.isoformat() if hasattr(iter_obj.timestamp, 'isoformat') else str(iter_obj.timestamp),
+                    'score': iter_obj.score,
+                    'passed': iter_obj.passed,
+                    'feedback': iter_obj.feedback
+                }
+                converted_iterations.append(iter_dict)
         
-        # Ensure all iteration timestamps are converted
-        for iteration in data['iterations']:
-            if 'timestamp' in iteration and hasattr(iteration['timestamp'], 'isoformat'):
-                iteration['timestamp'] = iteration['timestamp'].isoformat()
-        
+        data['iterations'] = converted_iterations
         return data
     
     def to_json(self) -> str:
