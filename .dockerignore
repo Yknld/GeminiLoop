@@ -1,0 +1,72 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+htmlcov/
+.coverage
+
+# Node
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+
+# Env
+.env
+.env.local
+.venv
+venv/
+env/
+
+# Runs (large files - CRITICAL)
+runs/
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.mp4
+*.webm
+
+# Git
+.git
+.gitignore
+.gitattributes
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# Docs (reduce build context size)
+*.md
+!README.md
+assets/
+
+# Test files (not needed in container)
+test_*.py
+*_test.py
+demo.py
+
+# Backup files
+*.bak
+*.old
+*.orig
+
+# Deployment (don't need other deploy files)
+deploy/runpod/Dockerfile
+deploy/runpod/start.sh
+Dockerfile
+runpod_setup.sh
+*.sh
+
+# Other dockerfiles
+Dockerfile.serverless.v2
