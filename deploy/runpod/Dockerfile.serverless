@@ -15,7 +15,9 @@ ENV DEBIAN_FRONTEND=noninteractive \
     DISPLAY=:99
 
 # Install system dependencies (full set for Playwright)
-RUN apt-get update && apt-get install -y \
+RUN set -ex && \
+    apt-get update && \
+    apt-get install -y --no-install-recommends \
     curl \
     wget \
     git \
@@ -43,15 +45,18 @@ RUN apt-get update && apt-get install -y \
     libxrandr2 \
     xdg-utils \
     libu2f-udev \
-    libvulkan1 \
-    && rm -rf /var/lib/apt/lists/*
+    libvulkan1 && \
+    rm -rf /var/lib/apt/lists/* && \
+    echo "System dependencies installed successfully"
 
 # Install Node.js 18 (using binary method for reliability)
-RUN curl -fsSL https://nodejs.org/dist/v18.19.0/node-v18.19.0-linux-x64.tar.xz -o node.tar.xz && \
+RUN set -ex && \
+    curl -fsSL https://nodejs.org/dist/v18.19.0/node-v18.19.0-linux-x64.tar.xz -o node.tar.xz && \
     tar -xJf node.tar.xz -C /usr/local --strip-components=1 && \
     rm node.tar.xz && \
     node --version && \
-    npm --version
+    npm --version && \
+    echo "Node.js installed successfully"
 
 # Set working directory
 WORKDIR /app
@@ -65,8 +70,10 @@ COPY package.json ./
 RUN npm install --production
 
 # Install Playwright with Chromium
-RUN npx playwright install chromium && \
-    npx playwright install-deps chromium
+RUN set -ex && \
+    npx playwright install chromium && \
+    npx playwright install-deps chromium && \
+    echo "Playwright installed successfully"
 
 # Copy application code
 COPY orchestrator/ ./orchestrator/
