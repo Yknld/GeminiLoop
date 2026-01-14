@@ -1,0 +1,362 @@
+#!/usr/bin/env node
+/**
+ * Playwright MCP Server
+ * 
+ * Implements Model Context Protocol for Playwright browser automation
+ * Communicates via JSON-RPC 2.0 over stdio
+ */
+
+const { chromium } = require('playwright');
+const readline = require('readline');
+
+class MCPServer {
+  constructor() {
+    this.browser = null;
+    this.page = null;
+    this.messageId = 0;
+    
+    // Setup stdio communication
+    this.rl = readline.createInterface({
+      input: process.stdin,
+      output: process.stdout,
+      terminal: false
+    });
+    
+    this.log('Playwright MCP Server starting...');
+  }
+  
+  log(message) {
+    console.error(`[MCP Server] ${message}`);
+  }
+  
+  async start() {
+    this.log('MCP Server ready');
+    
+    // Listen for JSON-RPC requests
+    this.rl.on('line', async (line) => {
+      try {
+        const request = JSON.parse(line);
+        await this.handleRequest(request);
+      } catch (error) {
+        this.log(`Parse error: ${error.message}`);
+        this.sendError(null, -32700, 'Parse error');
+      }
+    });
+  }
+  
+  async handleRequest(request) {
+    const { id, method, params } = request;
+    
+    this.log(`Request: ${method}`);
+    
+    try {
+      let result;
+      
+      switch (method) {
+        case 'initialize':
+          result = await this.initialize(params);
+          break;
+        
+        case 'tools/list':
+          result = await this.listTools();
+          break;
+        
+        case 'tools/call':
+          result = await this.callTool(params);
+          break;
+        
+        case 'notifications/initialized':
+          return;
+        
+        default:
+          throw new Error(`Unknown method: ${method}`);
+      }
+      
+      this.sendResponse(id, result);
+      
+    } catch (error) {
+      this.log(`Error: ${error.message}`);
+      this.sendError(id, -32603, error.message);
+    }
+  }
+  
+  async initialize(params) {
+    this.log('Initializing...');
+    
+    const headless = process.env.HEADLESS !== 'false';
+    const visibleBrowser = process.env.VISIBLE_BROWSER === '1';
+    
+    // Use visible mode if VISIBLE_BROWSER is set
+    const shouldBeHeadless = visibleBrowser ? false : headless;
+    
+    this.log(`   Headless: ${shouldBeHeadless}`);
+    this.log(`   Visible browser: ${visibleBrowser}`);
+    if (visibleBrowser) {
+      this.log(`   Display: ${process.env.DISPLAY || ':99'}`);
+    }
+    
+    this.browser = await chromium.launch({
+      headless: shouldBeHeadless,
+      args: [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage',
+        '--disable-gpu'
+      ]
+    });
+    
+    this.page = await this.browser.newPage({
+      viewport: { width: 1440, height: 900 }
+    });
+    
+    if (visibleBrowser) {
+      this.log('Browser launched in VISIBLE mode');
+      this.log('   View at: http://localhost:6080/vnc.html (password: secret)');
+    } else {
+      this.log('Browser launched');
+    }
+    
+    return {
+      protocolVersion: '2024-11-05',
+      serverInfo: {
+        name: 'playwright-mcp-server',
+        version: '1.0.0'
+      },
+      capabilities: {
+        tools: {}
+      }
+    };
+  }
+  
+  async listTools() {
+    return {
+      tools: [
+        {
+          name: 'browser_navigate',
+          description: 'Navigate to a URL',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              url: { type: 'string' }
+            },
+            required: ['url']
+          }
+        },
+        {
+          name: 'browser_take_screenshot',
+          description: 'Take a screenshot',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              fullPage: { type: 'boolean' },
+              filename: { type: 'string' }
+            }
+          }
+        },
+        {
+          name: 'browser_snapshot',
+          description: 'Get page snapshot',
+          inputSchema: {
+            type: 'object',
+            properties: {}
+          }
+        },
+        {
+          name: 'browser_console_messages',
+          description: 'Get console messages',
+          inputSchema: {
+            type: 'object',
+            properties: {}
+          }
+        },
+        {
+          name: 'browser_evaluate',
+          description: 'Evaluate JavaScript expression',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              expression: { type: 'string', description: 'JavaScript to evaluate' }
+            },
+            required: ['expression']
+          }
+        },
+        {
+          name: 'browser_wait',
+          description: 'Wait for duration',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              duration: { type: 'number', description: 'Milliseconds to wait' }
+            },
+            required: ['duration']
+          }
+        }
+      ]
+    };
+  }
+  
+  async callTool(params) {
+    const { name, arguments: args } = params;
+    
+    this.log(`Tool: ${name}`);
+    
+    switch (name) {
+      case 'browser_navigate':
+        return await this.navigate(args.url);
+      
+      case 'browser_take_screenshot':
+        return await this.screenshot(args.fullPage, args.filename);
+      
+      case 'browser_snapshot':
+        return await this.snapshot();
+      
+      case 'browser_console_messages':
+        return await this.getConsole();
+      
+      case 'browser_evaluate':
+        return await this.evaluate(args.expression);
+      
+      case 'browser_wait':
+        return await this.wait(args.duration);
+      
+      default:
+        throw new Error(`Unknown tool: ${name}`);
+    }
+  }
+  
+  async navigate(url) {
+    this.log(`Navigating to: ${url}`);
+    await this.page.goto(url, { waitUntil: 'networkidle' });
+    
+    const title = await this.page.title();
+    this.log(`Loaded: ${title}`);
+    
+    return {
+      success: true,
+      title,
+      url: this.page.url()
+    };
+  }
+  
+  async screenshot(fullPage = true, filename) {
+    this.log(`Taking screenshot: ${filename}`);
+    
+    await this.page.screenshot({
+      path: filename,
+      fullPage
+    });
+    
+    this.log('Screenshot saved');
+    
+    return {
+      success: true,
+      path: filename
+    };
+  }
+  
+  async snapshot() {
+    this.log('Getting snapshot...');
+    
+    const title = await this.page.title();
+    const textContent = await this.page.evaluate(() => document.body.innerText);
+    const buttons = await this.page.$$eval('button', btns => 
+      btns.map(b => b.textContent.trim())
+    );
+    
+    this.log(`Snapshot: ${buttons.length} buttons`);
+    
+    return {
+      title,
+      textContent,
+      buttons,
+      buttonCount: buttons.length
+    };
+  }
+  
+  async getConsole() {
+    this.log('Getting console messages...');
+    
+    return {
+      messages: []
+    };
+  }
+  
+  async evaluate(expression) {
+    this.log(`Evaluating: ${expression.substring(0, 50)}...`);
+    
+    try {
+      const result = await this.page.evaluate(expression);
+      
+      this.log('Evaluation complete');
+      
+      return {
+        success: true,
+        result
+      };
+    } catch (error) {
+      this.log(`Evaluation failed: ${error.message}`);
+      
+      return {
+        success: false,
+        error: error.message
+      };
+    }
+  }
+  
+  async wait(duration) {
+    this.log(`Waiting ${duration}ms...`);
+    
+    await this.page.waitForTimeout(duration);
+    
+    this.log('Wait complete');
+    
+    return {
+      success: true,
+      duration
+    };
+  }
+  
+  sendResponse(id, result) {
+    const response = {
+      jsonrpc: '2.0',
+      id,
+      result
+    };
+    
+    console.log(JSON.stringify(response));
+  }
+  
+  sendError(id, code, message) {
+    const response = {
+      jsonrpc: '2.0',
+      id,
+      error: { code, message }
+    };
+    
+    console.log(JSON.stringify(response));
+  }
+  
+  async cleanup() {
+    this.log('Cleaning up...');
+    
+    if (this.browser) {
+      await this.browser.close();
+      this.log('Browser closed');
+    }
+  }
+}
+
+// Start server
+const server = new MCPServer();
+server.start();
+
+// Handle cleanup on exit
+process.on('SIGTERM', async () => {
+  await server.cleanup();
+  process.exit(0);
+});
+
+process.on('SIGINT', async () => {
+  await server.cleanup();
+  process.exit(0);
+});

@@ -1,0 +1,162 @@
+<svg viewBox="0 0 1200 1400" xmlns="http://www.w3.org/2000/svg" width="100%">
+  <defs>
+    <style>
+      .box { fill: #ffffff; stroke: #e5e7eb; stroke-width: 2; rx: 8; }
+      .box-primary { fill: #f9fafb; stroke: #3b82f6; stroke-width: 2; rx: 8; }
+      .box-secondary { fill: #f9fafb; stroke: #8b5cf6; stroke-width: 2; rx: 8; }
+      .box-tertiary { fill: #f9fafb; stroke: #10b981; stroke-width: 2; rx: 8; }
+      .title { font-family: ui-sans-serif, system-ui, -apple-system, sans-serif; font-size: 16px; font-weight: 600; fill: #111827; }
+      .subtitle { font-family: ui-sans-serif, system-ui, -apple-system, sans-serif; font-size: 13px; fill: #6b7280; }
+      .arrow { stroke: #9ca3af; stroke-width: 2; fill: none; marker-end: url(#arrowhead); }
+      .arrow-primary { stroke: #3b82f6; stroke-width: 2; fill: none; marker-end: url(#arrowhead-primary); }
+      .arrow-success { stroke: #10b981; stroke-width: 2; fill: none; marker-end: url(#arrowhead-success); }
+      .arrow-loop { stroke: #ef4444; stroke-width: 2; fill: none; marker-end: url(#arrowhead-loop); stroke-dasharray: 5,5; }
+      .label { font-family: ui-sans-serif, system-ui, -apple-system, sans-serif; font-size: 12px; fill: #374151; }
+      .step-label { font-family: ui-sans-serif, system-ui, -apple-system, sans-serif; font-size: 11px; fill: #6b7280; font-weight: 500; }
+    </style>
+    <marker id="arrowhead" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+      <polygon points="0 0, 10 3, 0 6" fill="#9ca3af" />
+    </marker>
+    <marker id="arrowhead-primary" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+      <polygon points="0 0, 10 3, 0 6" fill="#3b82f6" />
+    </marker>
+    <marker id="arrowhead-success" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+      <polygon points="0 0, 10 3, 0 6" fill="#10b981" />
+    </marker>
+    <marker id="arrowhead-loop" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+      <polygon points="0 0, 10 3, 0 6" fill="#ef4444" />
+    </marker>
+  </defs>
+
+  <!-- Title -->
+  <text x="600" y="30" text-anchor="middle" class="title" style="font-size: 24px;">GeminiLoop Architecture</text>
+  <text x="600" y="55" text-anchor="middle" class="subtitle">Closed-loop agent: Build í Evaluate í Fix í Repeat</text>
+
+  <!-- User -->
+  <rect x="500" y="90" width="200" height="60" class="box-primary"/>
+  <text x="600" y="118" text-anchor="middle" class="title">User</text>
+  <text x="600" y="137" text-anchor="middle" class="subtitle">Clicks "Interact"</text>
+
+  <!-- Python Orchestrator (main control) -->
+  <rect x="430" y="200" width="340" height="180" class="box-primary"/>
+  <text x="600" y="225" text-anchor="middle" class="title">Python Orchestrator</text>
+  <text x="600" y="242" text-anchor="middle" class="subtitle">Main Control Loop</text>
+  
+  <!-- Sub-components of Orchestrator -->
+  <rect x="450" y="260" width="140" height="35" class="box"/>
+  <text x="520" y="282" text-anchor="middle" class="subtitle">gemini_generator.py</text>
+  
+  <rect x="610" y="260" width="140" height="35" class="box"/>
+  <text x="680" y="282" text-anchor="middle" class="subtitle">evaluator.py</text>
+  
+  <rect x="450" y="305" width="140" height="35" class="box"/>
+  <text x="520" y="327" text-anchor="middle" class="subtitle">openhands_client.py</text>
+  
+  <rect x="610" y="305" width="140" height="35" class="box"/>
+  <text x="680" y="327" text-anchor="middle" class="subtitle">mcp_real_client.py</text>
+
+  <!-- GitHub Template Repo -->
+  <rect x="50" y="230" width="280" height="80" class="box-tertiary"/>
+  <text x="190" y="260" text-anchor="middle" class="title">GitHub Template Repo</text>
+  <text x="190" y="277" text-anchor="middle" class="subtitle">+ Run Branch</text>
+  <text x="190" y="294" text-anchor="middle" class="subtitle">(run/&lt;run_id&gt;)</text>
+
+  <!-- OpenHands Sandbox -->
+  <rect x="50" y="450" width="280" height="140" class="box-secondary"/>
+  <text x="190" y="480" text-anchor="middle" class="title">OpenHands Sandbox</text>
+  <text x="190" y="497" text-anchor="middle" class="subtitle">Ephemeral Container</text>
+  <text x="190" y="525" text-anchor="middle" class="label">/workspace ê runs/&lt;run_id&gt;/workspace</text>
+  <text x="190" y="545" text-anchor="middle" class="label">/artifacts ê runs/&lt;run_id&gt;/artifacts</text>
+  <text x="190" y="570" text-anchor="middle" class="subtitle">Builds &amp; edits code</text>
+
+  <!-- Node.js Playwright MCP Server -->
+  <rect x="870" y="230" width="280" height="100" class="box-secondary"/>
+  <text x="1010" y="260" text-anchor="middle" class="title">Node.js Playwright</text>
+  <text x="1010" y="277" text-anchor="middle" class="title">MCP Server</text>
+  <text x="1010" y="300" text-anchor="middle" class="subtitle">JSON-RPC 2.0 over stdio</text>
+  <text x="1010" y="317" text-anchor="middle" class="subtitle">(subprocess)</text>
+
+  <!-- Browser Session -->
+  <rect x="870" y="380" width="280" height="80" class="box-tertiary"/>
+  <text x="1010" y="410" text-anchor="middle" class="title">Browser Session</text>
+  <text x="1010" y="427" text-anchor="middle" class="subtitle">Playwright + noVNC</text>
+  <text x="1010" y="444" text-anchor="middle" class="subtitle">(visible demo)</text>
+
+  <!-- Preview Server -->
+  <rect x="430" y="650" width="340" height="80" class="box-tertiary"/>
+  <text x="600" y="680" text-anchor="middle" class="title">Preview Server</text>
+  <text x="600" y="697" text-anchor="middle" class="subtitle">Serves /preview/&lt;run_id&gt;/index.html</text>
+  <text x="600" y="714" text-anchor="middle" class="subtitle">Built artifacts from workspace</text>
+
+  <!-- Trace/Artifacts Store -->
+  <rect x="50" y="770" width="280" height="100" class="box"/>
+  <text x="190" y="800" text-anchor="middle" class="title">Trace/Artifacts Store</text>
+  <text x="190" y="823" text-anchor="middle" class="subtitle">Screenshots, console logs</text>
+  <text x="190" y="840" text-anchor="middle" class="subtitle">Diffs, eval.json</text>
+  <text x="190" y="857" text-anchor="middle" class="subtitle">runs/&lt;run_id&gt;/artifacts/</text>
+
+  <!-- Final Output -->
+  <rect x="500" y="1200" width="200" height="80" class="box-primary"/>
+  <text x="600" y="1230" text-anchor="middle" class="title">Success!</text>
+  <text x="600" y="1250" text-anchor="middle" class="subtitle">GitHub PR + Preview Link</text>
+  <text x="600" y="1267" text-anchor="middle" class="subtitle">Artifacts available</text>
+
+  <!-- Arrows and Flow -->
+  
+  <!-- 1. User to Orchestrator -->
+  <path d="M 600 150 L 600 200" class="arrow-primary"/>
+  <text x="620" y="180" class="step-label">1. Interact</text>
+
+  <!-- 2. Orchestrator to GitHub -->
+  <path d="M 430 270 L 330 270" class="arrow"/>
+  <text x="340 260" class="step-label">2. Create branch</text>
+
+  <!-- 3. Orchestrator to OpenHands -->
+  <path d="M 430 350 L 380 350 L 380 520 L 330 520" class="arrow"/>
+  <text x="390" y="430" class="step-label">3. Build/edit</text>
+
+  <!-- 4. OpenHands to Preview Server -->
+  <path d="M 330 520 L 380 520 L 380 690 L 430 690" class="arrow"/>
+  <text x="390" y="600" class="step-label">4. Deploy build</text>
+
+  <!-- 5. Orchestrator to Node MCP -->
+  <path d="M 770 280 L 870 280" class="arrow"/>
+  <text x="780" y="270" class="step-label">5. Spawn MCP</text>
+
+  <!-- 6. Node MCP to Browser -->
+  <path d="M 1010 330 L 1010 380" class="arrow"/>
+  <text x="1020" y="360" class="step-label">6. Control browser</text>
+
+  <!-- 7. Browser results back to Orchestrator -->
+  <path d="M 870 420 L 820 420 L 820 290 L 770 290" class="arrow"/>
+  <text x="830" y="350" class="step-label">7. Results</text>
+
+  <!-- Gemini Evaluation -->
+  <rect x="450" y="920" width="300" height="80" class="box-primary"/>
+  <text x="600" y="950" text-anchor="middle" class="title">Gemini Evaluation</text>
+  <text x="600" y="970" text-anchor="middle" class="subtitle">Score + Issues Analysis</text>
+  <text x="600" y="987" text-anchor="middle" class="subtitle">Pass or needs fixes?</text>
+
+  <!-- Orchestrator to Evaluation -->
+  <path d="M 600 380 L 600 920" class="arrow"/>
+  <text x="620" y="650" class="step-label">8. Evaluate</text>
+
+  <!-- Loop back on failure -->
+  <path d="M 450 960 L 190 960 L 190 590" class="arrow-loop"/>
+  <text x="200" y="780" class="step-label">9. If fail: fix &amp; repeat</text>
+
+  <!-- Success path -->
+  <path d="M 600 1000 L 600 1200" class="arrow-success"/>
+  <text x="620" y="1100" class="step-label">10. On pass: Push &amp; PR</text>
+
+  <!-- Artifacts to Store -->
+  <path d="M 190 590 L 190 770" class="arrow"/>
+  <text x="200" y="680" class="step-label">Store artifacts</text>
+
+  <!-- Legend -->
+  <rect x="50" y="1300" width="1100" height="80" fill="#f9fafb" stroke="#e5e7eb" stroke-width="1" rx="4"/>
+  <text x="600" y="1325" text-anchor="middle" class="subtitle" style="font-weight: 600;">Loop Flow Summary</text>
+  <text x="600" y="1345" text-anchor="middle" class="label">Create branch í OpenHands builds í Preview deployed í MCP evaluates in browser í Gemini scores</text>
+  <text x="600" y="1365" text-anchor="middle" class="label">If failing: Loop back with fixes. If passing: Push to GitHub with PR and return preview link.</text>
+
+</svg>

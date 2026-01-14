@@ -1,0 +1,26 @@
+{
+  "name": "gemini-loop",
+  "version": "1.0.0",
+  "description": "RunPod-ready MVP for autonomous UI generation and evaluation",
+  "main": "orchestrator/playwright_mcp_server.js",
+  "scripts": {
+    "mcp-server": "node orchestrator/playwright_mcp_server.js",
+    "preview": "python services/preview_server.py",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "mcp",
+    "gemini",
+    "playwright",
+    "automation",
+    "runpod"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "playwright": "^1.40.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
