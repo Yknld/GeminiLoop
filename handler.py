@@ -25,7 +25,7 @@ except Exception as e:
     raise
 
 
-def handler(job: Dict[str, Any]) -> Dict[str, Any]:
+async def handler(job: Dict[str, Any]) -> Dict[str, Any]:
     """
     RunPod serverless handler
     
@@ -96,11 +96,11 @@ def handler(job: Dict[str, Any]) -> Dict[str, Any]:
         # Run orchestrator
         logger.info(f"Running orchestrator for task: {task}")
         
-        state = asyncio.run(run_loop(
+        state = await run_loop(
             task=task,
             max_iterations=max_iterations,
             base_dir=Path("/runpod-volume/runs")  # Use persistent volume
-        ))
+        )
         
         # Build response
         response = {
