@@ -113,6 +113,82 @@ class LocalSubprocessOpenHandsClient(OpenHandsClient):
         if not self.openhands_available:
             logger.warning("OpenHands CLI not found. Install with: pip install openhands")
     
+    def generate_code(self, task: str, workspace_path: str, detailed_requirements: Dict[str, Any]) -> Dict[str, Any]:
+        """Generate initial code using OpenHands"""
+        
+        start_time = datetime.now()
+        workspace_path = Path(workspace_path)
+        
+        logger.info(f"🎨 OpenHands: Generating code from scratch")
+        logger.info(f"   Task: {task}")
+        logger.info(f"   Workspace: {workspace_path}")
+        
+        if not self.openhands_available:
+            logger.warning("OpenHands CLI not available, using fallback")
+            return self._fallback_generate(task, workspace_path, detailed_requirements)
+        
+        # Build detailed prompt for OpenHands
+        prompt = self._build_generation_prompt(task, detailed_requirements)
+        
+        # Save prompt for debugging
+        prompt_file = self.artifacts_dir / f"generation_prompt_{start_time.strftime('%Y%m%d_%H%M%S')}.txt"
+        prompt_file.write_text(prompt)
+        logger.info(f"   Prompt saved: {prompt_file}")
+        
+        # Run OpenHands
+        try:
+            # Capture before state
+            before_files = self._capture_workspace_state(workspace_path)
+            
+            # Run openhands with the prompt
+            result = subprocess.run(
+                [
+                    "openhands",
+                    "--directory", str(workspace_path),
+                    "--task", prompt,
+                    "--non-interactive"
+                ],
+                capture_output=True,
+                text=True,
+                timeout=120,  # 2 minute timeout for generation
+                cwd=str(workspace_path)
+            )
+            
+            # Capture after state
+            after_files = self._capture_workspace_state(workspace_path)
+            
+            # Generate diffs
+            diffs = self._generate_diffs(before_files, after_files, "generation")
+            
+            duration = (datetime.now() - start_time).total_seconds()
+            
+            success = result.returncode == 0
+            
+            return {
+                "success": success,
+                "files_generated": list(after_files.keys()),
+                "diffs": diffs,
+                "stdout": result.stdout,
+                "stderr": result.stderr,
+                "duration_seconds": duration,
+                "prompt_file": str(prompt_file)
+            }
+            
+        except subprocess.TimeoutExpired:
+            logger.error("OpenHands generation timed out")
+            return {
+                "success": False,
+                "error": "Timeout after 120 seconds",
+                "duration_seconds": 120
+            }
+        except Exception as e:
+            logger.error(f"OpenHands generation failed: {e}")
+            return {
+                "success": False,
+                "error": str(e),
+                "duration_seconds": (datetime.now() - start_time).total_seconds()
+            }
+    
     def apply_patch_plan(self, workspace_path: str, patch_plan: Dict[str, Any]) -> Dict[str, Any]:
         """Apply patch plan using OpenHands CLI"""
         
