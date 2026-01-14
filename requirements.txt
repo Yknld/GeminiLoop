@@ -3,9 +3,6 @@
 # RunPod serverless
 runpod>=1.3.0
 
-# OpenHands for code patching
-openhands-ai>=0.9.0
-
 # Core AI
 google-generativeai>=0.8.0
 
