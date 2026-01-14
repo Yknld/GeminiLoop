@@ -22,6 +22,9 @@ except ImportError:
 
 logger = logging.getLogger(__name__)
 
+# Model version constants
+EVALUATOR_MODEL_VERSION = "gemini-3-flash-preview"
+RUBRIC_VERSION = "1.0"
 
 # Rubric Schema
 EVALUATION_RUBRIC = {

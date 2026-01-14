@@ -14,6 +14,9 @@ try:
 except ImportError:
     raise ImportError("Install google-generativeai: pip install google-generativeai")
 
+# Model version constant
+GEMINI_MODEL_VERSION = "gemini-3-flash-preview"
+
 
 class GeminiCodeGenerator:
     """
