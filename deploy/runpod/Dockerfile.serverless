@@ -32,14 +32,12 @@ RUN curl -fsSL https://nodejs.org/dist/v18.19.0/node-v18.19.0-linux-x64.tar.xz -
 # Set working directory
 WORKDIR /app
 
-# Copy package files first (for layer caching)
-COPY requirements.txt package.json ./
-
-# Install Python dependencies
+# Copy and install Python dependencies
+COPY requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Install Node.js dependencies
-COPY package.json package-lock.json* ./
+# Copy and install Node.js dependencies
+COPY package.json ./
 RUN npm install --production
 
 # Install Playwright with Chromium
