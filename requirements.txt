@@ -1,5 +1,8 @@
 # GeminiLoop Python Dependencies
 
+# RunPod serverless
+runpod>=1.3.0
+
 # Core AI
 google-generativeai>=0.8.0
 
