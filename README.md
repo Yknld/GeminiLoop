@@ -24,6 +24,26 @@ The system combines four key components in a continuous feedback loop:
 
 Each run creates an isolated workspace and artifact store, with all screenshots, logs, evaluation data, and patch history preserved.
 
+## 🔴 Live Monitoring (NEW!)
+
+Watch your GeminiLoop runs in **real-time** with the live monitoring interface:
+
+- 📺 **Real-time preview** - See the page update as OpenHands edits it
+- 📊 **Live scores** - Watch Gemini evaluation feedback stream in
+- 📝 **Progress logs** - Monitor every phase and iteration live
+- 🖥️ 📱 **Device views** - Toggle between desktop and mobile previews
+
+**Quick Start:**
+```bash
+# Start with live monitoring
+python3 -m live_server
+
+# Open browser to http://localhost:8080
+# Run your task - watch it live!
+```
+
+See [LIVE_MODE.md](LIVE_MODE.md) for full setup and SSH tunnel instructions for RunPod.
+
 ## RunPod Quick Start
 
 ### Prerequisites
