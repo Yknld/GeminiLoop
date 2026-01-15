@@ -10,6 +10,7 @@ import json
 import subprocess
 import logging
 import re
+import traceback
 from pathlib import Path
 from typing import Dict, Any, Optional, List
 from abc import ABC, abstractmethod
@@ -181,8 +182,14 @@ class LocalSubprocessOpenHandsClient(OpenHandsClient):
             
             success = result.returncode == 0
             
+            if not success:
+                logger.error(f"OpenHands command failed with exit code {result.returncode}")
+                logger.error(f"STDOUT: {result.stdout}")
+                logger.error(f"STDERR: {result.stderr}")
+            
             return {
                 "success": success,
+                "error": f"Exit code {result.returncode}: {result.stderr[:200]}" if not success else None,
                 "files_generated": list(after_files.keys()),
                 "diffs": diffs,
                 "stdout": result.stdout,
@@ -196,14 +203,19 @@ class LocalSubprocessOpenHandsClient(OpenHandsClient):
             return {
                 "success": False,
                 "error": "Timeout after 120 seconds",
-                "duration_seconds": 120
+                "duration_seconds": 120,
+                "stdout": "",
+                "stderr": "Process timed out"
             }
         except Exception as e:
             logger.error(f"OpenHands generation failed: {e}")
+            logger.error(f"Traceback: {traceback.format_exc()}")
             return {
                 "success": False,
                 "error": str(e),
-                "duration_seconds": (datetime.now() - start_time).total_seconds()
+                "duration_seconds": (datetime.now() - start_time).total_seconds(),
+                "stdout": "",
+                "stderr": str(e)
             }
     
     def apply_patch_plan(self, workspace_path: str, patch_plan: Dict[str, Any]) -> Dict[str, Any]:
