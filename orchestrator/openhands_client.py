@@ -149,17 +149,17 @@ class LocalSubprocessOpenHandsClient(OpenHandsClient):
             logger.error("   This will cause job failure in OpenHands-only mode")
     
     def generate_code(self, task: str, workspace_path: str, detailed_requirements: Dict[str, Any]) -> Dict[str, Any]:
-        """Generate initial code using OpenHands"""
+        """Generate initial code using OpenHands Python SDK"""
         
         start_time = datetime.now()
         workspace_path = Path(workspace_path)
         
-        logger.info(f"🎨 OpenHands: Generating code from scratch")
+        logger.info(f"🎨 OpenHands SDK: Generating code from scratch")
         logger.info(f"   Task: {task}")
         logger.info(f"   Workspace: {workspace_path}")
         
         if not self.openhands_available:
-            raise RuntimeError("OpenHands CLI not available. Cannot generate code without OpenHands.")
+            raise RuntimeError("OpenHands not available. Cannot generate code without OpenHands.")
         
         # Build detailed prompt for OpenHands
         prompt = self._build_generation_prompt(task, detailed_requirements)
@@ -169,27 +169,33 @@ class LocalSubprocessOpenHandsClient(OpenHandsClient):
         prompt_file.write_text(prompt)
         logger.info(f"   Prompt saved: {prompt_file}")
         
-        # Run OpenHands
+        # Run OpenHands via Python SDK
         try:
+            # Import OpenHands SDK
+            from openhands.sdk import LLM, Agent, Conversation
+            from openhands.tools.preset.default import get_default_agent
+            from pydantic import SecretStr
+            
             # Capture before state
             before_files = self._capture_workspace_state(workspace_path)
             
-            # Run openhands with the prompt
-            # OpenHands CLI format: openhands COMMAND [args]
-            cmd = self.openhands_command + [
-                "generate",
-                prompt
-            ]
-            
-            logger.info(f"   Running: {' '.join(cmd)}")
-            
-            result = subprocess.run(
-                cmd,
-                capture_output=True,
-                text=True,
-                timeout=120,  # 2 minute timeout for generation
-                cwd=str(workspace_path)
+            # Configure LLM (using Gemini from env)
+            llm = LLM(
+                model=os.getenv("GEMINI_MODEL", "gemini-2.0-flash-exp"),
+                api_key=SecretStr(os.getenv("GOOGLE_AI_STUDIO_API_KEY")),
+                base_url=os.getenv("LLM_BASE_URL"),
             )
+            
+            # Create agent
+            agent = get_default_agent(llm=llm, cli_mode=False)
+            
+            # Create conversation
+            conversation = Conversation(agent=agent, workspace=str(workspace_path))
+            
+            # Send task and run
+            logger.info("   Sending task to OpenHands agent...")
+            conversation.send_message(prompt)
+            conversation.run()
             
             # Capture after state
             after_files = self._capture_workspace_state(workspace_path)
@@ -199,35 +205,21 @@ class LocalSubprocessOpenHandsClient(OpenHandsClient):
             
             duration = (datetime.now() - start_time).total_seconds()
             
-            success = result.returncode == 0
-            
-            if not success:
-                logger.error(f"OpenHands command failed with exit code {result.returncode}")
-                logger.error(f"STDOUT: {result.stdout}")
-                logger.error(f"STDERR: {result.stderr}")
+            logger.info(f"✅ OpenHands SDK completed in {duration:.2f}s")
             
             return {
-                "success": success,
-                "error": f"Exit code {result.returncode}: {result.stderr[:200]}" if not success else None,
+                "success": True,
+                "error": None,
                 "files_generated": list(after_files.keys()),
                 "diffs": diffs,
-                "stdout": result.stdout,
-                "stderr": result.stderr,
+                "stdout": "OpenHands SDK execution completed",
+                "stderr": "",
                 "duration_seconds": duration,
                 "prompt_file": str(prompt_file)
             }
             
-        except subprocess.TimeoutExpired:
-            logger.error("OpenHands generation timed out")
-            return {
-                "success": False,
-                "error": "Timeout after 120 seconds",
-                "duration_seconds": 120,
-                "stdout": "",
-                "stderr": "Process timed out"
-            }
         except Exception as e:
-            logger.error(f"OpenHands generation failed: {e}")
+            logger.error(f"OpenHands SDK failed: {e}")
             logger.error(f"Traceback: {traceback.format_exc()}")
             return {
                 "success": False,
