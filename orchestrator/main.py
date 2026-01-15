@@ -244,35 +244,26 @@ async def run_loop(task: str, max_iterations: int = 5, base_dir: Path = None) ->
                     detailed_requirements=detailed_requirements
                 )
                 
-                if generation_result["success"]:
-                    files_generated = generation_result.get("files_generated", [])
-                    diffs = generation_result.get("diffs", [])
-                    
-                    print(f"✅ OpenHands generated: {', '.join(files_generated)}")
-                    if diffs:
-                        print(f"📝 Diffs: {len(diffs)}")
-                    
-                    # Copy to site
-                    for filename in files_generated:
-                        workspace_file = state.workspace_dir / filename
-                        if workspace_file.exists():
-                            site_file = state.site_dir / filename
-                            site_file.write_text(workspace_file.read_text())
-                    
-                    iter_result.files_generated = {f: str(state.workspace_dir / f) for f in files_generated}
-                    iter_result.code_generated = f"OpenHands: {','.join(files_generated)}"
-                else:
-                    print(f"⚠️  Using Gemini fallback")
-                    fallback_result = await generator.generate(task=task, workspace_dir=state.workspace_dir)
-                    code = fallback_result["code"]
-                    filename = fallback_result["filename"]
+                if not generation_result["success"]:
+                    error_msg = generation_result.get("error", "Unknown error")
+                    raise RuntimeError(f"❌ OpenHands code generation failed: {error_msg}")
+                
+                files_generated = generation_result.get("files_generated", [])
+                diffs = generation_result.get("diffs", [])
+                
+                print(f"✅ OpenHands generated: {', '.join(files_generated)}")
+                if diffs:
+                    print(f"📝 Diffs: {len(diffs)}")
+                
+                # Copy to site
+                for filename in files_generated:
                     workspace_file = state.workspace_dir / filename
-                    workspace_file.write_text(code)
-                    site_file = state.site_dir / filename
-                    site_file.write_text(code)
-                    iter_result.code_generated = code
-                    iter_result.files_generated = {filename: str(workspace_file)}
-                    files_generated = [filename]
+                    if workspace_file.exists():
+                        site_file = state.site_dir / filename
+                        site_file.write_text(workspace_file.read_text())
+                
+                iter_result.files_generated = {f: str(state.workspace_dir / f) for f in files_generated}
+                iter_result.code_generated = f"OpenHands: {','.join(files_generated)}"
             else:
                 print("🔄 Using patched files from previous iteration")
                 files_generated = list(iter_result.files_generated.keys()) if iter_result.files_generated else ["index.html"]

@@ -140,8 +140,7 @@ class LocalSubprocessOpenHandsClient(OpenHandsClient):
         logger.info(f"   Workspace: {workspace_path}")
         
         if not self.openhands_available:
-            logger.warning("OpenHands CLI not available, using fallback")
-            return self._fallback_generate(task, workspace_path, detailed_requirements)
+            raise RuntimeError("OpenHands CLI not available. Cannot generate code without OpenHands.")
         
         # Build detailed prompt for OpenHands
         prompt = self._build_generation_prompt(task, detailed_requirements)
@@ -211,7 +210,7 @@ class LocalSubprocessOpenHandsClient(OpenHandsClient):
         """Apply patch plan using OpenHands CLI"""
         
         if not self.openhands_available:
-            raise RuntimeError("OpenHands CLI not available. Set OPENHANDS_MODE=mock to use fallback.")
+            raise RuntimeError("OpenHands CLI not available. Cannot apply patches without OpenHands.")
         
         workspace_path = Path(workspace_path)
         start_time = datetime.now()
@@ -531,45 +530,6 @@ Generate the complete, working HTML file now. Make it professional and productio
         
         return prompt
     
-    def _fallback_generate(self, task: str, workspace_path: Path, requirements: Dict[str, Any]) -> Dict[str, Any]:
-        """Fallback generation when OpenHands isn't available"""
-        
-        logger.warning("Using fallback generation (OpenHands not available)")
-        
-        # Create a basic HTML template
-        html_content = f"""<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{task}</title>
-    <style>
-        * {{ margin: 0; padding: 0; box-sizing: border-box; }}
-        body {{ font-family: system-ui, -apple-system, sans-serif; padding: 20px; background: #f5f5f5; }}
-        .container {{ max-width: 800px; margin: 0 auto; background: white; padding: 40px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }}
-        h1 {{ color: #333; margin-bottom: 20px; }}
-        p {{ color: #666; line-height: 1.6; }}
-    </style>
-</head>
-<body>
-    <div class="container">
-        <h1>{task}</h1>
-        <p>This is a fallback template. OpenHands should generate better code.</p>
-    </div>
-</body>
-</html>"""
-        
-        filepath = workspace_path / "index.html"
-        filepath.write_text(html_content)
-        
-        return {
-            "success": True,
-            "files_generated": ["index.html"],
-            "diffs": [],
-            "stdout": "Fallback template created",
-            "stderr": "OpenHands not available",
-            "duration_seconds": 0.1
-        }
 
 
 class MockOpenHandsClient(OpenHandsClient):
