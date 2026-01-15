@@ -20,9 +20,11 @@ RUN curl -fsSL https://nodejs.org/dist/v18.19.0/node-v18.19.0-linux-x64.tar.xz |
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Install Playwright with Chromium for OpenHands browser tool
-RUN pip install playwright
-RUN python -m playwright install chromium --with-deps
+# Install uvx for OpenHands browser tool
+RUN pip install uv
+RUN uv tool install playwright
+ENV PATH="/root/.local/bin:$PATH"
+RUN uvx playwright install chromium --with-deps --no-shell
 
 # Install Node dependencies
 COPY package.json .
