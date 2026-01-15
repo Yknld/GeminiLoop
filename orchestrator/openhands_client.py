@@ -229,15 +229,11 @@ class LocalSubprocessOpenHandsClient(OpenHandsClient):
         logger.info(f"   Instructions: {instructions_file}")
         
         # Run openhands CLI
-        # Note: This is a placeholder - actual OpenHands API may differ
-        # You'll need to adjust based on OpenHands CLI interface
         try:
-            cmd = [
-                "openhands",
-                "run",
-                "--workspace", str(workspace_path),
-                "--instructions", str(instructions_file),
-                "--no-interactive"
+            # Build command with detected CLI
+            cmd = self.openhands_command + [
+                "-t", instructions,
+                "--always-approve"
             ]
             
             logger.info(f"   Command: {' '.join(cmd)}")
