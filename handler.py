@@ -177,9 +177,22 @@ async def handler(job: Dict[str, Any]) -> Dict[str, Any]:
             screenshot_files = list(screenshots_dir.rglob("*.png"))
             response["screenshots"] = [str(f.relative_to("/runpod-volume/runs")) for f in screenshot_files]
         
+        # Add generated file contents
+        response["generated_files"] = {}
+        site_dir = state.site_dir
+        if site_dir.exists():
+            for file in site_dir.rglob("*"):
+                if file.is_file() and file.suffix in [".html", ".css", ".js"]:
+                    try:
+                        relative_path = str(file.relative_to(site_dir))
+                        response["generated_files"][relative_path] = file.read_text()
+                    except:
+                        pass
+        
         logger.info(f"✅ Run complete: {state.result.run_id}")
         logger.info(f"   Score: {state.result.final_score}/100")
         logger.info(f"   Status: {state.result.status}")
+        logger.info(f"   Generated files: {list(response['generated_files'].keys())}")
         
         return response
         
