@@ -23,6 +23,7 @@ from .mcp_real_client import PlaywrightMCPClient
 from .openhands_client import get_openhands_client
 from .patch_generator import generate_patch_plan
 from .github_client import get_github_client
+from . import events  # Live monitoring events
 
 # Setup logging
 logging.basicConfig(
@@ -80,6 +81,9 @@ async def run_loop(task: str, max_iterations: int = 5, base_dir: Path = None) ->
     print(f"   Preview: {state.get_preview_url()}")
     print(f"   Trace: {state.artifacts_dir / 'trace.jsonl'}")
     print(f"   Manifest: {state.artifacts_dir / 'manifest.json'}")
+    
+    # Emit run start event for live monitoring
+    events.emit_run_start(config.run_id, task)
     
     # Initialize clients
     generator = GeminiCodeGenerator()
@@ -195,6 +199,7 @@ async def run_loop(task: str, max_iterations: int = 5, base_dir: Path = None) ->
             print(f"{'=' * 70}")
             
             trace.iteration_start(iteration, max_iterations)
+            events.emit_iteration_start(iteration)  # Live monitoring
             
             # Phase 1: Generate Code
             print(f"\n🎨 Phase 1: Code Generation")
@@ -264,6 +269,9 @@ async def run_loop(task: str, max_iterations: int = 5, base_dir: Path = None) ->
                 
                 iter_result.files_generated = {f: str(state.workspace_dir / f) for f in files_generated}
                 iter_result.code_generated = f"OpenHands: {','.join(files_generated)}"
+                
+                # Emit code generation event for live monitoring
+                events.emit_code_generated(files_generated, method="openhands")
             else:
                 print("🔄 Using patched files from previous iteration")
                 files_generated = list(iter_result.files_generated.keys()) if iter_result.files_generated else ["index.html"]
@@ -377,6 +385,14 @@ async def run_loop(task: str, max_iterations: int = 5, base_dir: Path = None) ->
             
             trace.iteration_end(iteration, iter_result.score, iter_result.passed)
             
+            # Emit evaluation event for live monitoring
+            events.emit_evaluation(
+                iteration=iteration,
+                score=iter_result.score,
+                passed=iter_result.passed,
+                feedback=iter_result.feedback or ""
+            )
+            
             # Check if passed
             if iter_result.passed:
                 print(f"\n🎉 SUCCESS! Evaluation passed on iteration {iteration}")
@@ -461,6 +477,9 @@ async def run_loop(task: str, max_iterations: int = 5, base_dir: Path = None) ->
                         
                         for file in patch_result["files_modified"]:
                             print(f"   - {file}")
+                        
+                        # Emit patch applied event for live monitoring
+                        events.emit_patch_applied(patch_result["files_modified"])
                         
                         # Copy patched files to site for serving
                         print(f"\n📋 Copying patched files to site...")
@@ -576,6 +595,14 @@ async def run_loop(task: str, max_iterations: int = 5, base_dir: Path = None) ->
         
         print(f"\n✅ Run complete! View results at:")
         print(f"   {view_file}")
+        
+        # Emit run complete event for live monitoring
+        events.emit_run_complete(
+            run_id=config.run_id,
+            final_score=state.result.final_score,
+            passed=state.result.final_passed,
+            iterations=state.result.current_iteration
+        )
         
         return state
         
