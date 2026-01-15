@@ -205,15 +205,15 @@ class LocalSubprocessOpenHandsClient(OpenHandsClient):
             }
     
     def apply_patch_plan(self, workspace_path: str, patch_plan: Dict[str, Any]) -> Dict[str, Any]:
-        """Apply patch plan using OpenHands CLI"""
+        """Apply patch plan using OpenHands SDK"""
         
         if not self.openhands_available:
-            raise RuntimeError("OpenHands CLI not available. Cannot apply patches without OpenHands.")
+            raise RuntimeError("OpenHands not available. Cannot apply patches without OpenHands.")
         
         workspace_path = Path(workspace_path)
         start_time = datetime.now()
         
-        logger.info(f"🔧 Applying patch plan via OpenHands CLI")
+        logger.info(f"🔧 Applying patch plan via OpenHands SDK")
         logger.info(f"   Workspace: {workspace_path}")
         
         # Build instructions for OpenHands
@@ -225,67 +225,69 @@ class LocalSubprocessOpenHandsClient(OpenHandsClient):
         
         logger.info(f"   Instructions: {instructions_file}")
         
-        # Run openhands CLI
+        # Run OpenHands via Python SDK
         try:
-            # Build command with detected CLI
-            # OpenHands CLI format: openhands COMMAND [args]
-            cmd = self.openhands_command + [
-                "patch",
-                instructions
-            ]
+            # Import OpenHands SDK
+            from openhands.sdk import LLM, Agent, Conversation, Tool
+            from openhands.tools.browser_use import BrowserToolSet
+            from openhands.tools.file_editor import FileEditorTool
+            from openhands.tools.terminal import TerminalTool
+            from pydantic import SecretStr
             
-            logger.info(f"   Command: {' '.join(cmd)}")
+            # Capture before state
+            before_files = self._capture_workspace_state(workspace_path)
             
-            result = subprocess.run(
-                cmd,
-                cwd=workspace_path,
-                capture_output=True,
-                text=True,
-                timeout=300  # 5 minute timeout
+            # Configure LLM (using Gemini AI Studio, not Vertex AI)
+            model = os.getenv("GEMINI_MODEL", "gemini-2.0-flash-exp")
+            if not model.startswith("gemini/"):
+                model = f"gemini/{model}"
+            
+            llm = LLM(
+                model=model,
+                api_key=SecretStr(os.getenv("GOOGLE_AI_STUDIO_API_KEY")),
             )
             
-            # Save logs
-            stdout_file = self.artifacts_dir / f"openhands_stdout_{int(start_time.timestamp())}.log"
-            stderr_file = self.artifacts_dir / f"openhands_stderr_{int(start_time.timestamp())}.log"
+            # Create agent with browser, file, and terminal tools
+            agent = Agent(
+                llm=llm,
+                tools=[
+                    Tool(name=BrowserToolSet.name),
+                    Tool(name=FileEditorTool.name),
+                    Tool(name=TerminalTool.name),
+                ]
+            )
             
-            stdout_file.write_text(result.stdout)
-            stderr_file.write_text(result.stderr)
+            # Create conversation
+            conversation = Conversation(agent=agent, workspace=str(workspace_path))
             
-            duration = (datetime.now() - start_time).total_seconds()
+            # Send patch instructions and run
+            logger.info("   Sending patch instructions to OpenHands agent...")
+            conversation.send_message(instructions)
+            conversation.run()
             
-            success = result.returncode == 0
-            
-            logger.info(f"   OpenHands completed: {'✅ success' if success else '❌ failed'}")
-            logger.info(f"   Duration: {duration:.2f}s")
+            # Capture after state
+            after_files = self._capture_workspace_state(workspace_path)
             
             # Determine which files were modified
-            files_modified = self._detect_modified_files(workspace_path, patch_plan)
+            files_modified = list(set(after_files.keys()) | set(before_files.keys()))
             
-            return {
-                "success": success,
-                "files_modified": files_modified,
-                "stdout": result.stdout,
-                "stderr": result.stderr,
-                "duration_seconds": duration,
-                "stdout_log": str(stdout_file),
-                "stderr_log": str(stderr_file)
-            }
-            
-        except subprocess.TimeoutExpired:
             duration = (datetime.now() - start_time).total_seconds()
-            logger.error(f"   OpenHands timed out after {duration:.2f}s")
+            
+            logger.info(f"✅ OpenHands SDK patch completed in {duration:.2f}s")
+            logger.info(f"   Files modified: {len(files_modified)}")
             
             return {
-                "success": False,
-                "files_modified": [],
-                "stdout": "",
-                "stderr": "Process timed out",
-                "duration_seconds": duration
+                "success": True,
+                "files_modified": files_modified,
+                "stdout": "OpenHands SDK patch execution completed",
+                "stderr": "",
+                "duration_seconds": duration,
             }
-        
+            
         except Exception as e:
             duration = (datetime.now() - start_time).total_seconds()
-            logger.error(f"   OpenHands error: {e}")
+            logger.error(f"   OpenHands SDK error: {e}")
+            logger.error(f"   Traceback: {traceback.format_exc()}")
             
             return {
                 "success": False,
