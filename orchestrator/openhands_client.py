@@ -134,7 +134,7 @@ class LocalSubprocessOpenHandsClient(OpenHandsClient):
         # Run OpenHands via Python SDK
         try:
             # Import OpenHands SDK
-            from openhands.sdk import LLM, Agent, Conversation
+            from openhands.sdk import LLM, Agent, Conversation, Tool
             from openhands.tools.browser_use import BrowserToolSet
             from openhands.tools.file_editor import FileEditorTool
             from openhands.tools.terminal import TerminalTool
@@ -154,9 +154,9 @@ class LocalSubprocessOpenHandsClient(OpenHandsClient):
             agent = Agent(
                 llm=llm,
                 tools=[
-                    BrowserToolSet.name,
-                    FileEditorTool.name,
-                    TerminalTool.name,
+                    Tool(name=BrowserToolSet.name),
+                    Tool(name=FileEditorTool.name),
+                    Tool(name=TerminalTool.name),
                 ]
             )
             
