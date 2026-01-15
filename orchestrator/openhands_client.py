@@ -113,12 +113,12 @@ class LocalSubprocessOpenHandsClient(OpenHandsClient):
         except:
             pass
         
-        # Try multiple detection methods
+        # Try multiple detection methods (OpenHands official image uses /app/.venv)
         detection_methods = [
+            (["/app/.venv/bin/python", "-c", "import openhands"], ["/app/.venv/bin/python", "-m", "openhands.cli.entry"], "OpenHands venv (official image)"),
             (["which", "openhands"], ["openhands"], "openhands command"),
             (["python3", "-c", "import openhands"], ["python3", "-m", "openhands.cli.entry"], "python3 openhands package"),
             (["python", "-c", "import openhands"], ["python", "-m", "openhands.cli.entry"], "python openhands package"),
-            (["/app/.venv/bin/python", "-c", "import openhands"], ["/app/.venv/bin/python", "-m", "openhands.cli.entry"], "venv python"),
         ]
         
         for check_cmd, run_cmd, method_name in detection_methods:
