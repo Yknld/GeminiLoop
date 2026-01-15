@@ -100,34 +100,34 @@ class LocalSubprocessOpenHandsClient(OpenHandsClient):
         self.openhands_available = False
         self.openhands_command = None
         
-        try:
-            # Try 'openhands' command first
-            result = subprocess.run(
-                ["which", "openhands"],
-                capture_output=True,
-                text=True
-            )
-            if result.returncode == 0:
-                self.openhands_available = True
-                self.openhands_command = ["openhands"]
-                logger.info(f"✅ OpenHands CLI found at: {result.stdout.strip()}")
-            else:
-                # Try python module command as fallback
+        # Try multiple detection methods
+        detection_methods = [
+            (["which", "openhands"], ["openhands"], "openhands command"),
+            (["python3", "-c", "import openhands.cli.entry"], ["python3", "-m", "openhands.cli.entry"], "python3 module"),
+            (["python", "-c", "import openhands.cli.entry"], ["python", "-m", "openhands.cli.entry"], "python module"),
+        ]
+        
+        for check_cmd, run_cmd, method_name in detection_methods:
+            try:
                 result = subprocess.run(
-                    ["python", "-m", "openhands.cli.entry", "--help"],
+                    check_cmd,
                     capture_output=True,
                     text=True,
                     timeout=5
                 )
                 if result.returncode == 0:
                     self.openhands_available = True
-                    self.openhands_command = ["python", "-m", "openhands.cli.entry"]
-                    logger.info("✅ OpenHands available via python module")
-        except Exception as e:
-            logger.warning(f"Could not check for openhands: {e}")
+                    self.openhands_command = run_cmd
+                    logger.info(f"✅ OpenHands CLI found via {method_name}")
+                    logger.info(f"   Command: {' '.join(run_cmd)}")
+                    break
+            except Exception as e:
+                logger.debug(f"Detection method '{method_name}' failed: {e}")
+                continue
         
         if not self.openhands_available:
-            logger.warning("OpenHands CLI not found. Install with: pip install openhands-ai")
+            logger.warning("⚠️  OpenHands CLI not found. Will use Gemini fallback.")
+            logger.warning("   To enable OpenHands: pip install openhands-ai")
     
     def generate_code(self, task: str, workspace_path: str, detailed_requirements: Dict[str, Any]) -> Dict[str, Any]:
         """Generate initial code using OpenHands"""
