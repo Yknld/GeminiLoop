@@ -20,13 +20,16 @@ RUN curl -fsSL https://nodejs.org/dist/v18.19.0/node-v18.19.0-linux-x64.tar.xz |
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
+# Install Playwright with Chromium for OpenHands browser tool
+RUN pip install playwright
+RUN python -m playwright install chromium --with-deps
+
 # Install Node dependencies
 COPY package.json .
 RUN npm install --production
 
-# Install Playwright for our screenshot service (not OpenHands)
+# Also install Playwright via npx for our screenshot service
 RUN npx playwright install chromium
-RUN npx playwright install-deps chromium
 
 # Copy application
 COPY orchestrator ./orchestrator
