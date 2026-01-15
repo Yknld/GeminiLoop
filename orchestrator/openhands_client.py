@@ -175,9 +175,10 @@ class LocalSubprocessOpenHandsClient(OpenHandsClient):
             before_files = self._capture_workspace_state(workspace_path)
             
             # Run openhands with the prompt
+            # OpenHands CLI format: openhands COMMAND [args]
             cmd = self.openhands_command + [
-                "-t", prompt,
-                "--always-approve"
+                "generate",
+                prompt
             ]
             
             logger.info(f"   Running: {' '.join(cmd)}")
@@ -260,9 +261,10 @@ class LocalSubprocessOpenHandsClient(OpenHandsClient):
         # Run openhands CLI
         try:
             # Build command with detected CLI
+            # OpenHands CLI format: openhands COMMAND [args]
             cmd = self.openhands_command + [
-                "-t", instructions,
-                "--always-approve"
+                "patch",
+                instructions
             ]
             
             logger.info(f"   Command: {' '.join(cmd)}")
