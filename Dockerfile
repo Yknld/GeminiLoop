@@ -1,7 +1,6 @@
-# Use official OpenHands image as base (same approach as containerfinal)
-FROM ghcr.io/all-hands-ai/openhands:0.54
+# Use Python+Node base for OpenHands SDK
+FROM nikolaik/python-nodejs:python3.12-nodejs22
 
-USER root
 WORKDIR /app
 
 # Install Node.js and system dependencies for Playwright
