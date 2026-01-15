@@ -143,11 +143,15 @@ class LocalSubprocessOpenHandsClient(OpenHandsClient):
             # Capture before state
             before_files = self._capture_workspace_state(workspace_path)
             
-            # Configure LLM (using Gemini from env)
+            # Configure LLM (using Gemini AI Studio, not Vertex AI)
+            # Use "gemini/" prefix to force LiteLLM to use AI Studio instead of Vertex
+            model = os.getenv("GEMINI_MODEL", "gemini-2.0-flash-exp")
+            if not model.startswith("gemini/"):
+                model = f"gemini/{model}"
+            
             llm = LLM(
-                model=os.getenv("GEMINI_MODEL", "gemini-2.0-flash-exp"),
+                model=model,
                 api_key=SecretStr(os.getenv("GOOGLE_AI_STUDIO_API_KEY")),
-                base_url=os.getenv("LLM_BASE_URL"),
             )
             
             # Create agent with browser, file, and terminal tools
