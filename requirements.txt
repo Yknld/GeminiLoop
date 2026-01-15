@@ -3,8 +3,10 @@
 # RunPod serverless
 runpod>=1.3.0
 
-# OpenHands installed via uv in Dockerfile (not via pip)
-# openhands-ai>=1.8.0  
+# OpenHands SDK for programmatic access
+openhands-sdk>=0.1.0
+openhands-tools>=0.1.0
+openhands-workspace>=0.1.0
 
 # Core AI
 google-generativeai>=0.8.0
