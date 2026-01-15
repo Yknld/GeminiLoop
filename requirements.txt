@@ -3,8 +3,8 @@
 # RunPod serverless
 runpod>=1.3.0
 
-# OpenHands for code patching
-openhands-ai>=1.8.0
+# OpenHands for code patching (commented out - using Gemini fallback)
+# openhands-ai>=1.8.0  # Complex dependencies, requires uv package manager
 
 # Core AI
 google-generativeai>=0.8.0
