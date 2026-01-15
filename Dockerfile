@@ -1,29 +1,25 @@
-FROM python:3.12-slim
-
-# Copy uv from official image (recommended approach)
-COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+# Use the official OpenHands recommended base image (has both Python 3.12 and Node.js)
+FROM nikolaik/python-nodejs:python3.12-nodejs22
 
 WORKDIR /app
 
-# Install system dependencies
+# Install system dependencies for Playwright
 RUN apt-get update && apt-get install -y \
-    curl wget git xz-utils ca-certificates \
     fonts-liberation libasound2 libatk-bridge2.0-0 libatk1.0-0 \
     libcups2 libdbus-1-3 libdrm2 libgbm1 libgtk-3-0 \
     libnspr4 libnss3 libx11-6 libxcb1 libxcomposite1 \
     libxdamage1 libxext6 libxfixes3 libxrandr2 \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Node.js
-RUN curl -fsSL https://nodejs.org/dist/v18.19.0/node-v18.19.0-linux-x64.tar.xz | \
-    tar -xJ -C /usr/local --strip-components=1
+# Copy uv binary for OpenHands installation
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
 # Install Python dependencies
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Install OpenHands using uv
-RUN uv tool install --python 3.12 openhands-ai
+# Install OpenHands CLI
+RUN uv tool install openhands-ai
 ENV PATH="/root/.local/bin:$PATH"
 
 # Install Node dependencies
