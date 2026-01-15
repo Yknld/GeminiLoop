@@ -134,8 +134,9 @@ class LocalSubprocessOpenHandsClient(OpenHandsClient):
         # Run OpenHands via Python SDK
         try:
             # Import OpenHands SDK
-            from openhands.sdk import LLM, Agent, Conversation
-            from openhands.tools.preset.default import get_default_agent
+            from openhands.sdk import LLM, Agent, Conversation, Tool
+            from openhands.tools.file_editor import FileEditorTool
+            from openhands.tools.terminal import TerminalTool
             from pydantic import SecretStr
             
             # Capture before state
@@ -148,8 +149,14 @@ class LocalSubprocessOpenHandsClient(OpenHandsClient):
                 base_url=os.getenv("LLM_BASE_URL"),
             )
             
-            # Create agent
-            agent = get_default_agent(llm=llm, cli_mode=False)
+            # Create agent with only file and terminal tools (no browser)
+            agent = Agent(
+                llm=llm,
+                tools=[
+                    Tool(name=FileEditorTool.name),
+                    Tool(name=TerminalTool.name),
+                ]
+            )
             
             # Create conversation
             conversation = Conversation(agent=agent, workspace=str(workspace_path))
