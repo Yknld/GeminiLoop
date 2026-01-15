@@ -143,8 +143,8 @@ class GeminiEvaluator:
         
         genai.configure(api_key=api_key)
         
-        # Use Gemini 2.0 Flash for evaluation
-        self.model = genai.GenerativeModel('gemini-2.0-flash-exp')
+        # Use Gemini 3 Flash for evaluation
+        self.model = genai.GenerativeModel(EVALUATOR_MODEL_VERSION)
         
         logger.info("Gemini Evaluator initialized")
     

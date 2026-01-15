@@ -35,9 +35,9 @@ class GeminiCodeGenerator:
         
         genai.configure(api_key=api_key)
         
-        # Use Gemini 2.0 Flash (latest available model)
+        # Use Gemini 3 Flash (latest available model)
         self.model = genai.GenerativeModel(
-            'gemini-2.0-flash-exp',
+            GEMINI_MODEL_VERSION,
             generation_config={
                 "temperature": 0.7,
                 "top_p": 0.95,
