@@ -97,21 +97,37 @@ class LocalSubprocessOpenHandsClient(OpenHandsClient):
         self.diffs_dir.mkdir(parents=True, exist_ok=True)
         
         # Check if openhands CLI is available
+        self.openhands_available = False
+        self.openhands_command = None
+        
         try:
+            # Try 'openhands' command first
             result = subprocess.run(
                 ["which", "openhands"],
                 capture_output=True,
                 text=True
             )
-            self.openhands_available = result.returncode == 0
-            self.openhands_path = result.stdout.strip() if self.openhands_available else None
+            if result.returncode == 0:
+                self.openhands_available = True
+                self.openhands_command = ["openhands"]
+                logger.info(f"✅ OpenHands CLI found at: {result.stdout.strip()}")
+            else:
+                # Try python module command as fallback
+                result = subprocess.run(
+                    ["python", "-m", "openhands.cli.entry", "--help"],
+                    capture_output=True,
+                    text=True,
+                    timeout=5
+                )
+                if result.returncode == 0:
+                    self.openhands_available = True
+                    self.openhands_command = ["python", "-m", "openhands.cli.entry"]
+                    logger.info("✅ OpenHands available via python module")
         except Exception as e:
             logger.warning(f"Could not check for openhands: {e}")
-            self.openhands_available = False
-            self.openhands_path = None
         
         if not self.openhands_available:
-            logger.warning("OpenHands CLI not found. Install with: pip install openhands")
+            logger.warning("OpenHands CLI not found. Install with: pip install openhands-ai")
     
     def generate_code(self, task: str, workspace_path: str, detailed_requirements: Dict[str, Any]) -> Dict[str, Any]:
         """Generate initial code using OpenHands"""
@@ -141,13 +157,15 @@ class LocalSubprocessOpenHandsClient(OpenHandsClient):
             before_files = self._capture_workspace_state(workspace_path)
             
             # Run openhands with the prompt
+            cmd = self.openhands_command + [
+                "-t", prompt,
+                "--always-approve"
+            ]
+            
+            logger.info(f"   Running: {' '.join(cmd)}")
+            
             result = subprocess.run(
-                [
-                    "openhands",
-                    "--directory", str(workspace_path),
-                    "--task", prompt,
-                    "--non-interactive"
-                ],
+                cmd,
                 capture_output=True,
                 text=True,
                 timeout=120,  # 2 minute timeout for generation

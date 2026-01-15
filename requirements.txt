@@ -4,7 +4,7 @@
 runpod>=1.3.0
 
 # OpenHands for code patching
-openhands>=0.14.0
+openhands-ai>=1.8.0
 
 # Core AI
 google-generativeai>=0.8.0
