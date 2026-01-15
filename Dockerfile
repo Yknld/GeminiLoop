@@ -19,12 +19,11 @@ RUN curl -fsSL https://nodejs.org/dist/v18.19.0/node-v18.19.0-linux-x64.tar.xz |
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Install uv and OpenHands in single RUN command
-RUN curl -LsSf https://astral.sh/uv/install.sh | sh && \
-    export PATH="/root/.cargo/bin:$PATH" && \
+# Install uv via pip and then OpenHands
+RUN pip install uv && \
     uv tool install --python 3.12 openhands-ai
 
-ENV PATH="/root/.cargo/bin:/root/.local/bin:$PATH"
+ENV PATH="/root/.local/bin:$PATH"
 
 # Install Node dependencies
 COPY package.json .
