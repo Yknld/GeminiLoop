@@ -97,56 +97,18 @@ class LocalSubprocessOpenHandsClient(OpenHandsClient):
         self.diffs_dir = self.artifacts_dir / "diffs"
         self.diffs_dir.mkdir(parents=True, exist_ok=True)
         
-        # Check if openhands CLI is available
+        # Check if OpenHands SDK is available
         self.openhands_available = False
-        self.openhands_command = None
         
-        # Debug: Check Python path and packages
         try:
-            result = subprocess.run(
-                ["python3", "-c", "import sys; print('\\n'.join(sys.path))"],
-                capture_output=True,
-                text=True,
-                timeout=5
-            )
-            logger.info(f"Python path: {result.stdout[:500]}")
-        except:
-            pass
-        
-        # Try multiple detection methods (OpenHands official image uses /app/.venv)
-        detection_methods = [
-            (["/app/.venv/bin/python", "-c", "import openhands"], ["/app/.venv/bin/python", "-m", "openhands.cli.entry"], "OpenHands venv (official image)"),
-            (["which", "openhands"], ["openhands"], "openhands command"),
-            (["python3", "-c", "import openhands"], ["python3", "-m", "openhands.cli.entry"], "python3 openhands package"),
-            (["python", "-c", "import openhands"], ["python", "-m", "openhands.cli.entry"], "python openhands package"),
-        ]
-        
-        for check_cmd, run_cmd, method_name in detection_methods:
-            try:
-                logger.info(f"Trying detection method: {method_name}")
-                result = subprocess.run(
-                    check_cmd,
-                    capture_output=True,
-                    text=True,
-                    timeout=5
-                )
-                logger.info(f"  Exit code: {result.returncode}")
-                if result.stderr:
-                    logger.info(f"  Stderr: {result.stderr[:200]}")
-                    
-                if result.returncode == 0:
-                    self.openhands_available = True
-                    self.openhands_command = run_cmd
-                    logger.info(f"✅ OpenHands CLI found via {method_name}")
-                    logger.info(f"   Command: {' '.join(run_cmd)}")
-                    break
-            except Exception as e:
-                logger.info(f"Detection method '{method_name}' failed: {e}")
-                continue
-        
-        if not self.openhands_available:
-            logger.error("❌ OpenHands CLI not found after trying all methods")
-            logger.error("   This will cause job failure in OpenHands-only mode")
+            # Try importing OpenHands SDK
+            import openhands.sdk
+            self.openhands_available = True
+            logger.info("✅ OpenHands SDK found and imported successfully")
+        except ImportError as e:
+            logger.error("❌ OpenHands SDK not found")
+            logger.error(f"   Import error: {e}")
+            logger.error("   Install with: pip install openhands-sdk openhands-tools openhands-workspace")
     
     def generate_code(self, task: str, workspace_path: str, detailed_requirements: Dict[str, Any]) -> Dict[str, Any]:
         """Generate initial code using OpenHands Python SDK"""
