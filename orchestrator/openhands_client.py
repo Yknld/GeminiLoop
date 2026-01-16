@@ -410,124 +410,29 @@ class LocalSubprocessOpenHandsClient(OpenHandsClient):
         return diffs
     
     def _build_generation_prompt(self, task: str, requirements: Dict[str, Any]) -> str:
-        """Build extremely detailed prompt for OpenHands code generation"""
+        """Build focused prompt for OpenHands code generation"""
         
-        prompt = f"""TASK: Generate complete, production-ready HTML page for: {task}
+        prompt = f"""Create a complete, working HTML page for: {task}
 
-CRITICAL REQUIREMENTS:
+Requirements:
+- Single HTML file with embedded CSS and JavaScript
+- All interactive features must work (buttons, forms, inputs, etc.)
+- Modern, clean design with good UX
+- Responsive (mobile and desktop)
+- Simple, maintainable code
 
-1. FUNCTIONALITY (MUST BE FULLY WORKING):
-   - ALL interactive elements MUST be functional (buttons, forms, inputs, etc.)
-   - Implement complete JavaScript for ALL user interactions
-   - Add event handlers for every clickable element
-   - Form validation with clear error messages
-   - NO non-functional UI elements
-   - Test all interactions before completing
-
-2. STYLING & VISUAL DESIGN:
-   - Modern, professional appearance
-   - Color palette:
-     * Primary: #667eea (purple-blue)
-     * Success: #48bb78 (green)
-     * Warning: #f59e0b (orange)
-     * Error: #e53e3e (red)
-     * Text: #2d3748 (dark gray)
-     * Background: #f7fafc (light gray)
-   - Typography:
-     * Headings: 24-32px, font-weight: 600-700
-     * Body: 16px, line-height: 1.6
-     * Buttons: 14-16px, font-weight: 500
-   - Spacing (8px grid):
-     * Small: 8px
-     * Medium: 16px
-     * Large: 24px
-     * XL: 32px
-     * XXL: 40px
-   - Shadows for depth:
-     * Cards: 0 2px 8px rgba(0,0,0,0.1)
-     * Buttons: 0 2px 4px rgba(0,0,0,0.1)
-   - Border radius: 6-8px for modern look
-   - Smooth transitions: all 0.3s ease
-
-3. RESPONSIVE DESIGN (CRITICAL):
-   - Mobile-first approach
-   - Breakpoints:
-     * Mobile: < 640px
-     * Tablet: 640px - 1024px
-     * Desktop: > 1024px
-   - Flexible layouts with flexbox/grid
-   - Touch-friendly tap targets (min 44px)
-   - Responsive typography (scale down on mobile)
-   - Test at 375px (mobile) and 1440px (desktop)
-
-4. ACCESSIBILITY (WCAG AA):
-   - Semantic HTML5 elements
-   - All images have alt text
-   - Form labels properly associated
-   - Color contrast ratio ≥ 4.5:1
-   - Keyboard navigation support
-   - Focus indicators visible
-   - ARIA labels where needed
-   - Skip to content links
-
-5. CODE QUALITY:
-   - Clean, readable, well-commented code
-   - Consistent indentation (2 spaces)
-   - Descriptive variable/function names
-   - No console.log() in production
-   - Minify for production
-   - Cross-browser compatible
-
-6. USER EXPERIENCE:
-   - Loading states for async operations
-   - Clear feedback for all actions
-   - Error handling with helpful messages
-   - Success confirmation messages
-   - Smooth animations and transitions
-   - Intuitive navigation
-   - Clear visual hierarchy
-
-SPECIFIC REQUIREMENTS FROM USER:
 """
         
         # Add specific requirements if provided
         if requirements:
-            if "functionality" in requirements:
-                prompt += f"\nFunctionality:\n"
-                for req in requirements["functionality"]:
-                    prompt += f"  - {req}\n"
-            
-            if "styling" in requirements:
-                prompt += f"\nStyling:\n"
-                for req in requirements["styling"]:
-                    prompt += f"  - {req}\n"
-            
-            if "responsive" in requirements:
-                prompt += f"\nResponsive:\n"
-                for req in requirements["responsive"]:
-                    prompt += f"  - {req}\n"
-            
-            if "accessibility" in requirements:
-                prompt += f"\nAccessibility:\n"
-                for req in requirements["accessibility"]:
-                    prompt += f"  - {req}\n"
-            
-            if "technical" in requirements:
-                prompt += f"\nTechnical:\n"
-                for req in requirements["technical"]:
-                    prompt += f"  - {req}\n"
+            prompt += "Additional requirements:\n"
+            for category, reqs in requirements.items():
+                if isinstance(reqs, list):
+                    for req in reqs:
+                        prompt += f"- {req}\n"
         
         prompt += """
-
-DELIVERABLES:
-- Single HTML file (index.html) with embedded CSS and JavaScript
-- All functionality working
-- Mobile and desktop responsive
-- Accessible (WCAG AA)
-- Production-ready code
-
-Generate the complete, working HTML file now. Make it professional and production-ready.
-"""
+Generate index.html now. Keep it simple and functional."""
         
         return prompt
     
