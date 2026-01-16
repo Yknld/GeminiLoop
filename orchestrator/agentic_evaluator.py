@@ -612,9 +612,14 @@ Provide your evaluation now."""
                 score=data.get("score", 0),
                 passed=data.get("passed", False),
                 issues=[],  # Parse from data["issues"]
-                suggestions=data.get("suggestions", []),
+                fix_suggestions=data.get("suggestions", []),
                 feedback=response_text,
-                category_scores=data.get("category_scores", {})
+                category_scores=data.get("category_scores", {}),
+                observations=BrowserObservation(
+                    screenshots=[],
+                    interactions={},
+                    console_errors=[]
+                )
             )
         
         except Exception as e:
@@ -626,6 +631,12 @@ Provide your evaluation now."""
                 score=50,
                 passed=False,
                 issues=[],
-                suggestions=[],
-                feedback=response_text
+                fix_suggestions=[],
+                feedback=response_text,
+                category_scores={},
+                observations=BrowserObservation(
+                    screenshots=[],
+                    interactions={},
+                    console_errors=[]
+                )
             )
