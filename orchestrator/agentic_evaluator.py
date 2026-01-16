@@ -8,6 +8,7 @@ Implements an observe→act loop where Gemini sees screenshots and chooses actio
 import os
 import logging
 import json
+import asyncio
 from typing import Dict, Any, List, Optional
 from pathlib import Path
 from datetime import datetime
@@ -186,7 +187,7 @@ class AgenticEvaluator(GeminiEvaluator):
         # Phase 1: Navigate to page
         logger.info("\n📍 Phase 1: Navigate to page")
         await mcp_client.navigate(url)
-        await mcp_client.wait(2000)  # Let page load
+        await asyncio.sleep(2)  # Let page load
         
         # Phase 2: Agentic exploration (observe→act loop)
         logger.info("\n🔍 Phase 2: Agentic Exploration")
@@ -461,7 +462,7 @@ Begin exploration now."""
             
             elif tool_name == "browser_click":
                 await mcp_client.click(args["selector"])
-                await mcp_client.wait(1000)  # Wait after click
+                await asyncio.sleep(1)  # Wait after click
                 return {"success": True, "message": f"Clicked {args['selector']}"}
             
             elif tool_name == "browser_type":
