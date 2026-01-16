@@ -410,29 +410,17 @@ class LocalSubprocessOpenHandsClient(OpenHandsClient):
         return diffs
     
     def _build_generation_prompt(self, task: str, requirements: Dict[str, Any]) -> str:
-        """Build focused prompt for OpenHands code generation"""
+        """Build simple task prompt for OpenHands"""
         
-        prompt = f"""Create a complete, working HTML page for: {task}
-
-Requirements:
-- Single HTML file with embedded CSS and JavaScript
-- All interactive features must work (buttons, forms, inputs, etc.)
-- Modern, clean design with good UX
-- Responsive (mobile and desktop)
-- Simple, maintainable code
-
-"""
+        prompt = f"{task}"
         
         # Add specific requirements if provided
         if requirements:
-            prompt += "Additional requirements:\n"
+            prompt += "\n\nAdditional requirements:\n"
             for category, reqs in requirements.items():
                 if isinstance(reqs, list):
                     for req in reqs:
                         prompt += f"- {req}\n"
-        
-        prompt += """
-Generate index.html now. Keep it simple and functional."""
         
         return prompt
     
