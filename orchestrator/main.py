@@ -7,6 +7,7 @@ Complete run lifecycle with tracing, artifacts, and reporting
 
 import asyncio
 import sys
+import os
 import logging
 import time
 import json
