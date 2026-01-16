@@ -24,16 +24,16 @@ logger = logging.getLogger(__name__)
 
 
 # MCP Browser Tools as Gemini Function Declarations
-# Using dict format (compatible with google.generativeai)
+# Using dict format with UPPERCASE type enums (required by google.generativeai)
 BROWSER_TOOLS = [
     {
         "name": "browser_click",
         "description": "Click an element on the page using a CSS selector",
         "parameters": {
-            "type": "object",
+            "type": "OBJECT",
             "properties": {
                 "selector": {
-                    "type": "string",
+                    "type": "STRING",
                     "description": "CSS selector for the element to click (e.g., 'button', '#submit', '.card')"
                 }
             },
@@ -44,14 +44,14 @@ BROWSER_TOOLS = [
         "name": "browser_type",
         "description": "Type text into an input field",
         "parameters": {
-            "type": "object",
+            "type": "OBJECT",
             "properties": {
                 "selector": {
-                    "type": "string",
+                    "type": "STRING",
                     "description": "CSS selector for the input field"
                 },
                 "text": {
-                    "type": "string",
+                    "type": "STRING",
                     "description": "Text to type into the field"
                 }
             },
@@ -62,14 +62,14 @@ BROWSER_TOOLS = [
         "name": "browser_scroll",
         "description": "Scroll the page up or down",
         "parameters": {
-            "type": "object",
+            "type": "OBJECT",
             "properties": {
                 "direction": {
-                    "type": "string",
+                    "type": "STRING",
                     "description": "Direction to scroll: 'up' or 'down'"
                 },
                 "amount": {
-                    "type": "integer",
+                    "type": "INTEGER",
                     "description": "Amount to scroll in pixels (default: 500)"
                 }
             },
@@ -80,10 +80,10 @@ BROWSER_TOOLS = [
         "name": "browser_evaluate",
         "description": "Execute JavaScript in the browser and return the result",
         "parameters": {
-            "type": "object",
+            "type": "OBJECT",
             "properties": {
                 "expression": {
-                    "type": "string",
+                    "type": "STRING",
                     "description": "JavaScript expression to evaluate"
                 }
             },
@@ -94,10 +94,10 @@ BROWSER_TOOLS = [
         "name": "finish_exploration",
         "description": "Signal that exploration is complete and ready for final evaluation",
         "parameters": {
-            "type": "object",
+            "type": "OBJECT",
             "properties": {
                 "summary": {
-                    "type": "string",
+                    "type": "STRING",
                     "description": "Brief summary of what was tested"
                 }
             },
