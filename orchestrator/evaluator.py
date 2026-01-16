@@ -39,13 +39,25 @@ EVALUATION_RUBRIC = {
         ]
     },
     "ux": {
-        "weight": 25,
+        "weight": 15,
         "description": "User experience is intuitive and pleasant",
         "criteria": [
             "Clear visual hierarchy",
             "Intuitive navigation and flow",
-            "Appropriate feedback for user actions",
-            "Professional and polished appearance"
+            "Appropriate feedback for user actions"
+        ]
+    },
+    "visual_design": {
+        "weight": 35,
+        "description": "Visual design is modern, beautiful, and professional",
+        "criteria": [
+            "BEAUTIFUL, modern aesthetic (not basic HTML)",
+            "Professional color scheme and typography",
+            "Smooth animations and transitions",
+            "Proper spacing, padding, and visual rhythm",
+            "High-quality UI that looks like a real product",
+            "No ugly default browser styles",
+            "Polished, production-ready appearance"
         ]
     },
     "accessibility": {
@@ -306,13 +318,11 @@ class GeminiEvaluator:
         Tries to interact with standard elements, fails gracefully
         """
         
-        # Common selectors to try
+        # Generic selectors that work for any page
         test_cases = [
-            ("button_start", 'button:has-text("Start")'),
-            ("button_begin", 'button:has-text("Begin")'),
-            ("button_next", 'button:has-text("Next")'),
-            ("button_submit", 'button[type="submit"]'),
-            ("button_cta", '.cta-button'),
+            ("button_first", 'button:first-of-type'),
+            ("button_second", 'button:nth-of-type(2)'),
+            ("button_primary", 'button[class*="primary"], button[class*="btn"]'),
             ("link_first", 'a:first-of-type'),
             ("input_first", 'input:first-of-type'),
         ]

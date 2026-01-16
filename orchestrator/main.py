@@ -19,6 +19,7 @@ from .trace import TraceLogger, TraceEventType
 from .artifacts import ArtifactsManager, create_template_html
 from .gemini_generator import GeminiCodeGenerator, GEMINI_MODEL_VERSION
 from .evaluator import GeminiEvaluator, EVALUATOR_MODEL_VERSION, RUBRIC_VERSION
+from .agentic_evaluator import AgenticEvaluator
 from .mcp_real_client import PlaywrightMCPClient
 from .openhands_client import get_openhands_client
 from .patch_generator import generate_patch_plan
@@ -103,7 +104,17 @@ async def run_loop(task: str, max_iterations: int = 5, base_dir: Path = None) ->
     
     # Initialize clients
     generator = GeminiCodeGenerator()
-    evaluator = GeminiEvaluator()
+    
+    # Choose evaluator: agentic (Gemini controls browser) or scripted (fixed tests)
+    use_agentic = os.getenv("AGENTIC_EVAL", "true").lower() in ("true", "1", "yes")
+    if use_agentic:
+        max_steps = int(os.getenv("AGENTIC_MAX_STEPS", "15"))
+        evaluator = AgenticEvaluator(max_exploration_steps=max_steps)
+        print(f"🤖 Using Agentic Evaluator (Gemini controls browser, max {max_steps} steps)")
+    else:
+        evaluator = GeminiEvaluator()
+        print(f"📋 Using Scripted Evaluator (fixed test checklist)")
+    
     openhands = get_openhands_client(state.artifacts_dir)
     github = get_github_client()
     mcp = None
