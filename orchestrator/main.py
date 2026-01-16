@@ -154,34 +154,11 @@ async def run_loop(task: str, max_iterations: int = 5, base_dir: Path = None) ->
                 state.manifest.github_branch = run_branch
             else:
                 print(f"⚠️  Clone failed: {clone_result['message']}")
-                print(f"   Falling back to template HTML")
-                trace.warning("GitHub clone failed, using template", data=clone_result)
-                
-                # Fallback to template
-                trace.info("Creating initial workspace template")
-                template_html = create_template_html(task)
-                template_file = state.workspace_dir / "index.html"
-                template_file.write_text(template_html)
-                
-                site_file = state.site_dir / "index.html"
-                site_file.write_text(template_html)
-                
-                print(f"✅ Template created: {template_file}")
+                print(f"   Starting with empty workspace (OpenHands will create files)")
+                trace.warning("GitHub clone failed, using empty workspace", data=clone_result)
         else:
             print(f"\nℹ️  GitHub integration disabled (no token or repo configured)")
-            
-            trace.info("Creating initial workspace template")
-            
-            # Create template HTML
-            template_html = create_template_html(task)
-            template_file = state.workspace_dir / "index.html"
-            template_file.write_text(template_html)
-            
-            # Copy to site for serving
-            site_file = state.site_dir / "index.html"
-            site_file.write_text(template_html)
-            
-            print(f"✅ Template created: {template_file}")
+            trace.info("Starting with empty workspace (OpenHands will create files)")
         
         # Start MCP client
         print(f"\n🌐 Starting Playwright MCP server...")
