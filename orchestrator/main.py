@@ -242,8 +242,11 @@ async def run_loop(task: str, max_iterations: int = 5, base_dir: Path = None) ->
                 for filename in files_generated:
                     workspace_file = state.workspace_dir / filename
                     if workspace_file.exists():
-                        site_file = state.site_dir / filename
-                        site_file.write_text(workspace_file.read_text())
+                        dest_file = state.site_dir / filename
+                        dest_file.write_text(workspace_file.read_text())
+                
+                # Set site_file to main HTML for preview
+                site_file = state.site_dir / "index.html"
                 
                 iter_result.files_generated = {f: str(state.workspace_dir / f) for f in files_generated}
                 iter_result.code_generated = f"OpenHands: {','.join(files_generated)}"
@@ -253,6 +256,7 @@ async def run_loop(task: str, max_iterations: int = 5, base_dir: Path = None) ->
             else:
                 print("🔄 Using patched files from previous iteration")
                 files_generated = list(iter_result.files_generated.keys()) if iter_result.files_generated else ["index.html"]
+                site_file = state.site_dir / "index.html"
             
             iter_result.generation_time_seconds = time.time() - gen_start_time
             print(f"   Time: {iter_result.generation_time_seconds:.2f}s")
