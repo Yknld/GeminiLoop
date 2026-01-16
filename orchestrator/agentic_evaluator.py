@@ -9,6 +9,7 @@ import os
 import logging
 import json
 import asyncio
+from dataclasses import asdict
 from typing import Dict, Any, List, Optional
 from pathlib import Path
 from datetime import datetime
@@ -212,7 +213,7 @@ class AgenticEvaluator(GeminiEvaluator):
             "exploration_steps": self.exploration_log,
             "total_steps": exploration_result["steps_taken"],
             "completion_reason": exploration_result["completion_reason"],
-            "final_evaluation": final_eval.to_dict()
+            "final_evaluation": asdict(final_eval)
         }, indent=2))
         
         logger.info(f"\n✅ Agentic evaluation complete")
