@@ -97,7 +97,7 @@ async def handler(job: Dict[str, Any]) -> Dict[str, Any]:
             }
         
         # Extract optional parameters
-        max_iterations = input_data.get("max_iterations", 2)
+        max_iterations = input_data.get("max_iterations", 10)  # Increased default to 10
         
         # Set GitHub env vars if provided
         if "github_token" in input_data:

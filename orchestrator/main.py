@@ -194,8 +194,9 @@ async def run_loop(task: str, max_iterations: int = 5, base_dir: Path = None) ->
             iter_result = IterationResult(iteration=iteration)
             iter_start_time = time.time()
             
+            iterations_left = max_iterations - iteration
             print(f"\n{'=' * 70}")
-            print(f"📝 ITERATION {iteration}/{max_iterations}")
+            print(f"📝 ITERATION {iteration}/{max_iterations} ({iterations_left} iterations remaining)")
             print(f"{'=' * 70}")
             
             trace.iteration_start(iteration, max_iterations)
