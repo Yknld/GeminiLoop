@@ -615,11 +615,7 @@ Provide your evaluation now."""
                 fix_suggestions=data.get("suggestions", []),
                 feedback=response_text,
                 category_scores=data.get("category_scores", {}),
-                observations=BrowserObservation(
-                    screenshots=[],
-                    interactions={},
-                    console_errors=[]
-                )
+                observations=BrowserObservation()
             )
         
         except Exception as e:
@@ -634,9 +630,5 @@ Provide your evaluation now."""
                 fix_suggestions=[],
                 feedback=response_text,
                 category_scores={},
-                observations=BrowserObservation(
-                    screenshots=[],
-                    interactions={},
-                    console_errors=[]
-                )
+                observations=BrowserObservation()
             )
