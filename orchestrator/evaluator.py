@@ -160,7 +160,7 @@ class GeminiEvaluator:
         Comprehensive evaluation using Gemini-controlled browser QA
         
         Args:
-            url: URL to evaluate (file:// or http://)
+            url: URL to evaluate (http:// - file:// URLs are NOT supported)
             mcp_client: MCP client for browser automation
             task: Original task description
             screenshots_dir: Directory to save screenshots
@@ -168,6 +168,10 @@ class GeminiEvaluator:
         
         Returns:
             EvaluationResult with score, issues, and suggestions
+        
+        Note:
+            Only HTTP URLs are supported. file:// URLs will fail in most
+            deployment contexts (RunPod, Docker, etc.)
         """
         
         rubric = rubric or EVALUATION_RUBRIC
@@ -176,6 +180,14 @@ class GeminiEvaluator:
         
         logger.info(f"🧠 Starting Gemini-controlled browser QA")
         logger.info(f"   URL: {url}")
+        
+        # Validate URL protocol
+        if url.startswith("file://"):
+            logger.warning("⚠️  file:// URL detected - this may fail in RunPod/Docker")
+            logger.warning("   Consider using HTTP preview server instead")
+        elif not url.startswith("http://") and not url.startswith("https://"):
+            logger.error(f"❌ Invalid URL protocol: {url}")
+            logger.error("   Expected http:// or https:// URL")
         
         # Collect browser observations
         observations = await self._collect_observations(

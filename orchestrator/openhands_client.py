@@ -3,6 +3,9 @@ OpenHands Client
 
 Integration layer for applying code patches via OpenHands.
 Supports both local subprocess and mock implementations.
+
+IMPORTANT: All file operations are restricted to PROJECT_ROOT for security.
+Use paths module to ensure operations stay within allowed directories.
 """
 
 import os
@@ -145,7 +148,7 @@ class LocalSubprocessOpenHandsClient(OpenHandsClient):
             
             # Configure LLM (using Gemini AI Studio, not Vertex AI)
             # Use "gemini/" prefix to force LiteLLM to use AI Studio instead of Vertex
-            model = os.getenv("GEMINI_MODEL", "gemini-2.0-flash-exp")
+            model = os.getenv("GEMINI_MODEL", "gemini-3-flash-preview")
             if not model.startswith("gemini/"):
                 model = f"gemini/{model}"
             
@@ -155,20 +158,26 @@ class LocalSubprocessOpenHandsClient(OpenHandsClient):
             )
             
             # Create agent with browser, file, and terminal tools
+            # Disable auto-screenshots to prevent context overflow
             agent = Agent(
                 llm=llm,
                 tools=[
-                    Tool(name=BrowserToolSet.name),
+                    Tool(name=BrowserToolSet.name, params={"include_screenshot": False}),
                     Tool(name=FileEditorTool.name),
                     Tool(name=TerminalTool.name),
                 ]
             )
             
-            # Create conversation
-            conversation = Conversation(agent=agent, workspace=str(workspace_path))
+            # Ensure workspace path is absolute and valid
+            workspace_path_abs = workspace_path.resolve()
+            logger.info(f"   OpenHands workspace: {workspace_path_abs}")
+            
+            # Create conversation with absolute workspace path
+            conversation = Conversation(agent=agent, workspace=str(workspace_path_abs))
             
             # Send task and run
             logger.info("   Sending task to OpenHands agent...")
+            logger.info(f"   Task length: {len(prompt)} characters")
             conversation.send_message(prompt)
             conversation.run()
             
@@ -238,7 +247,7 @@ class LocalSubprocessOpenHandsClient(OpenHandsClient):
             before_files = self._capture_workspace_state(workspace_path)
             
             # Configure LLM (using Gemini AI Studio, not Vertex AI)
-            model = os.getenv("GEMINI_MODEL", "gemini-2.0-flash-exp")
+            model = os.getenv("GEMINI_MODEL", "gemini-3-flash-preview")
             if not model.startswith("gemini/"):
                 model = f"gemini/{model}"
             
@@ -248,20 +257,26 @@ class LocalSubprocessOpenHandsClient(OpenHandsClient):
             )
             
             # Create agent with browser, file, and terminal tools
+            # Disable auto-screenshots to prevent context overflow
             agent = Agent(
                 llm=llm,
                 tools=[
-                    Tool(name=BrowserToolSet.name),
+                    Tool(name=BrowserToolSet.name, params={"include_screenshot": False}),
                     Tool(name=FileEditorTool.name),
                     Tool(name=TerminalTool.name),
                 ]
             )
             
-            # Create conversation
-            conversation = Conversation(agent=agent, workspace=str(workspace_path))
+            # Ensure workspace path is absolute and valid
+            workspace_path_abs = workspace_path.resolve()
+            logger.info(f"   OpenHands workspace: {workspace_path_abs}")
+            
+            # Create conversation with absolute workspace path
+            conversation = Conversation(agent=agent, workspace=str(workspace_path_abs))
             
             # Send patch instructions and run
             logger.info("   Sending patch instructions to OpenHands agent...")
+            logger.info(f"   Instructions length: {len(instructions)} characters")
             conversation.send_message(instructions)
             conversation.run()
             
@@ -333,22 +348,43 @@ class LocalSubprocessOpenHandsClient(OpenHandsClient):
         ]
     
     def _capture_workspace_state(self, workspace_path: Path) -> Dict[str, str]:
-        """Capture current state of all files in workspace"""
+        """
+        Capture current state of all files in workspace
+        
+        SECURITY: Only reads files within workspace_path (should be PROJECT_ROOT)
+        """
         
         files_state = {}
+        workspace_path = Path(workspace_path).resolve()
         
         if not workspace_path.exists():
+            logger.warning(f"Workspace path does not exist: {workspace_path}")
             return files_state
         
+        logger.info(f"Capturing workspace state from: {workspace_path}")
+        
         for file_path in workspace_path.rglob("*"):
+            # Security check: ensure file is within workspace
+            try:
+                file_resolved = file_path.resolve()
+                if not file_resolved.is_relative_to(workspace_path):
+                    logger.warning(f"Skipping file outside workspace: {file_path}")
+                    continue
+            except (ValueError, RuntimeError):
+                logger.warning(f"Skipping invalid file path: {file_path}")
+                continue
+            
+            # Skip hidden files and directories
             if file_path.is_file() and not file_path.name.startswith('.'):
                 try:
                     relative_path = file_path.relative_to(workspace_path)
-                    content = file_path.read_text()
+                    content = file_path.read_text(encoding='utf-8', errors='ignore')
                     files_state[str(relative_path)] = content
-                except:
+                except Exception as e:
+                    logger.debug(f"Could not read {file_path}: {e}")
                     pass  # Skip files that can't be read
         
+        logger.info(f"Captured {len(files_state)} files")
         return files_state
     
     def _generate_diffs(self, before: Dict[str, str], after: Dict[str, str], operation: str) -> List[Dict]:

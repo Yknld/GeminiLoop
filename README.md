@@ -50,6 +50,58 @@ See [LIVE_BROWSER.md](LIVE_BROWSER.md) for complete setup guide.
 
 **Alternative:** For persistent pods, use the web-based live monitoring dashboard - see [LIVE_MODE.md](LIVE_MODE.md) for SSH tunnel setup.
 
+## 🚀 NEW Features
+
+### Template Bootstrap
+
+**Start each run from a clean Git template** for consistent file paths and project structure.
+
+```bash
+# Set template repository
+export TEMPLATE_REPO_URL=https://github.com/your-org/webapp-template.git
+export TEMPLATE_REF=main
+
+# Run GeminiLoop - template automatically cloned
+python -m orchestrator.main "Create a quiz app"
+```
+
+**Benefits**:
+- ✅ Consistent project structure every run
+- ✅ Pre-configured build tools and dependencies
+- ✅ Faster initialization (no file creation from scratch)
+- ✅ Easy to enforce project standards
+
+📖 **Full Documentation**: [TEMPLATE_BOOTSTRAP.md](TEMPLATE_BOOTSTRAP.md)
+
+### RunPod/OpenHands Path Source of Truth
+
+GeminiLoop uses centralized path configuration to fix inconsistent file paths and blocked file:// navigation on RunPod.
+
+**Key Features**:
+- ✅ **WORKSPACE_ROOT**: OpenHands workspace directory (auto-detected)
+- ✅ **PROJECT_ROOT**: `${WORKSPACE_ROOT}/project` - agent writes here only
+- ✅ **HTTP Preview Server**: Replaces file:// URLs (runs on port 8000)
+- ✅ **Path Guardrails**: Prevents writing outside PROJECT_ROOT
+- ✅ **Startup Logging**: Comprehensive path/directory visibility
+
+**Quick Reference**:
+```python
+from orchestrator.paths import get_path_config
+from orchestrator.preview_server import get_preview_server
+
+# Get canonical paths
+path_config = get_path_config()
+print(path_config.workspace_root)  # /workspace
+print(path_config.project_root)    # /workspace/project
+print(path_config.preview_url)     # http://127.0.0.1:8000/
+
+# Preview server (replaces file:// URLs)
+preview_server = get_preview_server(serve_dir=path_config.project_root)
+url = preview_server.get_file_url("index.html")  # ✅ HTTP URL
+```
+
+📖 **Full Documentation**: [RUNPOD_PATH_CONTRACT.md](RUNPOD_PATH_CONTRACT.md)
+
 ## RunPod Quick Start
 
 ### Prerequisites

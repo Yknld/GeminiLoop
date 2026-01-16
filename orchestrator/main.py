@@ -23,6 +23,9 @@ from .mcp_real_client import PlaywrightMCPClient
 from .openhands_client import get_openhands_client
 from .patch_generator import generate_patch_plan
 from .github_client import get_github_client
+from .paths import get_path_config, PathConfig
+from .preview_server import get_preview_server, stop_preview_server
+from .bootstrap import bootstrap_from_template, TemplateConfig
 from . import events  # Live monitoring events
 
 # Setup logging
@@ -50,6 +53,9 @@ async def run_loop(task: str, max_iterations: int = 5, base_dir: Path = None) ->
     print("=" * 70)
     print(f"Task: {task}")
     print("=" * 70)
+    
+    # Initialize path configuration (single source of truth)
+    path_config = get_path_config(base_dir)
     
     # Create run configuration
     config = RunConfig(
@@ -85,6 +91,16 @@ async def run_loop(task: str, max_iterations: int = 5, base_dir: Path = None) ->
     # Emit run start event for live monitoring
     events.emit_run_start(config.run_id, task)
     
+    # Start HTTP preview server (replaces file:// URLs)
+    print(f"\n🌐 Starting HTTP preview server...")
+    preview_server = get_preview_server(
+        serve_dir=path_config.project_root,
+        host=path_config.preview_host,
+        port=path_config.preview_port
+    )
+    print(f"✅ Preview server running at: {preview_server.url}")
+    print(f"   Serving from: {path_config.project_root}")
+    
     # Initialize clients
     generator = GeminiCodeGenerator()
     evaluator = GeminiEvaluator()
@@ -93,13 +109,44 @@ async def run_loop(task: str, max_iterations: int = 5, base_dir: Path = None) ->
     mcp = None
     
     try:
-        # Phase 0: Setup workspace with template (or GitHub clone)
+        # Phase 0a: Bootstrap from template repository (if configured)
         print(f"\n{'=' * 70}")
-        print(f"📋 Phase 0: Workspace Setup")
+        print(f"📋 Phase 0a: Template Bootstrap")
         print(f"{'=' * 70}")
         
-        # Check if GitHub is enabled
-        if github.is_enabled():
+        template_config = TemplateConfig.from_env()
+        bootstrap_result = bootstrap_from_template(
+            workspace_root=path_config.workspace_root,
+            config=template_config
+        )
+        
+        if bootstrap_result.get("success"):
+            print(f"✅ Template bootstrap successful")
+            print(f"   Repository: {bootstrap_result['repo_url']}")
+            print(f"   Ref: {bootstrap_result['ref']}")
+            print(f"   Files: {bootstrap_result['files_count']}")
+            
+            # Update manifest
+            state.manifest.github_enabled = True
+            state.manifest.github_repo = bootstrap_result['repo_url']
+            
+            trace.info("Template bootstrap successful", data=bootstrap_result)
+        elif bootstrap_result.get("enabled"):
+            print(f"⚠️  Template bootstrap failed")
+            print(f"   Error: {bootstrap_result.get('error')}")
+            trace.warning("Template bootstrap failed", data=bootstrap_result)
+        else:
+            print(f"ℹ️  Template bootstrap disabled")
+            trace.info("Template bootstrap disabled")
+        
+        # Phase 0b: Setup workspace with template (or GitHub clone)
+        print(f"\n{'=' * 70}")
+        print(f"📋 Phase 0b: Workspace Setup (Legacy)")
+        print(f"{'=' * 70}")
+        
+        # Check if GitHub is enabled (legacy - prefer template bootstrap above)
+        # Skip if template bootstrap succeeded
+        if github.is_enabled() and not bootstrap_result.get("success"):
             print(f"\n🐙 GitHub integration enabled")
             print(f"   Repo: {github.repo_name}")
             print(f"   Base branch: {github.base_branch}")
@@ -156,8 +203,9 @@ async def run_loop(task: str, max_iterations: int = 5, base_dir: Path = None) ->
                 print(f"⚠️  Clone failed: {clone_result['message']}")
                 print(f"   Starting with empty workspace (OpenHands will create files)")
                 trace.warning("GitHub clone failed, using empty workspace", data=clone_result)
-        else:
-            print(f"\nℹ️  GitHub integration disabled (no token or repo configured)")
+        elif not bootstrap_result.get("success"):
+            print(f"\nℹ️  Neither template nor GitHub bootstrap succeeded")
+            print(f"   OpenHands will create files from scratch")
             trace.info("Starting with empty workspace (OpenHands will create files)")
         
         # Start MCP client
@@ -238,15 +286,18 @@ async def run_loop(task: str, max_iterations: int = 5, base_dir: Path = None) ->
                 if diffs:
                     print(f"📝 Diffs: {len(diffs)}")
                 
-                # Copy to site
+                # Copy to project_root for preview server
                 for filename in files_generated:
                     workspace_file = state.workspace_dir / filename
                     if workspace_file.exists():
+                        # Copy to site for compatibility
                         dest_file = state.site_dir / filename
                         dest_file.write_text(workspace_file.read_text())
-                
-                # Set site_file to main HTML for preview
-                site_file = state.site_dir / "index.html"
+                        
+                        # Copy to project_root for HTTP preview
+                        project_file = path_config.project_root / filename
+                        project_file.parent.mkdir(parents=True, exist_ok=True)
+                        project_file.write_text(workspace_file.read_text())
                 
                 iter_result.files_generated = {f: str(state.workspace_dir / f) for f in files_generated}
                 iter_result.code_generated = f"OpenHands: {','.join(files_generated)}"
@@ -256,7 +307,6 @@ async def run_loop(task: str, max_iterations: int = 5, base_dir: Path = None) ->
             else:
                 print("🔄 Using patched files from previous iteration")
                 files_generated = list(iter_result.files_generated.keys()) if iter_result.files_generated else ["index.html"]
-                site_file = state.site_dir / "index.html"
             
             iter_result.generation_time_seconds = time.time() - gen_start_time
             print(f"   Time: {iter_result.generation_time_seconds:.2f}s")
@@ -271,7 +321,10 @@ async def run_loop(task: str, max_iterations: int = 5, base_dir: Path = None) ->
             print("-" * 70)
             
             test_start_time = time.time()
-            preview_url = f"file://{site_file.absolute()}"
+            
+            # Use HTTP preview URL (never file://)
+            preview_url = preview_server.get_file_url("index.html")
+            print(f"   Preview URL: {preview_url}")
             
             trace.testing_start(preview_url)
             
@@ -463,15 +516,22 @@ async def run_loop(task: str, max_iterations: int = 5, base_dir: Path = None) ->
                         # Emit patch applied event for live monitoring
                         events.emit_patch_applied(patch_result["files_modified"])
                         
-                        # Copy patched files to site for serving
-                        print(f"\n📋 Copying patched files to site...")
+                        # Copy patched files to site and project_root
+                        print(f"\n📋 Copying patched files...")
                         for filename in patch_result["files_modified"]:
                             src = state.workspace_dir / filename
-                            dst = state.site_dir / filename
+                            
+                            # Copy to site (for compatibility)
+                            dst_site = state.site_dir / filename
                             if src.exists():
-                                dst.parent.mkdir(parents=True, exist_ok=True)
-                                dst.write_text(src.read_text())
-                                print(f"   ✅ Copied {filename} to site")
+                                dst_site.parent.mkdir(parents=True, exist_ok=True)
+                                dst_site.write_text(src.read_text())
+                                
+                                # Copy to project_root (for HTTP preview)
+                                dst_project = path_config.safe_path_join(filename)
+                                dst_project.parent.mkdir(parents=True, exist_ok=True)
+                                dst_project.write_text(src.read_text())
+                                print(f"   ✅ Copied {filename} to preview server")
                         
                         # Commit and push to GitHub if enabled
                         if github.is_enabled():
@@ -611,8 +671,13 @@ async def run_loop(task: str, max_iterations: int = 5, base_dir: Path = None) ->
         raise
         
     finally:
+        # Cleanup
         if mcp:
             await mcp.disconnect()
+        
+        # Stop preview server
+        print(f"\n🛑 Stopping preview server...")
+        stop_preview_server()
 
 
 def create_view_html(state: RunState, artifacts: ArtifactsManager) -> str:

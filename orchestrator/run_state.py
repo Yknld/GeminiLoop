@@ -1,16 +1,21 @@
 """
 Run State Management
 
-Enhanced with dataclasses for type safety and clean structure
+Enhanced with dataclasses for type safety and clean structure.
+
+Integrates with paths module for consistent directory structure.
 """
 
 import uuid
 import os
 import json
+import logging
 from pathlib import Path
 from datetime import datetime
 from typing import Optional, Dict, Any, List
 from dataclasses import dataclass, field, asdict
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -267,6 +272,8 @@ class RunState:
         )
         
         # Setup directories
+        # Note: For RunPod deployment, workspace_dir should point to PROJECT_ROOT
+        # from paths module, but we maintain this structure for compatibility
         self.runs_dir = config.base_dir / "runs"
         self.run_dir = self.runs_dir / config.run_id
         
@@ -279,13 +286,22 @@ class RunState:
         self.result.artifacts_dir = str(self.artifacts_dir)
         self.result.site_dir = str(self.site_dir)
         
+        # Log directory setup
+        logger.info(f"Run state directories:")
+        logger.info(f"  Run directory: {self.run_dir}")
+        logger.info(f"  Workspace: {self.workspace_dir}")
+        logger.info(f"  Artifacts: {self.artifacts_dir}")
+        logger.info(f"  Site: {self.site_dir}")
+        
         self._setup_directories()
     
     def _setup_directories(self):
         """Create run directories"""
+        logger.info("Creating run directories...")
         self.workspace_dir.mkdir(parents=True, exist_ok=True)
         self.artifacts_dir.mkdir(parents=True, exist_ok=True)
         self.site_dir.mkdir(parents=True, exist_ok=True)
+        logger.info("✅ Run directories created")
     
     def get_preview_url(self, base_url: str = "http://localhost:8080") -> str:
         """Get preview URL for this run"""
