@@ -279,14 +279,17 @@ class AgenticEvaluator(GeminiEvaluator):
                     if hasattr(part, 'function_call'):
                         func_call = part.function_call
                         
+                        # Handle None args defensively
+                        args_dict = dict(func_call.args) if func_call.args else {}
+                        
                         logger.info(f"🔧 Tool call: {func_call.name}")
-                        logger.info(f"   Args: {dict(func_call.args)}")
+                        logger.info(f"   Args: {args_dict}")
                         
                         # Log the step
                         step_log = {
                             "step": step + 1,
                             "tool": func_call.name,
-                            "args": dict(func_call.args),
+                            "args": args_dict,
                             "screenshot": state.get("screenshot_path"),
                             "reasoning": response.candidates[0].content.parts[0].text if len(response.candidates[0].content.parts) > 1 else "No reasoning provided"
                         }
@@ -295,7 +298,7 @@ class AgenticEvaluator(GeminiEvaluator):
                         # Execute the tool
                         if func_call.name == "finish_exploration":
                             logger.info(f"✅ Gemini finished exploration")
-                            logger.info(f"   Summary: {func_call.args.get('summary', 'N/A')}")
+                            logger.info(f"   Summary: {args_dict.get('summary', 'N/A')}")
                             finished = True
                             final_observation = state
                             break
@@ -303,7 +306,7 @@ class AgenticEvaluator(GeminiEvaluator):
                             # Execute browser action
                             tool_result = await self._execute_tool(
                                 func_call.name,
-                                dict(func_call.args),
+                                args_dict,
                                 mcp_client
                             )
                             
@@ -355,19 +358,19 @@ class AgenticEvaluator(GeminiEvaluator):
 5. When satisfied, call finish_exploration with a summary
 
 **Available Tools:**
-- browser_get_state: See current page state (screenshot, DOM, console)
-- browser_click: Click elements (use CSS selectors)
+- browser_click: Click elements (use CSS selectors like 'button', '#id', '.class')
 - browser_type: Type into input fields
-- browser_scroll: Scroll up/down
-- browser_evaluate: Execute JavaScript
-- finish_exploration: Signal you're done testing
+- browser_scroll: Scroll up/down to see more content
+- browser_evaluate: Execute JavaScript for complex interactions
+- finish_exploration: Signal you're done testing (required to complete)
 
 **Strategy:**
-- Start with browser_get_state to see what's on the page
+- Each step, you'll receive: screenshot, visible text, and interactive elements
 - Click buttons/links to test interactions
 - Try filling forms if present
-- Check different sections by scrolling
-- When you've tested core features, call finish_exploration
+- Scroll to check different sections
+- Test core functionality matches the task requirements
+- When you've verified the page works, call finish_exploration with a summary
 
 **Important:**
 - Use specific CSS selectors (e.g., 'button:first-of-type', '#submit', '.card')
@@ -452,15 +455,7 @@ Begin exploration now."""
         """Execute a browser tool and return result"""
         
         try:
-            if tool_name == "browser_navigate":
-                await mcp_client.navigate(args["url"])
-                return {"success": True, "message": f"Navigated to {args['url']}"}
-            
-            elif tool_name == "browser_get_state":
-                # State already captured in main loop
-                return {"success": True, "message": "State captured"}
-            
-            elif tool_name == "browser_click":
+            if tool_name == "browser_click":
                 await mcp_client.click(args["selector"])
                 await asyncio.sleep(1)  # Wait after click
                 return {"success": True, "message": f"Clicked {args['selector']}"}
