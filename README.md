@@ -24,25 +24,31 @@ The system combines four key components in a continuous feedback loop:
 
 Each run creates an isolated workspace and artifact store, with all screenshots, logs, evaluation data, and patch history preserved.
 
-## 🔴 Live Monitoring (NEW!)
+## 🔴 Live Browser Viewing (NEW!)
 
-Watch your GeminiLoop runs in **real-time** with the live monitoring interface:
+Watch the **actual browser** in real-time as it tests your page! See buttons being clicked, forms filled, and tests running live via VNC + ngrok tunnel.
 
-- 📺 **Real-time preview** - See the page update as OpenHands edits it
-- 📊 **Live scores** - Watch Gemini evaluation feedback stream in
-- 📝 **Progress logs** - Monitor every phase and iteration live
-- 🖥️ 📱 **Device views** - Toggle between desktop and mobile previews
+**Features:**
+- 🖱️ Watch Gemini click buttons and fill forms in real-time
+- 📱 See desktop → mobile resizing live  
+- 🔍 Observe console logs and DOM inspection
+- 📹 Record the session for demos
 
 **Quick Start:**
 ```bash
-# Start with live monitoring
-python3 -m live_server
+# 1. Get free ngrok token from ngrok.com
+# 2. Add NGROK_AUTH_TOKEN to RunPod env vars
+# 3. Enable in your request:
+curl -X POST https://api.runpod.ai/.../run \
+  -d '{"input": {"task": "...", "enable_live_view": true}}'
 
-# Open browser to http://localhost:8080
-# Run your task - watch it live!
+# 4. Connect with VNC viewer:
+open vnc://0.tcp.ngrok.io:12345  # URL in response
 ```
 
-See [LIVE_MODE.md](LIVE_MODE.md) for full setup and SSH tunnel instructions for RunPod.
+See [LIVE_BROWSER.md](LIVE_BROWSER.md) for complete setup guide.
+
+**Alternative:** For persistent pods, use the web-based live monitoring dashboard - see [LIVE_MODE.md](LIVE_MODE.md) for SSH tunnel setup.
 
 ## RunPod Quick Start
 
