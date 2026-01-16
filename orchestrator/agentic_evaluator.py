@@ -24,88 +24,86 @@ logger = logging.getLogger(__name__)
 
 
 # MCP Browser Tools as Gemini Function Declarations
-# Using google.generativeai FunctionDeclaration format
-from google.generativeai.types import FunctionDeclaration, Schema
-
+# Using dict format (compatible with google.generativeai)
 BROWSER_TOOLS = [
-    FunctionDeclaration(
-        name="browser_click",
-        description="Click an element on the page using a CSS selector",
-        parameters=Schema(
-            type="OBJECT",
-            properties={
-                "selector": Schema(
-                    type="STRING",
-                    description="CSS selector for the element to click (e.g., 'button', '#submit', '.card')"
-                )
+    {
+        "name": "browser_click",
+        "description": "Click an element on the page using a CSS selector",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "selector": {
+                    "type": "string",
+                    "description": "CSS selector for the element to click (e.g., 'button', '#submit', '.card')"
+                }
             },
-            required=["selector"]
-        )
-    ),
-    FunctionDeclaration(
-        name="browser_type",
-        description="Type text into an input field",
-        parameters=Schema(
-            type="OBJECT",
-            properties={
-                "selector": Schema(
-                    type="STRING",
-                    description="CSS selector for the input field"
-                ),
-                "text": Schema(
-                    type="STRING",
-                    description="Text to type into the field"
-                )
+            "required": ["selector"]
+        }
+    },
+    {
+        "name": "browser_type",
+        "description": "Type text into an input field",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "selector": {
+                    "type": "string",
+                    "description": "CSS selector for the input field"
+                },
+                "text": {
+                    "type": "string",
+                    "description": "Text to type into the field"
+                }
             },
-            required=["selector", "text"]
-        )
-    ),
-    FunctionDeclaration(
-        name="browser_scroll",
-        description="Scroll the page up or down",
-        parameters=Schema(
-            type="OBJECT",
-            properties={
-                "direction": Schema(
-                    type="STRING",
-                    description="Direction to scroll: 'up' or 'down'"
-                ),
-                "amount": Schema(
-                    type="INTEGER",
-                    description="Amount to scroll in pixels (default: 500)"
-                )
+            "required": ["selector", "text"]
+        }
+    },
+    {
+        "name": "browser_scroll",
+        "description": "Scroll the page up or down",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "direction": {
+                    "type": "string",
+                    "description": "Direction to scroll: 'up' or 'down'"
+                },
+                "amount": {
+                    "type": "integer",
+                    "description": "Amount to scroll in pixels (default: 500)"
+                }
             },
-            required=["direction"]
-        )
-    ),
-    FunctionDeclaration(
-        name="browser_evaluate",
-        description="Execute JavaScript in the browser and return the result",
-        parameters=Schema(
-            type="OBJECT",
-            properties={
-                "expression": Schema(
-                    type="STRING",
-                    description="JavaScript expression to evaluate"
-                )
+            "required": ["direction"]
+        }
+    },
+    {
+        "name": "browser_evaluate",
+        "description": "Execute JavaScript in the browser and return the result",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "expression": {
+                    "type": "string",
+                    "description": "JavaScript expression to evaluate"
+                }
             },
-            required=["expression"]
-        )
-    ),
-    FunctionDeclaration(
-        name="finish_exploration",
-        description="Signal that exploration is complete and ready for final evaluation",
-        parameters=Schema(
-            type="OBJECT",
-            properties={
-                "summary": Schema(
-                    type="STRING",
-                    description="Brief summary of what was tested"
-                )
+            "required": ["expression"]
+        }
+    },
+    {
+        "name": "finish_exploration",
+        "description": "Signal that exploration is complete and ready for final evaluation",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "summary": {
+                    "type": "string",
+                    "description": "Brief summary of what was tested"
+                }
             },
-            required=["summary"]
-        )
-    )
+            "required": ["summary"]
+        }
+    }
 ]
 
 
