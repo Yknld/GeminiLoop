@@ -23,6 +23,8 @@ python-dotenv>=1.0.0
 pydantic>=2.5.0
 aiohttp>=3.9.0
 
-# Optional: OpenHands integration (future)
-# openhands>=0.9.0
+# GitHub integration
 PyGithub>=2.1.1
+
+# Ngrok for live browser tunneling
+pyngrok>=7.0.0

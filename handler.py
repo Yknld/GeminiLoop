@@ -25,6 +25,9 @@ except Exception as e:
     print(f"❌ Failed to import runpod: {e}")
     raise
 
+# Import VNC tunnel for live browser viewing
+from orchestrator.vnc_tunnel import VNCTunnel
+
 
 def _encode_image_base64(image_path: Path) -> str:
     """Encode image to base64 data URI"""
@@ -48,7 +51,8 @@ async def handler(job: Dict[str, Any]) -> Dict[str, Any]:
         "max_iterations": 2,
         "github_token": "optional",
         "github_repo": "optional",
-        "base_branch": "optional"
+        "base_branch": "optional",
+        "enable_live_view": false  # Enable ngrok tunnel for live browser viewing
     }
     
     Returns:
@@ -58,6 +62,7 @@ async def handler(job: Dict[str, Any]) -> Dict[str, Any]:
         "final_score": 85,
         "final_passed": true,
         "preview_url": "...",
+        "live_view_url": "vnc://...",  # If enabled
         "report": {...},
         "manifest": {...},
         "screenshots": ["url1", "url2"],
@@ -101,6 +106,22 @@ async def handler(job: Dict[str, Any]) -> Dict[str, Any]:
             os.environ["GITHUB_REPO"] = input_data["github_repo"]
         if "base_branch" in input_data:
             os.environ["BASE_BRANCH"] = input_data["base_branch"]
+        
+        # Start VNC tunnel if enabled (for live browser viewing)
+        vnc_tunnel = None
+        live_view_url = None
+        enable_live_view = input_data.get("enable_live_view", False)
+        
+        if enable_live_view:
+            logger.info("🔴 Starting VNC tunnel for live browser viewing...")
+            vnc_tunnel = VNCTunnel()
+            live_view_url = vnc_tunnel.start()
+            
+            if live_view_url:
+                logger.info(f"✅ Live view available at: {live_view_url}")
+                logger.info(f"   Connect with any VNC viewer to watch the browser live!")
+            else:
+                logger.warning("⚠️  Failed to start VNC tunnel, continuing without live view")
         
         # Set other optional env vars
         if "openhands_mode" in input_data:
@@ -194,6 +215,11 @@ async def handler(job: Dict[str, Any]) -> Dict[str, Any]:
         logger.info(f"   Status: {state.result.status}")
         logger.info(f"   Generated files: {list(response['generated_files'].keys())}")
         
+        # Add live view URL if enabled
+        if live_view_url:
+            response["live_view_url"] = live_view_url
+            logger.info(f"🔴 Live view: {live_view_url}")
+        
         return response
         
     except Exception as e:
@@ -205,6 +231,12 @@ async def handler(job: Dict[str, Any]) -> Dict[str, Any]:
             "traceback": traceback.format_exc(),
             "status": "error"
         }
+    
+    finally:
+        # Stop VNC tunnel if it was started
+        if 'vnc_tunnel' in locals() and vnc_tunnel:
+            logger.info("🛑 Stopping VNC tunnel...")
+            vnc_tunnel.stop()
 
 
 def test_handler():
