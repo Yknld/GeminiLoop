@@ -221,15 +221,10 @@ async def run_loop(task: str, max_iterations: int = 5, base_dir: Path = None) ->
             print(f"   OpenHands will create files from scratch")
             trace.info("Starting with empty workspace (OpenHands will create files)")
         
-        # Start MCP client
-        print(f"\n🌐 Starting Playwright MCP server...")
-        mcp = PlaywrightMCPClient()
-        await mcp.connect()
-        print(f"✅ MCP server connected")
-        
-        # Phase 0c: Planning with Gemini 3.0 Pro Preview
+        # Phase 0c: Planning with Gemini
+        # Do this BEFORE MCP connection since planner doesn't need browser
         print(f"\n{'=' * 70}")
-        print(f"🧠 Phase 0c: Planning (Gemini 3.0 Pro Preview)")
+        print(f"🧠 Phase 0c: Planning with Gemini")
         print(f"{'=' * 70}")
         
         planner = Planner()
@@ -251,6 +246,12 @@ async def run_loop(task: str, max_iterations: int = 5, base_dir: Path = None) ->
             'has_thinking': plan.get('thinking') is not None,
             'model': plan['metadata']['model']
         })
+        
+        # Start MCP client
+        print(f"\n🌐 Starting Playwright MCP server...")
+        mcp = PlaywrightMCPClient()
+        await mcp.connect()
+        print(f"✅ MCP server connected")
         
         # Main iteration loop
         for iteration in range(1, max_iterations + 1):

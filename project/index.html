@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Here is a comprehensive, detailed prompt for OpenHands to build this probability course.
+
+***
+
+**PROMPT FOR OPENHANDS:**
+
+You are an expert educational web developer. Your task is to build a complete, interactive mini-course titled **"Chance & Chaos: The Science of Probability"**.
+
+You will create a **Course Hub** (`index.html`) and **3 distinct Module pages** from scratch. The output must be static HTML files with inline CSS and JavaScript (no external libraries).
+
+### 1. PROJECT OVERVIEW
+*   **Subject:** Mathematics / Statistics
+*   **Audience:** Beginner / General Audience (High School level intuition)
+*   **Total Time:** ~15-20 minutes
+*   **Structure:** 1 Hub Page + 3 Modules
+*   **Learning Objectives:**
+    1.  Understand binary probability using coin flips.
+    2.  Understand sample spaces using dice rolls.
+    3.  Apply basic formulas (P(A) = Event/Total) to calculate odds.
+
+### 2. DESIGN LANGUAGE & VISUAL IDENTITY
+**Theme: "Modern Digital Math Lab"**
+*   **Visual Motif:** Clean, geometric aesthetic. Backgrounds should resemble subtle graph paper (using CSS radial gradients). Containers look like "proof sheets" with rounded corners and distinct borders.
+*   **Typography:**
+    *   Headings: System Sans-Serif (Clean, bold).
+    *   Data/Numbers: Monospace (Courier New or similar) to emphasize the "math" aspect.
+*   **Color Palette:**
+    *   Background: Very light gray/blue (`#f0f4f8`).
+    *   Text: Dark Slate (`#102a43`).
+    *   Accents:
+        *   "Probability Blue": `#3366ff` (Primary actions).
+        *   "Outcome Green": `#00cc66` (Success/Heads).
+        *   "Outcome Red": `#ff3366` (Failure/Tails).
+*   **Interaction Patterns:** Buttons should have a "pressed" state (transform: translateY). All inputs must have visible focus rings.
+
+### 3. FILE STRUCTURE
+Create exactly these files:
+1.  `index.html` (The Course Hub)
+2.  `modules/module-01.html` (The Coin Flip)
+3.  `modules/module-02.html` (The Rolling Die)
+4.  `modules/module-03.html` (Calculating Odds)
+
+### 4. TECHNICAL REQUIREMENTS (NON-NEGOTIABLE)
+*   **Single File per Page:** All CSS and JS must be written inside `<style>` and `<script>` tags within the HTML file.
+*   **No External Dependencies:** Do NOT use Bootstrap, Tailwind, jQuery, or Google Fonts.
+*   **Mobile Responsive:** Must look good on 375px (mobile) and 1440px (desktop). Use Flexbox/Grid.
+*   **Accessibility:**
+    *   Use semantic HTML (`<main>`, `<nav>`, `<article>`).
+    *   All interactive elements must be keyboard accessible (Tab index).
+    *   Use `aria-live="polite"` for feedback regions.
+*   **No System Dialogs:** Do NOT use `alert()`, `confirm()`, or `prompt()`. Use custom DOM-based toasts or modals.
+*   **Required IDs for Testing:**
+    *   Hub: `#modulesGrid`, `#resetProgressBtn`, `#toast`
+    *   Modules: `#startBtn`, `#nextBtn`, `#prevBtn`, `#checkpointCheckBtn`, `#checkpointFeedback`, `#completionBtn`, `#embedInput`, `#loadEmbedBtn`, `#clearEmbedBtn`, `#embedArea`, `#embedError`, `#resourcesList`.
+
+---
+
+### 5. MODULE SPECIFICATIONS
+
+#### **MODULE 01: The Coin Flip**
+*   **File:** `modules/module-01.html`
+*   **Topic:** Binary Probability (50/50) & The Law of Large Numbers.
+*   **Layout Pattern:** **Split View** (Left side: Explanatory text/scroll; Right side: Sticky interactive simulation).
+*   **Content Sections:**
+    1.  **Hero:** Title "The Binary World", Goal: "Understand the 50/50 chance."
+    2.  **Hook:** "Did you know a coin isn't perfectly fair? Physics affects the flip."
+    3.  **Background:** Timeline of "Games of Chance" (Ancient bones to modern coins).
+    4.  **Core Concept:** Definition of "Outcome" vs "Event". Misconception: "The Gambler's Fallacy" (past flips don't affect future flips).
+    5.  **Signature Interactive:** **The Virtual Coin Lab**.
+        *   A visual coin (CSS circle) that animates when clicked.
+        *   A tally chart updating Heads vs. Tails counts.
+        *   A calculated percentage display that updates live.
+        *   *Goal:* User flips 10 times to see how close they get to 50%.
+    6.  **Checkpoint:** Question: "If you flip 5 heads in a row, what is the chance the next is tails?" (Answer: 50%).
+    7.  **Summary:** Recap & Completion Button.
+
+#### **MODULE 02: The Rolling Die**
+*   **File:** `modules/module-02.html`
+*   **Topic:** Sample Spaces (1 in 6) & Independent Events.
+*   **Layout Pattern:** **Stepper** (Content is broken into distinct "Cards" or steps: Step 1, Step 2, Step 3. User clicks Next to advance).
+*   **Content Sections:**
+    1.  **Step 1 (Hero/Hook):** "Expanding the Possibilities." Why 6 sides?
+    2.  **Step 2 (Concept):** The "Sample Space" {1, 2, 3, 4, 5, 6}.
+    3.  **Step 3 (Visual Model):** A bar chart representing the probability of rolling a 7 with two dice (Bell curve visualization).
+    4.  **Step 4 (Signature Interactive):** **The Dice Roller**.
+        *   Button to "Roll Dice".
+        *   Visual display of the face (CSS dots).
+        *   A slider to change the "Target" number (e.g., trying to roll a 6).
+        *   Feedback message: "You rolled a 4 (Target: 6) - Miss!"
+    5.  **Step 5 (Checkpoint):** "What is the probability of rolling an even number on a standard die?" (Answer: 3/6 or 50%).
+    6.  **Step 6 (Summary):** Completion Button.
+
+#### **MODULE 03: Calculating Odds**
+*   **File:** `modules/module-03.html`
+*   **Topic:** The Probability Formula ($P(A) = \frac{n(A)}{n(S)}$).
+*   **Layout Pattern:** **Scenario / Case Study** (A continuous scrolling page centered around a specific story: "The School Raffle").
+*   **Content Sections:**
+    1.  **Hero:** "The Math of Luck."
+    2.  **Scenario Setup:** "You are at a school fair. There are 100 tickets in a jar. You bought 5."
+    3.  **Core Concept:** The Formula. Breakdown of Numerator (Successful Outcomes) and Denominator (Total Outcomes).
+    4.  **Signature Interactive:** **The Raffle Simulator**.
+        *   Input 1: Total Tickets in Jar (e.g., 100).
+        *   Input 2: Your Tickets (e.g., 5).
+        *   Visual Pie Chart (CSS conic-gradient) showing your winning slice vs. losing slice.
+        *   Text output: "Your chance is 5%".
+    5.  **Worked Example:** Walkthrough of calculating odds for a deck of cards (Drawing an Ace).
+    6.  **Checkpoint:** "In a bag of 10 red marbles and 10 blue marbles, what is P(Red)?"
+    7.  **Resources:** User-triggered YouTube embed section (Load video only on click).
+    8.  **Summary:** Completion Button.
+
+---
+
+### 6. COURSE HUB REQUIREMENTS (`index.html`)
+*   **Header:** Course Title, Progress Bar (0% to 100%).
+*   **Module Grid:** Display the 3 modules as cards.
+    *   Card must show: Title, Description, Time Estimate.
+    *   **State:** If module is complete (checked via localStorage), show a Green Checkmark icon.
+*   **Progress Logic:**
+    *   On load: Check `localStorage.getItem('course_progress')`.
+    *   Calculate progress based on completed modules.
+    *   Update Progress Bar width.
+*   **Reset:** A button (`#resetProgressBtn`) to clear localStorage and reload.
+
+### 7. INTERACTION & FEEDBACK RULES
+*   **Toast Notifications:** Create a function `showToast(message, type)` that appends a fixed div to the bottom right of the screen, waits 3 seconds, and fades out. Use this for all feedback.
+*   **YouTube Embeds:**
+    *   Input field for URL.
+    *   "Load Video" button.
+    *   **Validation:** Regex check for `youtube.com` or `youtu.be`. If invalid, show error in `#embedError`.
+    *   **Privacy:** Only load the iframe when the user clicks the button.
+*   **Fun Facts:** Include 3 "Probability Fun Facts" in each module (e.g., "The odds of being struck by lightning," "The Monty Hall Problem").
+
+### 8. NAVIGATION & KEYBOARD SUPPORT
+*   Implement a global event listener for keyboard shortcuts:
+    *   `J` = Next Section/Step.
+    *   `K` = Previous Section/Step.
+    *   `Esc` = Close any open modal or toast.
+*   Ensure smooth scrolling (`html { scroll-behavior: smooth; }`).
+
+### 9. QUALITY CHECKLIST (Verify before finishing)
+*   [ ] Does the "Coin Flip" animation work without external assets?
+*   [ ] Does the "Dice Roller" generate random numbers 1-6?
+*   [ ] Is the "Raffle Simulator" math correct?
+*   [ ] Are all IDs (`#startBtn`, `#nextBtn`, etc.) present?
+*   [ ] Is the design consistent with the "Math Lab" aesthetic (Graph paper, Monospace numbers)?
+*   [ ] Does the progress save to LocalStorage?
+
+**Implement the file structure and code now.**</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: system-ui, -apple-system, sans-serif; padding: 20px; background: #f5f5f5; }
+        .container { max-width: 800px; margin: 0 auto; background: white; padding: 40px; border-radius: 8px; }
+        h1 { color: #333; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Here is a comprehensive, detailed prompt for OpenHands to build this probability course.
+
+***
+
+**PROMPT FOR OPENHANDS:**
+
+You are an expert educational web developer. Your task is to build a complete, interactive mini-course titled **"Chance & Chaos: The Science of Probability"**.
+
+You will create a **Course Hub** (`index.html`) and **3 distinct Module pages** from scratch. The output must be static HTML files with inline CSS and JavaScript (no external libraries).
+
+### 1. PROJECT OVERVIEW
+*   **Subject:** Mathematics / Statistics
+*   **Audience:** Beginner / General Audience (High School level intuition)
+*   **Total Time:** ~15-20 minutes
+*   **Structure:** 1 Hub Page + 3 Modules
+*   **Learning Objectives:**
+    1.  Understand binary probability using coin flips.
+    2.  Understand sample spaces using dice rolls.
+    3.  Apply basic formulas (P(A) = Event/Total) to calculate odds.
+
+### 2. DESIGN LANGUAGE & VISUAL IDENTITY
+**Theme: "Modern Digital Math Lab"**
+*   **Visual Motif:** Clean, geometric aesthetic. Backgrounds should resemble subtle graph paper (using CSS radial gradients). Containers look like "proof sheets" with rounded corners and distinct borders.
+*   **Typography:**
+    *   Headings: System Sans-Serif (Clean, bold).
+    *   Data/Numbers: Monospace (Courier New or similar) to emphasize the "math" aspect.
+*   **Color Palette:**
+    *   Background: Very light gray/blue (`#f0f4f8`).
+    *   Text: Dark Slate (`#102a43`).
+    *   Accents:
+        *   "Probability Blue": `#3366ff` (Primary actions).
+        *   "Outcome Green": `#00cc66` (Success/Heads).
+        *   "Outcome Red": `#ff3366` (Failure/Tails).
+*   **Interaction Patterns:** Buttons should have a "pressed" state (transform: translateY). All inputs must have visible focus rings.
+
+### 3. FILE STRUCTURE
+Create exactly these files:
+1.  `index.html` (The Course Hub)
+2.  `modules/module-01.html` (The Coin Flip)
+3.  `modules/module-02.html` (The Rolling Die)
+4.  `modules/module-03.html` (Calculating Odds)
+
+### 4. TECHNICAL REQUIREMENTS (NON-NEGOTIABLE)
+*   **Single File per Page:** All CSS and JS must be written inside `<style>` and `<script>` tags within the HTML file.
+*   **No External Dependencies:** Do NOT use Bootstrap, Tailwind, jQuery, or Google Fonts.
+*   **Mobile Responsive:** Must look good on 375px (mobile) and 1440px (desktop). Use Flexbox/Grid.
+*   **Accessibility:**
+    *   Use semantic HTML (`<main>`, `<nav>`, `<article>`).
+    *   All interactive elements must be keyboard accessible (Tab index).
+    *   Use `aria-live="polite"` for feedback regions.
+*   **No System Dialogs:** Do NOT use `alert()`, `confirm()`, or `prompt()`. Use custom DOM-based toasts or modals.
+*   **Required IDs for Testing:**
+    *   Hub: `#modulesGrid`, `#resetProgressBtn`, `#toast`
+    *   Modules: `#startBtn`, `#nextBtn`, `#prevBtn`, `#checkpointCheckBtn`, `#checkpointFeedback`, `#completionBtn`, `#embedInput`, `#loadEmbedBtn`, `#clearEmbedBtn`, `#embedArea`, `#embedError`, `#resourcesList`.
+
+---
+
+### 5. MODULE SPECIFICATIONS
+
+#### **MODULE 01: The Coin Flip**
+*   **File:** `modules/module-01.html`
+*   **Topic:** Binary Probability (50/50) & The Law of Large Numbers.
+*   **Layout Pattern:** **Split View** (Left side: Explanatory text/scroll; Right side: Sticky interactive simulation).
+*   **Content Sections:**
+    1.  **Hero:** Title "The Binary World", Goal: "Understand the 50/50 chance."
+    2.  **Hook:** "Did you know a coin isn't perfectly fair? Physics affects the flip."
+    3.  **Background:** Timeline of "Games of Chance" (Ancient bones to modern coins).
+    4.  **Core Concept:** Definition of "Outcome" vs "Event". Misconception: "The Gambler's Fallacy" (past flips don't affect future flips).
+    5.  **Signature Interactive:** **The Virtual Coin Lab**.
+        *   A visual coin (CSS circle) that animates when clicked.
+        *   A tally chart updating Heads vs. Tails counts.
+        *   A calculated percentage display that updates live.
+        *   *Goal:* User flips 10 times to see how close they get to 50%.
+    6.  **Checkpoint:** Question: "If you flip 5 heads in a row, what is the chance the next is tails?" (Answer: 50%).
+    7.  **Summary:** Recap & Completion Button.
+
+#### **MODULE 02: The Rolling Die**
+*   **File:** `modules/module-02.html`
+*   **Topic:** Sample Spaces (1 in 6) & Independent Events.
+*   **Layout Pattern:** **Stepper** (Content is broken into distinct "Cards" or steps: Step 1, Step 2, Step 3. User clicks Next to advance).
+*   **Content Sections:**
+    1.  **Step 1 (Hero/Hook):** "Expanding the Possibilities." Why 6 sides?
+    2.  **Step 2 (Concept):** The "Sample Space" {1, 2, 3, 4, 5, 6}.
+    3.  **Step 3 (Visual Model):** A bar chart representing the probability of rolling a 7 with two dice (Bell curve visualization).
+    4.  **Step 4 (Signature Interactive):** **The Dice Roller**.
+        *   Button to "Roll Dice".
+        *   Visual display of the face (CSS dots).
+        *   A slider to change the "Target" number (e.g., trying to roll a 6).
+        *   Feedback message: "You rolled a 4 (Target: 6) - Miss!"
+    5.  **Step 5 (Checkpoint):** "What is the probability of rolling an even number on a standard die?" (Answer: 3/6 or 50%).
+    6.  **Step 6 (Summary):** Completion Button.
+
+#### **MODULE 03: Calculating Odds**
+*   **File:** `modules/module-03.html`
+*   **Topic:** The Probability Formula ($P(A) = \frac{n(A)}{n(S)}$).
+*   **Layout Pattern:** **Scenario / Case Study** (A continuous scrolling page centered around a specific story: "The School Raffle").
+*   **Content Sections:**
+    1.  **Hero:** "The Math of Luck."
+    2.  **Scenario Setup:** "You are at a school fair. There are 100 tickets in a jar. You bought 5."
+    3.  **Core Concept:** The Formula. Breakdown of Numerator (Successful Outcomes) and Denominator (Total Outcomes).
+    4.  **Signature Interactive:** **The Raffle Simulator**.
+        *   Input 1: Total Tickets in Jar (e.g., 100).
+        *   Input 2: Your Tickets (e.g., 5).
+        *   Visual Pie Chart (CSS conic-gradient) showing your winning slice vs. losing slice.
+        *   Text output: "Your chance is 5%".
+    5.  **Worked Example:** Walkthrough of calculating odds for a deck of cards (Drawing an Ace).
+    6.  **Checkpoint:** "In a bag of 10 red marbles and 10 blue marbles, what is P(Red)?"
+    7.  **Resources:** User-triggered YouTube embed section (Load video only on click).
+    8.  **Summary:** Completion Button.
+
+---
+
+### 6. COURSE HUB REQUIREMENTS (`index.html`)
+*   **Header:** Course Title, Progress Bar (0% to 100%).
+*   **Module Grid:** Display the 3 modules as cards.
+    *   Card must show: Title, Description, Time Estimate.
+    *   **State:** If module is complete (checked via localStorage), show a Green Checkmark icon.
+*   **Progress Logic:**
+    *   On load: Check `localStorage.getItem('course_progress')`.
+    *   Calculate progress based on completed modules.
+    *   Update Progress Bar width.
+*   **Reset:** A button (`#resetProgressBtn`) to clear localStorage and reload.
+
+### 7. INTERACTION & FEEDBACK RULES
+*   **Toast Notifications:** Create a function `showToast(message, type)` that appends a fixed div to the bottom right of the screen, waits 3 seconds, and fades out. Use this for all feedback.
+*   **YouTube Embeds:**
+    *   Input field for URL.
+    *   "Load Video" button.
+    *   **Validation:** Regex check for `youtube.com` or `youtu.be`. If invalid, show error in `#embedError`.
+    *   **Privacy:** Only load the iframe when the user clicks the button.
+*   **Fun Facts:** Include 3 "Probability Fun Facts" in each module (e.g., "The odds of being struck by lightning," "The Monty Hall Problem").
+
+### 8. NAVIGATION & KEYBOARD SUPPORT
+*   Implement a global event listener for keyboard shortcuts:
+    *   `J` = Next Section/Step.
+    *   `K` = Previous Section/Step.
+    *   `Esc` = Close any open modal or toast.
+*   Ensure smooth scrolling (`html { scroll-behavior: smooth; }`).
+
+### 9. QUALITY CHECKLIST (Verify before finishing)
+*   [ ] Does the "Coin Flip" animation work without external assets?
+*   [ ] Does the "Dice Roller" generate random numbers 1-6?
+*   [ ] Is the "Raffle Simulator" math correct?
+*   [ ] Are all IDs (`#startBtn`, `#nextBtn`, etc.) present?
+*   [ ] Is the design consistent with the "Math Lab" aesthetic (Graph paper, Monospace numbers)?
+*   [ ] Does the progress save to LocalStorage?
+
+**Implement the file structure and code now.**</h1>
+        <p>Mock generated content</p>
+    </div>
+</body>
+</html>
