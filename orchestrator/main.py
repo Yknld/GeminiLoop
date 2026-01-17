@@ -302,6 +302,7 @@ async def run_loop(task: str, max_iterations: int = 5, base_dir: Path = None) ->
                     if workspace_file.exists():
                         # Copy to site for compatibility
                         dest_file = state.site_dir / filename
+                        dest_file.parent.mkdir(parents=True, exist_ok=True)
                         dest_file.write_text(workspace_file.read_text())
                         
                         # Copy to project_root for HTTP preview
