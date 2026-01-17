@@ -209,6 +209,14 @@ async def handler(job: Dict[str, Any]) -> Dict[str, Any]:
             screenshot_files = list(screenshots_dir.rglob("*.png"))
             response["screenshots"] = [str(f.relative_to("/runpod-volume/runs")) for f in screenshot_files]
         
+        # Get video paths
+        videos_dir = Path(f"/runpod-volume/runs/{state.result.run_id}/artifacts/screenshots")
+        if videos_dir.exists():
+            video_files = list(videos_dir.rglob("*.webm"))
+            if video_files:
+                response["videos"] = [str(f.relative_to("/runpod-volume/runs")) for f in video_files]
+                response["artifacts"]["videos"] = [str(f.relative_to("/runpod-volume/runs")) for f in video_files]
+        
         # Add generated file contents
         response["generated_files"] = {}
         site_dir = state.site_dir

@@ -12,8 +12,11 @@ const readline = require('readline');
 class MCPServer {
   constructor() {
     this.browser = null;
+    this.context = null;
     this.page = null;
     this.messageId = 0;
+    this.videoPath = null;
+    this.recording = false;
     
     // Setup stdio communication
     this.rl = readline.createInterface({
@@ -105,9 +108,16 @@ class MCPServer {
       ]
     });
     
-    this.page = await this.browser.newPage({
-      viewport: { width: 1440, height: 900 }
+    // Create context with video recording enabled (will be started when needed)
+    this.context = await this.browser.newContext({
+      viewport: { width: 1440, height: 900 },
+      recordVideo: {
+        dir: process.env.VIDEO_DIR || '/tmp/playwright-videos',
+        size: { width: 1440, height: 900 }
+      }
     });
+    
+    this.page = await this.context.newPage();
     
     if (visibleBrowser) {
       this.log('Browser launched in VISIBLE mode');
@@ -213,6 +223,25 @@ class MCPServer {
             },
             required: ['selector', 'text']
           }
+        },
+        {
+          name: 'browser_start_recording',
+          description: 'Start video recording',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              videoPath: { type: 'string', description: 'Path to save video file' }
+            },
+            required: ['videoPath']
+          }
+        },
+        {
+          name: 'browser_stop_recording',
+          description: 'Stop video recording and save to file',
+          inputSchema: {
+            type: 'object',
+            properties: {}
+          }
         }
       ]
     };
@@ -247,6 +276,12 @@ class MCPServer {
       
       case 'browser_type':
         return await this.type(args.selector, args.text);
+      
+      case 'browser_start_recording':
+        return await this.startRecording(args.videoPath);
+      
+      case 'browser_stop_recording':
+        return await this.stopRecording();
       
       default:
         throw new Error(`Unknown tool: ${name}`);
@@ -386,6 +421,121 @@ class MCPServer {
         success: false,
         error: error.message,
         selector
+      };
+    }
+  }
+  
+  async startRecording(videoPath) {
+    this.log(`Starting video recording: ${videoPath}`);
+    
+    try {
+      // Close current page and context
+      if (this.page) {
+        await this.page.close();
+      }
+      if (this.context) {
+        await this.context.close();
+      }
+      
+      // Create new context with video recording
+      const fs = require('fs');
+      const path = require('path');
+      const videoDir = path.dirname(videoPath);
+      if (!fs.existsSync(videoDir)) {
+        fs.mkdirSync(videoDir, { recursive: true });
+      }
+      
+      this.context = await this.browser.newContext({
+        viewport: { width: 1440, height: 900 },
+        recordVideo: {
+          dir: videoDir,
+          size: { width: 1440, height: 900 }
+        }
+      });
+      
+      this.page = await this.context.newPage();
+      this.videoPath = videoPath;
+      this.recording = true;
+      
+      this.log('Video recording started');
+      
+      return {
+        success: true,
+        videoPath
+      };
+    } catch (error) {
+      this.log(`Start recording failed: ${error.message}`);
+      
+      return {
+        success: false,
+        error: error.message
+      };
+    }
+  }
+  
+  async stopRecording() {
+    this.log('Stopping video recording...');
+    
+    try {
+      if (!this.recording || !this.context) {
+        return {
+          success: false,
+          error: 'No recording in progress'
+        };
+      }
+      
+      // Close context to finalize video
+      await this.context.close();
+      
+      // Get the video file path (Playwright saves it automatically)
+      // The video is saved when context closes, we need to find it
+      const fs = require('fs');
+      const path = require('path');
+      const videoDir = path.dirname(this.videoPath);
+      
+      // Playwright saves videos with a hash, find the most recent one
+      let videoFile = null;
+      if (fs.existsSync(videoDir)) {
+        const files = fs.readdirSync(videoDir)
+          .filter(f => f.endsWith('.webm'))
+          .map(f => ({
+            name: f,
+            path: path.join(videoDir, f),
+            time: fs.statSync(path.join(videoDir, f)).mtime
+          }))
+          .sort((a, b) => b.time - a.time);
+        
+        if (files.length > 0) {
+          videoFile = files[0].path;
+          // Rename to desired path if different
+          if (videoFile !== this.videoPath) {
+            fs.renameSync(videoFile, this.videoPath);
+            videoFile = this.videoPath;
+          }
+        }
+      }
+      
+      // Create new context without recording for continued use
+      this.context = await this.browser.newContext({
+        viewport: { width: 1440, height: 900 }
+      });
+      this.page = await this.context.newPage();
+      
+      this.recording = false;
+      const finalPath = videoFile || this.videoPath;
+      
+      this.log(`Video recording stopped: ${finalPath}`);
+      
+      return {
+        success: true,
+        videoPath: finalPath
+      };
+    } catch (error) {
+      this.log(`Stop recording failed: ${error.message}`);
+      
+      return {
+        success: false,
+        error: error.message
       };
     }
   }

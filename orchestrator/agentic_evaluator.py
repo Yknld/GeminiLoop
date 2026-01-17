@@ -206,7 +206,7 @@ class AgenticEvaluator(GeminiEvaluator):
     - Comprehensive artifacts saved per step
     """
     
-    def __init__(self, max_exploration_steps: int = 15):
+    def __init__(self, max_exploration_steps: int = 50):
         super().__init__()
         self.max_exploration_steps = max_exploration_steps
         self.exploration_log = []
@@ -277,30 +277,55 @@ class AgenticEvaluator(GeminiEvaluator):
         
         rubric = rubric or EVALUATION_RUBRIC
         
-        # Phase 1: Navigate to page and inject dialog detection
-        logger.info("\n📍 Phase 1: Navigate to page and setup")
-        await mcp_client.navigate(url)
-        await asyncio.sleep(2)  # Let page load
+        # Start video recording
+        video_path = str(artifacts_dir / "evaluation_recording.webm")
+        logger.info(f"\n🎥 Starting video recording: {video_path}")
+        try:
+            await mcp_client.start_recording(video_path)
+            logger.info("✅ Video recording started")
+        except Exception as e:
+            logger.warning(f"⚠️  Failed to start video recording: {e}")
+            video_path = None
         
-        # Inject dialog detection early
-        await self._inject_dialog_detection(mcp_client)
-        
-        # Phase 2: Agentic exploration (observe→act loop)
-        logger.info("\n🔍 Phase 2: Agentic Exploration")
-        exploration_result = await self._run_exploration_loop(
-            mcp_client, 
-            task,
-            artifacts_dir
-        )
-        
-        # Phase 3: Final vision evaluation
-        logger.info("\n👁️  Phase 3: Final Vision Evaluation")
-        final_eval = await self._run_vision_evaluation(
-            task,
-            exploration_result["final_observation"],
-            rubric,
-            exploration_result
-        )
+        try:
+            # Phase 1: Navigate to page and inject dialog detection
+            logger.info("\n📍 Phase 1: Navigate to page and setup")
+            await mcp_client.navigate(url)
+            await asyncio.sleep(2)  # Let page load
+            
+            # Inject dialog detection early
+            await self._inject_dialog_detection(mcp_client)
+            
+            # Phase 2: Agentic exploration (observe→act loop)
+            logger.info("\n🔍 Phase 2: Agentic Exploration")
+            exploration_result = await self._run_exploration_loop(
+                mcp_client, 
+                task,
+                artifacts_dir
+            )
+            
+            # Phase 3: Final vision evaluation
+            logger.info("\n👁️  Phase 3: Final Vision Evaluation")
+            final_eval = await self._run_vision_evaluation(
+                task,
+                exploration_result["final_observation"],
+                rubric,
+                exploration_result
+            )
+        finally:
+            # Stop video recording
+            if video_path:
+                logger.info(f"\n🎥 Stopping video recording...")
+                try:
+                    saved_path = await mcp_client.stop_recording()
+                    if saved_path:
+                        logger.info(f"✅ Video saved: {saved_path}")
+                        # Update exploration result with video path
+                        exploration_result["video_path"] = saved_path
+                    else:
+                        logger.warning("⚠️  Video recording stopped but path not returned")
+                except Exception as e:
+                    logger.warning(f"⚠️  Failed to stop video recording: {e}")
         
         # Save exploration log
         log_file = artifacts_dir / "agentic_exploration.json"

@@ -186,3 +186,23 @@ class PlaywrightMCPClient:
         })
         
         return result
+    
+    async def start_recording(self, video_path: str) -> bool:
+        """Start video recording"""
+        logger.info(f"Starting video recording: {video_path}")
+        
+        result = await self.call_tool("browser_start_recording", {
+            "videoPath": video_path
+        })
+        
+        return result.get("success", False)
+    
+    async def stop_recording(self) -> Optional[str]:
+        """Stop video recording and return video path"""
+        logger.info("Stopping video recording...")
+        
+        result = await self.call_tool("browser_stop_recording", {})
+        
+        if result.get("success"):
+            return result.get("videoPath")
+        return None
