@@ -48,6 +48,7 @@ async def handler(job: Dict[str, Any]) -> Dict[str, Any]:
     Expected input (job["input"]):
     {
         "task": "Create a landing page",
+        "notes": "Optional: Custom prompt/notes to use instead of planner-generated prompt",
         "max_iterations": 2,
         "github_token": "optional",
         "github_repo": "optional",
@@ -89,6 +90,7 @@ async def handler(job: Dict[str, Any]) -> Dict[str, Any]:
         # Extract input from job
         input_data = job.get("input", {})
         task = input_data.get("task")
+        custom_notes = input_data.get("notes")  # Custom prompt/notes (optional)
         
         if not task:
             return {
@@ -129,11 +131,14 @@ async def handler(job: Dict[str, Any]) -> Dict[str, Any]:
         
         # Run orchestrator
         logger.info(f"Running orchestrator for task: {task}")
+        if custom_notes:
+            logger.info(f"Using custom notes/prompt ({len(custom_notes)} chars)")
         
         state = await run_loop(
             task=task,
             max_iterations=max_iterations,
-            base_dir=Path("/runpod-volume/runs")  # Use persistent volume
+            base_dir=Path("/runpod-volume/runs"),  # Use persistent volume
+            custom_notes=custom_notes  # Pass custom notes if provided
         )
         
         # Build response
@@ -244,6 +249,20 @@ def test_handler():
     test_event = {
         "input": {
             "task": "Create a simple hello world page",
+            "max_iterations": 2
+        }
+    }
+    
+    result = handler(test_event)
+    print(json.dumps(result, indent=2))
+
+
+def test_handler_with_custom_notes():
+    """Test handler with custom notes"""
+    test_event = {
+        "input": {
+            "task": "Create a calculator",
+            "notes": "Create a fully functional calculator with:\n- Basic operations (+, -, *, /)\n- Clear button\n- Modern UI design\n- All in a single HTML file",
             "max_iterations": 2
         }
     }
