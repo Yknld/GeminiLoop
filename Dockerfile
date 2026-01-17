@@ -36,7 +36,6 @@ RUN npx playwright install chromium
 
 # Copy application
 COPY orchestrator ./orchestrator
-COPY services ./services
 COPY handler.py .
 
 CMD ["python", "-u", "handler.py"]
