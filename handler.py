@@ -261,6 +261,29 @@ async def handler(job: Dict[str, Any]) -> Dict[str, Any]:
                     except:
                         pass
         
+        # Add planner output to response
+        artifacts_dir = Path(f"/runpod-volume/runs/{state.result.run_id}/artifacts")
+        planner_files = {
+            "openhands_prompt.txt": "planner_prompt",
+            "planner_output.json": "planner_output",
+            "course_plan.json": "course_plan",
+            "planner_thinking.txt": "planner_thinking"
+        }
+        
+        response["planner_output"] = {}
+        for filename, key in planner_files.items():
+            planner_file = artifacts_dir / filename
+            if planner_file.exists():
+                try:
+                    if filename.endswith('.json'):
+                        import json
+                        response["planner_output"][key] = json.loads(planner_file.read_text())
+                    else:
+                        response["planner_output"][key] = planner_file.read_text()
+                    logger.info(f"✅ Included planner output: {filename}")
+                except Exception as e:
+                    logger.warning(f"⚠️  Failed to read planner file {filename}: {e}")
+        
         logger.info(f"✅ Run complete: {state.result.run_id}")
         logger.info(f"   Score: {state.result.final_score}/100")
         logger.info(f"   Status: {state.result.status}")
