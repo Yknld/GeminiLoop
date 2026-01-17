@@ -304,26 +304,26 @@ class AgenticEvaluator(GeminiEvaluator):
                 artifacts_dir
             )
             
-        # Phase 3: Check single-file compliance
-        logger.info("\n📋 Phase 3a: Checking Single-File Compliance")
-        file_compliance = await self._check_single_file_compliance(mcp_client)
-        
-        if file_compliance.get('compliant') is False:
-            logger.warning("❌ VIOLATION: External CSS/JS files detected!")
-            logger.warning(f"   External CSS: {file_compliance.get('external_css_count', 0)}")
-            logger.warning(f"   External JS: {file_compliance.get('external_js_count', 0)}")
-        elif file_compliance.get('compliant') is True:
-            logger.info("✅ Single-file compliance verified")
-        
-        # Phase 3: Final vision evaluation
-        logger.info("\n👁️  Phase 3b: Final Vision Evaluation")
-        final_eval = await self._run_vision_evaluation(
-            task,
-            exploration_result["final_observation"],
-            rubric,
-            exploration_result,
-            file_compliance
-        )
+            # Phase 3: Check single-file compliance
+            logger.info("\n📋 Phase 3a: Checking Single-File Compliance")
+            file_compliance = await self._check_single_file_compliance(mcp_client)
+            
+            if file_compliance.get('compliant') is False:
+                logger.warning("❌ VIOLATION: External CSS/JS files detected!")
+                logger.warning(f"   External CSS: {file_compliance.get('external_css_count', 0)}")
+                logger.warning(f"   External JS: {file_compliance.get('external_js_count', 0)}")
+            elif file_compliance.get('compliant') is True:
+                logger.info("✅ Single-file compliance verified")
+            
+            # Phase 3: Final vision evaluation
+            logger.info("\n👁️  Phase 3b: Final Vision Evaluation")
+            final_eval = await self._run_vision_evaluation(
+                task,
+                exploration_result["final_observation"],
+                rubric,
+                exploration_result,
+                file_compliance
+            )
         finally:
             # Stop video recording
             if video_path:
