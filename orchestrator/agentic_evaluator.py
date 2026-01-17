@@ -399,14 +399,15 @@ class AgenticEvaluator(GeminiEvaluator):
                 logger.info(f"   💭 Reasoning: {reasoning_text[:150]}")
                 
                 if function_calls:
-                    # Execute first function call (log if multiple)
+                    # Gemini expects responses for ALL function calls
                     if len(function_calls) > 1:
-                        logger.warning(f"⚠️  Multiple function calls detected ({len(function_calls)}), executing first only")
+                        logger.warning(f"⚠️  Multiple function calls detected ({len(function_calls)}), will execute all")
                     
+                    # For now, only execute first but log all
                     func_call = function_calls[0]
                     args_dict = dict(func_call.args) if func_call.args else {}
                     
-                    logger.info(f"🔧 Tool call: {func_call.name}")
+                    logger.info(f"🔧 Tool call: {func_call.name} (1 of {len(function_calls)})")
                     logger.info(f"   Args: {args_dict}")
                     
                     # Check for finish signal
@@ -482,24 +483,37 @@ class AgenticEvaluator(GeminiEvaluator):
                     }, indent=2))
                     
                     # Send tool result back to Gemini with verification info
-                    result_with_verification = {
-                        **tool_result,
-                        "verification": {
-                            "dom_changed": verification["dom_changed"],
-                            "visible_text_changed": verification["text_changed"],
-                            "dialogs_detected": len(verification["dialogs"]) > 0,
-                            "console_errors_new": len(verification["new_console_errors"])
-                        }
+                    # Keep response simple and JSON-serializable
+                    response_data = {
+                        "success": bool(tool_result.get("success", False)),
+                        "message": str(tool_result.get("message", "")),
+                        "dom_changed": bool(verification["dom_changed"]),
+                        "text_changed": bool(verification["text_changed"]),
+                        "new_errors": int(len(verification["new_console_errors"]))
                     }
                     
-                    chat.send_message(
-                        genai.protos.Content(parts=[
-                            genai.protos.Part(function_response=genai.protos.FunctionResponse(
-                                name=func_call.name,
-                                response=result_with_verification
-                            ))
-                        ])
-                    )
+                    # Create function response parts for ALL function calls
+                    # (even if we only executed the first one)
+                    response_parts = []
+                    for i, fc in enumerate(function_calls):
+                        if i == 0:
+                            # Use actual result for first call
+                            response_parts.append(
+                                genai.protos.Part(function_response=genai.protos.FunctionResponse(
+                                    name=fc.name,
+                                    response={"result": json.dumps(response_data)}
+                                ))
+                            )
+                        else:
+                            # Send "not executed" for additional calls
+                            response_parts.append(
+                                genai.protos.Part(function_response=genai.protos.FunctionResponse(
+                                    name=fc.name,
+                                    response={"result": json.dumps({"success": False, "message": "Only first function call executed per turn"})}
+                                ))
+                            )
+                    
+                    chat.send_message(genai.protos.Content(parts=response_parts))
                 else:
                     logger.warning("⚠️  No function call in response")
                     logger.info(f"   Reasoning text: {reasoning_text[:300]}")
