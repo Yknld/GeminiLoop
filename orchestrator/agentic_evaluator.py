@@ -346,40 +346,49 @@ class AgenticEvaluator(GeminiEvaluator):
     def _build_agent_prompt(self, task: str) -> str:
         """Build system prompt for agentic exploration"""
         
-        return f"""You are an autonomous browser testing agent. Your job is to explore and test a web page.
+        return f"""You are an autonomous browser testing agent. Your job is to THOROUGHLY test a web page and VERIFY everything works.
 
 **Task Description:**
 {task}
 
-**Your Mission:**
-1. Explore the page systematically
-2. Test all interactive elements (buttons, forms, links, etc.)
-3. Verify core functionality works as described in the task
-4. Capture observations about UX, design, and any issues
-5. When satisfied, call finish_exploration with a summary
+**Your Mission - BE CRITICAL:**
+1. Test EVERY interactive element listed in the task
+2. After EACH click/interaction, check if something changed (new content, animations, state updates)
+3. If something doesn't work or shows errors, note it as a FAILURE
+4. Scroll through the ENTIRE page to see all content
+5. Test edge cases (empty inputs, multiple clicks, etc.)
+6. Only call finish_exploration when you've tested EVERYTHING
 
 **Available Tools:**
 - browser_click: Click elements (use CSS selectors like 'button', '#id', '.class')
 - browser_type: Type into input fields
-- browser_scroll: Scroll up/down to see more content
-- browser_evaluate: Execute JavaScript for complex interactions
-- finish_exploration: Signal you're done testing (required to complete)
+- browser_scroll: Scroll up/down to see ALL content
+- browser_evaluate: Check JavaScript state, get values, verify calculations
+- finish_exploration: Signal done testing (include DETAILED summary of what worked/failed)
 
-**Strategy:**
-- Each step, you'll receive: screenshot, visible text, and interactive elements
-- Click buttons/links to test interactions
-- Try filling forms if present
-- Scroll to check different sections
-- Test core functionality matches the task requirements
-- When you've verified the page works, call finish_exploration with a summary
+**Critical Testing Strategy:**
+1. SCROLL FIRST - See what's on the page
+2. TEST EACH FEATURE from the task requirements
+3. VERIFY the result after each interaction:
+   - Did the button respond?
+   - Did content appear/change?
+   - Are there visual bugs (blank areas, missing content)?
+   - Any console errors?
+4. Use browser_evaluate to check:
+   - Canvas drawing (ctx methods called?)
+   - Form values updated?
+   - Calculations correct?
+5. Only finish when you've tested EVERYTHING listed in task
 
-**Important:**
-- Use specific CSS selectors (e.g., 'button:first-of-type', '#submit', '.card')
-- Test one thing at a time
-- Be thorough but efficient (max {self.max_exploration_steps} steps)
-- Focus on verifying the task requirements are met
+**IMPORTANT - Be Harsh:**
+- Blank/dark canvases = FAILURE
+- Buttons that don't respond = FAILURE  
+- Missing interactive features = FAILURE
+- Console errors = FAILURE
+- Test EVERY requirement from the task description
+- Your summary must list what WORKS and what FAILS
 
-Begin exploration now."""
+Begin thorough testing now. Be critical!"""
     
     def _format_observation(self, state: Dict[str, Any], step: int) -> str:
         """Format browser state as observation message for Gemini"""
@@ -515,12 +524,35 @@ Begin exploration now."""
         # Build evaluation prompt
         prompt = self._build_vision_prompt(task, observation, rubric, exploration_result)
         
-        # Call Gemini for final scoring
+        # Call Gemini for final scoring WITH SCREENSHOTS
         model = genai.GenerativeModel(
             model_name=os.getenv("EVALUATOR_MODEL", "gemini-3-flash-preview")
         )
         
-        response = model.generate_content(prompt)
+        # Include screenshots from exploration
+        content_parts = [prompt]
+        
+        # Add screenshots from key steps (first, middle, last)
+        screenshot_steps = []
+        if len(self.exploration_log) > 0:
+            screenshot_steps.append(0)  # First
+        if len(self.exploration_log) > 2:
+            screenshot_steps.append(len(self.exploration_log) // 2)  # Middle
+        if len(self.exploration_log) > 1:
+            screenshot_steps.append(len(self.exploration_log) - 1)  # Last
+        
+        for idx in screenshot_steps:
+            screenshot_path = self.exploration_log[idx].get('screenshot')
+            if screenshot_path and Path(screenshot_path).exists():
+                try:
+                    import PIL.Image
+                    img = PIL.Image.open(screenshot_path)
+                    content_parts.append(f"\n[Screenshot from step {idx + 1}]")
+                    content_parts.append(img)
+                except Exception as e:
+                    logger.warning(f"Failed to load screenshot {screenshot_path}: {e}")
+        
+        response = model.generate_content(content_parts)
         
         # Parse response
         eval_result = self._parse_evaluation_response(response.text)
@@ -536,31 +568,52 @@ Begin exploration now."""
     ) -> str:
         """Build prompt for final vision evaluation"""
         
-        prompt = f"""# Final Evaluation
+        prompt = f"""# CRITICAL EVALUATION - Be Harsh on Broken Functionality
 
-**Original Task:**
+**Original Task Requirements:**
 {task}
 
-**Autonomous Exploration Summary:**
-- Steps taken: {exploration['steps_taken']}
-- Completion: {exploration['completion_reason']}
-- Interactions tested: {len(self.exploration_log)}
+**Autonomous Testing Results:**
+- Total test steps: {exploration['steps_taken']}
+- Completion status: {exploration['completion_reason']}
+- Console errors found: {len(observation.console_errors)}
 
-**Exploration Actions Performed:**
+**Detailed Test Actions & Observations:**
 """
         
-        for step in self.exploration_log[:10]:  # Show first 10 steps
+        for step in self.exploration_log:
             prompt += f"\n{step['step']}. {step['tool']}({step['args']})"
-        
-        if len(self.exploration_log) > 10:
-            prompt += f"\n... and {len(self.exploration_log) - 10} more steps"
+            if step.get('reasoning'):
+                prompt += f"\n   Agent's observation: {step['reasoning'][:200]}"
         
         prompt += f"""
 
-**Console Errors:** {len(observation.console_errors)}
+**Console Errors Detected:** {len(observation.console_errors)}
+{f"Errors: {observation.console_errors[:3]}" if observation.console_errors else "None"}
 
-**Your Task:**
-Evaluate the page based on the rubric below and the autonomous exploration results.
+**CRITICAL EVALUATION RULES:**
+
+1. **FUNCTIONALITY IS KING (40% of score)**
+   - If interactive features don't work → score ≤ 40
+   - If buttons don't respond → score ≤ 30
+   - If main features from task are broken/missing → FAIL
+   - Blank canvases, dark displays, no interaction = BROKEN
+
+2. **Compare Task vs Reality:**
+   - List each requirement from task
+   - Did testing verify it works? YES/NO
+   - If NO → deduct heavily from functionality score
+
+3. **Evidence-Based Scoring:**
+   - Use exploration log as evidence
+   - If agent couldn't verify a feature → assume BROKEN
+   - If agent found errors → mark as FAILURE
+   - If console errors → robustness = 0
+
+4. **No Mercy for Broken Pages:**
+   - Pretty but broken = score < 50
+   - Working but ugly = score 60-80
+   - Working AND pretty = score 80-100
 
 **Evaluation Rubric:**
 """
@@ -578,18 +631,21 @@ Evaluate the page based on the rubric below and the autonomous exploration resul
   "score": <0-100>,
   "passed": <true/false>,
   "category_scores": {
-    "functionality": <0-weight>,
-    "visual_design": <0-weight>,
-    ...
+    "functionality": <0-25>,
+    "visual_design": <0-35>,
+    "ux": <0-15>,
+    "accessibility": <0-20>,
+    "responsiveness": <0-20>,
+    "robustness": <0-5>
   },
   "issues": [
-    {"severity": "high/medium/low", "description": "..."}
+    {"severity": "critical", "description": "Specific feature X doesn't work - agent clicked but no response"}
   ],
-  "suggestions": ["...", "..."]
+  "suggestions": ["Fix feature X", "Add Y"]
 }
 ```
 
-Provide your evaluation now."""
+**Be brutally honest. If features don't work, give a LOW score. Provide your evaluation:**"""
         
         return prompt
     
