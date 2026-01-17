@@ -29,6 +29,7 @@ from .paths import get_path_config, PathConfig
 from .preview_server import get_preview_server, stop_preview_server
 from .bootstrap import bootstrap_from_template, TemplateConfig
 from .planner import Planner
+from .youtube_finder import YouTubeFinder
 from . import events  # Live monitoring events
 
 # Setup logging
@@ -227,6 +228,34 @@ async def run_loop(task: str, max_iterations: int = 5, base_dir: Path = None, cu
         print(f"\n{'=' * 70}")
         
         # Phase 0c: Planning with Gemini (always use planner)
+        # Find YouTube videos before planning
+        print(f"\n{'=' * 70}")
+        print(f"🎥 Phase 0b: Finding YouTube videos")
+        print(f"{'=' * 70}")
+        
+        youtube_videos = []
+        try:
+            youtube_finder = YouTubeFinder()
+            youtube_videos = youtube_finder.find_videos_for_content(
+                user_requirements=task,
+                custom_notes=custom_notes,
+                count=5
+            )
+            
+            if youtube_videos:
+                print(f"✅ Found {len(youtube_videos)} YouTube videos")
+                # Save videos to artifacts
+                videos_file = state.artifacts_dir / "youtube_videos.json"
+                with open(videos_file, 'w') as f:
+                    json.dump(youtube_videos, f, indent=2)
+                print(f"💾 Videos saved to: {videos_file}")
+            else:
+                print("⚠️  No YouTube videos found")
+        except Exception as e:
+            print(f"⚠️  Error finding YouTube videos: {e}")
+            print("   Continuing without YouTube videos...")
+            youtube_videos = []
+        
         # If custom_notes provided, planner uses them to generate prompt
         # If not, planner uses task description
         print(f"\n{'=' * 70}")
@@ -247,7 +276,8 @@ async def run_loop(task: str, max_iterations: int = 5, base_dir: Path = None, cu
         planner = Planner()
         plan = planner.generate_openhands_prompt(
             user_requirements=task,
-            custom_notes=custom_notes
+            custom_notes=custom_notes,
+            youtube_videos=youtube_videos if youtube_videos else None
         )
         
         # Save plan to artifacts
