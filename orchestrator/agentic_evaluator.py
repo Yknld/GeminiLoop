@@ -314,6 +314,54 @@ class AgenticEvaluator(GeminiEvaluator):
         
         return final_eval
     
+    def _safe_extract_response_parts(self, response) -> Dict[str, Any]:
+        """
+        Safely extract tool calls and text from Gemini response
+        
+        Handles:
+        - Empty candidates list
+        - Missing content/parts
+        - Multiple function calls
+        - Text-only responses
+        
+        Returns:
+            {
+                "function_calls": List[function_call objects],
+                "reasoning": str (concatenated text),
+                "has_content": bool
+            }
+        """
+        result = {
+            "function_calls": [],
+            "reasoning": "",
+            "has_content": False
+        }
+        
+        if not response or not hasattr(response, 'candidates'):
+            logger.warning("⚠️  Response has no candidates attribute")
+            return result
+        
+        if not response.candidates or len(response.candidates) == 0:
+            logger.warning("⚠️  Empty candidates list from Gemini")
+            return result
+        
+        candidate = response.candidates[0]
+        
+        if not candidate.content or not candidate.content.parts:
+            logger.warning("⚠️  Candidate has no content or parts")
+            return result
+        
+        # Extract all parts
+        for part in candidate.content.parts:
+            if hasattr(part, 'text') and part.text:
+                result["reasoning"] += part.text
+                result["has_content"] = True
+            if hasattr(part, 'function_call') and part.function_call:
+                result["function_calls"].append(part.function_call)
+                result["has_content"] = True
+        
+        return result
+    
     async def _run_exploration_loop(
         self,
         mcp_client,
@@ -328,6 +376,7 @@ class AgenticEvaluator(GeminiEvaluator):
         - Captures before/after verification signals
         - Robust function call parsing (handles multiple parts)
         - Saves comprehensive per-step artifacts
+        - Soft recovery from model failures
         
         Returns:
             Dict with exploration results and final observation
@@ -342,6 +391,7 @@ class AgenticEvaluator(GeminiEvaluator):
         steps_taken = 0
         finished = False
         final_observation = None
+        consecutive_failures = 0  # Track failures for soft recovery
         
         for step in range(self.max_exploration_steps):
             steps_taken += 1
@@ -383,20 +433,32 @@ class AgenticEvaluator(GeminiEvaluator):
                 # Send multimodal message
                 response = chat.send_message(content_parts)
                 
-                # Parse function calls (robust parsing with multiple parts support)
-                reasoning_text = ""
-                function_calls = []
+                # Parse response safely
+                parsed = self._safe_extract_response_parts(response)
+                reasoning_text = parsed["reasoning"]
+                function_calls = parsed["function_calls"]
                 
-                if response.candidates and len(response.candidates) > 0:
-                    candidate = response.candidates[0]
-                    if candidate.content and candidate.content.parts:
-                        for part in candidate.content.parts:
-                            if hasattr(part, 'text') and part.text:
-                                reasoning_text += part.text
-                            if hasattr(part, 'function_call') and part.function_call:
-                                function_calls.append(part.function_call)
+                if reasoning_text:
+                    logger.info(f"   💭 Reasoning: {reasoning_text[:150]}")
                 
-                logger.info(f"   💭 Reasoning: {reasoning_text[:150]}")
+                # Handle empty response (soft recovery)
+                if not parsed["has_content"]:
+                    consecutive_failures += 1
+                    logger.warning(f"⚠️  Empty response from Gemini (failure {consecutive_failures}/3)")
+                    
+                    if consecutive_failures >= 3:
+                        logger.error("❌ Too many empty responses, ending exploration")
+                        final_observation = before_state
+                        break
+                    
+                    # Take safe default action: scroll down
+                    logger.info("   🔄 Soft recovery: scrolling down to gather more context")
+                    await self._execute_tool("browser_scroll", {"direction": "down", "amount": 500}, mcp_client)
+                    await asyncio.sleep(1)
+                    continue
+                
+                # Reset failure counter on success
+                consecutive_failures = 0
                 
                 if function_calls:
                     # Gemini expects responses for ALL function calls
@@ -513,16 +575,49 @@ class AgenticEvaluator(GeminiEvaluator):
                                 ))
                             )
                     
-                    chat.send_message(genai.protos.Content(parts=response_parts))
+                    # Send function response with retry
+                    try:
+                        chat.send_message(genai.protos.Content(parts=response_parts))
+                    except Exception as e:
+                        logger.warning(f"⚠️  Failed to send function response (attempt 1): {e}")
+                        # Retry once with minimal payload
+                        try:
+                            simple_response = genai.protos.Content(parts=[
+                                genai.protos.Part(function_response=genai.protos.FunctionResponse(
+                                    name=function_calls[0].name,
+                                    response={"result": "executed"}
+                                ))
+                            ])
+                            chat.send_message(simple_response)
+                            logger.info("   ✅ Retry succeeded with simple response")
+                        except Exception as e2:
+                            logger.error(f"❌ Failed to send function response (attempt 2): {e2}")
+                            # Don't crash, just continue with next step
+                            consecutive_failures += 1
+                            if consecutive_failures >= 3:
+                                logger.error("❌ Too many response send failures, ending exploration")
+                                final_observation = after_state
+                                break
                 else:
                     logger.warning("⚠️  No function call in response")
                     logger.info(f"   Reasoning text: {reasoning_text[:300]}")
+                    # Take safe default action
+                    logger.info("   🔄 Soft recovery: taking snapshot for context")
+                    await self._execute_tool("browser_dom_snapshot", {}, mcp_client)
                 
             except Exception as e:
-                logger.error(f"❌ Error in exploration step: {e}")
+                consecutive_failures += 1
+                logger.error(f"❌ Error in exploration step (failure {consecutive_failures}/3): {e}")
                 import traceback
                 logger.error(traceback.format_exc())
-                break
+                
+                if consecutive_failures >= 3:
+                    logger.error("❌ Too many consecutive failures, ending exploration")
+                    break
+                
+                # Soft recovery: continue to next step
+                logger.info("   🔄 Soft recovery: continuing to next step")
+                await asyncio.sleep(1)
         
         if not finished:
             logger.info(f"\n⏱️  Reached max steps ({self.max_exploration_steps})")
@@ -676,11 +771,25 @@ Begin systematic testing. You have vision - use it!"""
         await mcp_client.screenshot(str(screenshot_path))
         state["screenshot_path"] = str(screenshot_path)
         
-        # Get page visible text
+        # Get page visible text - ROBUST: handle non-string returns
         try:
             text_js = "document.body.innerText"
             result = await mcp_client.evaluate(text_js)
-            visible_text = result.get("result", "")
+            visible_text_raw = result.get("result", "")
+            
+            # Defensive: coerce to string safely
+            if isinstance(visible_text_raw, str):
+                visible_text = visible_text_raw
+            elif isinstance(visible_text_raw, (list, tuple)):
+                visible_text = " ".join(str(x) for x in visible_text_raw[:50])  # Join first 50 items
+            elif isinstance(visible_text_raw, dict):
+                visible_text = json.dumps(visible_text_raw, default=str)[:2000]  # Truncate JSON
+            elif visible_text_raw is None:
+                visible_text = ""
+            else:
+                visible_text = str(visible_text_raw)
+                logger.debug(f"Unexpected visible_text type: {type(visible_text_raw)}, coerced to string")
+            
             state["visible_text"] = visible_text
             state["text_snippet"] = visible_text[:1500] if visible_text else ""
         except Exception as e:

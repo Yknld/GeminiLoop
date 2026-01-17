@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Machine Learning Intuition | Course Hub</title>
+    <style>
+        :root {
+            --bg-color: #f8fafc;
+            --card-bg: #ffffff;
+            --text-main: #0f172a;
+            --text-muted: #64748b;
+            --accent-blue: #3b82f6;
+            --accent-purple: #8b5cf6;
+            --accent-green: #10b981;
+            --dark-slate: #1e293b;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            line-height: 1.5;
+            padding-bottom: 4rem;
+        }
+
+        header {
+            background-color: var(--dark-slate);
+            color: white;
+            padding: 2rem 1rem;
+            text-align: center;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+        }
+
+        .container {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 2rem 1rem;
+        }
+
+        .progress-container {
+            max-width: 600px;
+            margin: 1.5rem auto 0;
+            background: rgba(255,255,255,0.1);
+            border-radius: 999px;
+            height: 12px;
+            overflow: hidden;
+        }
+
+        #globalProgressBar {
+            height: 100%;
+            background: var(--accent-blue);
+            width: 0%;
+            transition: width 0.5s ease;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin-top: 2rem;
+        }
+
+        .module-card {
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 1.5rem;
+            border: 1px solid #e2e8f0;
+            transition: transform 0.2s, box-shadow 0.2s;
+            text-decoration: none;
+            color: inherit;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+
+        .module-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+        }
+
+        .module-card.completed {
+            border-left: 6px solid var(--accent-green);
+        }
+
+        .module-card.completed::after {
+            content: '✓';
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            background: var(--accent-green);
+            color: white;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8rem;
+            font-weight: bold;
+        }
+
+        .module-id {
+            font-family: monospace;
+            color: var(--accent-blue);
+            font-weight: bold;
+            font-size: 0.875rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .module-title {
+            font-size: 1.25rem;
+            font-weight: 700;
+            margin-bottom: 0.75rem;
+        }
+
+        .module-desc {
+            color: var(--text-muted);
+            font-size: 0.95rem;
+            flex-grow: 1;
+        }
+
+        .module-meta {
+            margin-top: 1.5rem;
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.8rem;
+            color: var(--text-muted);
+        }
+
+        footer {
+            position: fixed;
+            bottom: 0;
+            width: 100%;
+            background: white;
+            padding: 1rem;
+            border-top: 1px solid #e2e8f0;
+            display: flex;
+            justify-content: center;
+        }
+
+        button {
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+            transition: background 0.2s;
+        }
+
+        #resetProgressBtn {
+            background: #fee2e2;
+            color: #ef4444;
+        }
+
+        #resetProgressBtn:hover {
+            background: #fecaca;
+        }
+
+        #toast {
+            position: fixed;
+            bottom: 5rem;
+            right: 2rem;
+            background: var(--dark-slate);
+            color: white;
+            padding: 1rem 1.5rem;
+            border-radius: 8px;
+            box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.3);
+            transform: translateY(200%);
+            transition: transform 0.3s ease-out;
+            z-index: 1000;
+        }
+
+        #toast.show {
+            transform: translateY(0);
+        }
+
+        @media (max-width: 640px) {
+            .grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>Machine Learning Intuition</h1>
+        <p>From Logic to Neurons</p>
+        <div class="progress-container">
+            <div id="globalProgressBar" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
+        </div>
+    </header>
+
+    <main class="container">
+        <div id="modulesGrid" class="grid">
+            <!-- Module 1 -->
+            <a href="modules/module-01-basics.html" class="module-card" id="card-module-01">
+                <div class="module-id">MODULE 01</div>
+                <div class="module-title">The Paradigm Shift</div>
+                <div class="module-desc">Distinguish between Supervised and Unsupervised learning through visual patterns.</div>
+                <div class="module-meta">
+                    <span>⏱ 5 mins</span>
+                    <span class="status-text">Start &rarr;</span>
+                </div>
+            </a>
+
+            <!-- Module 2 -->
+            <a href="modules/module-02-trees.html" class="module-card" id="card-module-02">
+                <div class="module-id">MODULE 02</div>
+                <div class="module-title">Logic-Based Learning</div>
+                <div class="module-desc">Build a Decision Tree to classify data using simple logical splits.</div>
+                <div class="module-meta">
+                    <span>⏱ 10 mins</span>
+                    <span class="status-text">Start &rarr;</span>
+                </div>
+            </a>
+
+            <!-- Module 3 -->
+            <a href="modules/module-03-kmeans.html" class="module-card" id="card-module-03">
+                <div class="module-id">MODULE 03</div>
+                <div class="module-title">Finding Patterns in Chaos</div>
+                <div class="module-desc">Visualize how K-Means clustering groups unlabelled data points.</div>
+                <div class="module-meta">
+                    <span>⏱ 10 mins</span>
+                    <span class="status-text">Start &rarr;</span>
+                </div>
+            </a>
+
+            <!-- Module 4 -->
+            <a href="modules/module-04-neuralnet.html" class="module-card" id="card-module-04">
+                <div class="module-id">MODULE 04</div>
+                <div class="module-title">The Artificial Neuron</div>
+                <div class="module-desc">Manipulate weights and biases to understand the building blocks of Deep Learning.</div>
+                <div class="module-meta">
+                    <span>⏱ 12 mins</span>
+                    <span class="status-text">Start &rarr;</span>
+                </div>
+            </a>
+
+            <!-- Module 5 -->
+            <a href="modules/module-05-gradient.html" class="module-card" id="card-module-05">
+                <div class="module-id">MODULE 05</div>
+                <div class="module-title">Learning by Falling</div>
+                <div class="module-desc">Simulate Gradient Descent to understand how models minimize error.</div>
+                <div class="module-meta">
+                    <span>⏱ 15 mins</span>
+                    <span class="status-text">Start &rarr;</span>
+                </div>
+            </a>
+        </div>
+    </main>
+
+    <footer>
+        <button id="resetProgressBtn">Reset All Progress</button>
+    </footer>
+
+    <div id="toast">Progress Reset!</div>
+
+    <script>
+        const STORAGE_KEY = 'ml_course_progress';
+        const modules = ['module-01', 'module-02', 'module-03', 'module-04', 'module-05'];
+
+        function getProgress() {
+            const saved = localStorage.getItem(STORAGE_KEY);
+            return saved ? JSON.parse(saved) : {};
+        }
+
+        function updateUI() {
+            const progress = getProgress();
+            let completedCount = 0;
+
+            modules.forEach(id => {
+                const card = document.getElementById(`card-${id}`);
+                const statusText = card.querySelector('.status-text');
+                
+                if (progress[id]) {
+                    card.classList.add('completed');
+                    statusText.textContent = 'Completed';
+                    completedCount++;
+                } else {
+                    card.classList.remove('completed');
+                    statusText.innerHTML = 'Start &rarr;';
+                }
+            });
+
+            const percent = (completedCount / modules.length) * 100;
+            const bar = document.getElementById('globalProgressBar');
+            bar.style.width = percent + '%';
+            bar.setAttribute('aria-valuenow', percent);
+        }
+
+        document.getElementById('resetProgressBtn').addEventListener('click', () => {
+            localStorage.removeItem(STORAGE_KEY);
+            updateUI();
+            showToast('Progress Reset!');
+        });
+
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            toast.textContent = msg;
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 2000);
+        }
+
+        // Initialize
+        updateUI();
+    </script>
+</body>
+</html>
+
