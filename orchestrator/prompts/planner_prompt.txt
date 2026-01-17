@@ -14,6 +14,7 @@ INPUTS YOU RECEIVE
 - constraints: (optional) extra constraints like length, number of modules, must-include items
 
 NON-NEGOTIABLE GUARDRAILS (MUST INCLUDE IN YOUR PROMPT)
+- **SINGLE HTML FILE ONLY**: All content in ONE index.html file. No separate module files. Use tabs/sections/anchors for navigation.
 - Output must be feasible as static web pages served over HTTPS.
 - No external JS/CSS libraries or CDNs required by default.
 - No browser/system dialogs (no alert/confirm/prompt). All interactions must produce DOM-visible feedback (toasts, banners, modals, text updates).
@@ -39,10 +40,12 @@ Generate a detailed prompt for OpenHands with these sections:
    - Layout patterns to vary across modules (split_view, stepper, tabs, timeline, scenario, case_study)
 
 3. FILE STRUCTURE
-   Specify exactly what files to create:
-   - index.html (course hub with module cards, progress tracking)
-   - modules/module-01.html, module-02.html, etc.
-   - Any additional assets if needed
+   IMPORTANT: Create ONE SINGLE HTML FILE (index.html) with:
+   - All content in a single self-contained HTML file
+   - Inline CSS and JavaScript (no external files)
+   - Use tabs, accordions, or anchor links for navigation between sections/topics
+   - No separate module files - everything in one page
+   - Example: sections like #intro, #topic1, #topic2, etc. with tab/button navigation
 
 4. TECHNICAL REQUIREMENTS
    - Single HTML files with inline CSS and JavaScript
@@ -53,11 +56,11 @@ Generate a detailed prompt for OpenHands with these sections:
      * Hub: #modulesGrid, #resetProgressBtn, #toast
      * Modules: #startBtn, #nextBtn, #prevBtn, #checkpointCheckBtn, #checkpointFeedback, #completionBtn, #embedInput, #loadEmbedBtn, #clearEmbedBtn, #embedArea, #embedError, #resourcesList
 
-5. FOR EACH MODULE
+5. FOR EACH SECTION/TOPIC (in single HTML file)
    Provide detailed instructions including:
    
-   a) Module Metadata
-      - ID (module-01, module-02, etc.)
+   a) Section Metadata
+      - ID (section-01, section-02, or topic-specific like #intro, #basics, #advanced)
       - Title
       - Learning goals (3-5 bullet points)
       - Estimated minutes
@@ -72,7 +75,7 @@ Generate a detailed prompt for OpenHands with these sections:
       - TRY IT: Interactive simulation with slider/toggle controls, visual feedback, apply/reset buttons
       - CHECKPOINT: At least one question with DOM-visible feedback (no alerts)
       - RESOURCES: YouTube embed interface (user-triggered only) + curated resource list
-      - SUMMARY: Key takeaways + completion button that returns to hub
+      - SUMMARY: Key takeaways + next section button or back to menu
    
    c) Layout Pattern (VARY ACROSS MODULES)
       Specify which pattern to use for THIS module:
@@ -94,13 +97,14 @@ Generate a detailed prompt for OpenHands with these sections:
    e) Fun Facts (3-5 per module)
       Provide interesting facts related to the topic with source hints (textbook/wikipedia/other)
 
-6. COURSE HUB REQUIREMENTS
-   - Display all modules as cards
-   - Show completion checkmarks for finished modules
-   - Track progress in localStorage (key: 'course_progress')
-   - Overall progress bar
-   - Reset progress button
-   - Link to each module page
+6. SINGLE-PAGE NAVIGATION REQUIREMENTS
+   - Create tabbed navigation or section menu at top
+   - Each topic/section accessible via tab click or anchor link
+   - Show active section/tab visually
+   - Optional: Track progress in localStorage (key: 'course_progress')
+   - Optional: Overall progress indicator
+   - Smooth scroll or instant transition between sections
+   - All content loads once (no page refreshes)
 
 7. INTERACTION & FEEDBACK RULES
    - All feedback via DOM elements (toasts, inline messages, aria-live regions)
