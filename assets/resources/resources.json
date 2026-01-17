@@ -1,0 +1,128 @@
+{
+  "module-01": [
+    {
+      "title": "Machine Learning Crash Course",
+      "url": "https://developers.google.com/machine-learning/crash-course",
+      "type": "course",
+      "level": "beginner",
+      "description": "Google's fast-paced introduction to machine learning with TensorFlow APIs",
+      "tags": ["supervised-learning", "neural-networks", "tensorflow"]
+    },
+    {
+      "title": "Intro to Machine Learning",
+      "url": "https://www.kaggle.com/learn/intro-to-machine-learning",
+      "type": "tutorial",
+      "level": "beginner",
+      "description": "Interactive tutorial covering ML basics with Python and scikit-learn",
+      "tags": ["python", "scikit-learn", "hands-on"]
+    },
+    {
+      "title": "Machine Learning Glossary",
+      "url": "https://developers.google.com/machine-learning/glossary",
+      "type": "documentation",
+      "level": "beginner",
+      "description": "Comprehensive glossary of machine learning terms and concepts",
+      "tags": ["reference", "terminology"]
+    },
+    {
+      "title": "A Visual Introduction to Machine Learning",
+      "url": "http://www.r2d3.us/visual-intro-to-machine-learning-part-1/",
+      "type": "article",
+      "level": "beginner",
+      "description": "Beautiful visual explanation of decision trees and model training",
+      "tags": ["visualization", "decision-trees", "interactive"]
+    }
+  ],
+  "module-02": [
+    {
+      "title": "Neural Networks and Deep Learning",
+      "url": "http://neuralnetworksanddeeplearning.com/",
+      "type": "course",
+      "level": "intermediate",
+      "description": "Free online book by Michael Nielsen explaining neural networks from first principles",
+      "tags": ["theory", "backpropagation", "deep-learning"]
+    },
+    {
+      "title": "TensorFlow Playground",
+      "url": "https://playground.tensorflow.org/",
+      "type": "tool",
+      "level": "beginner",
+      "description": "Interactive visualization of neural networks in your browser",
+      "tags": ["interactive", "visualization", "hands-on"]
+    },
+    {
+      "title": "Stanford CS231n: Convolutional Neural Networks",
+      "url": "http://cs231n.stanford.edu/",
+      "type": "course",
+      "level": "advanced",
+      "description": "Stanford's course on CNNs for visual recognition with lecture notes and assignments",
+      "tags": ["computer-vision", "cnn", "academic"]
+    },
+    {
+      "title": "Understanding LSTM Networks",
+      "url": "https://colah.github.io/posts/2015-08-Understanding-LSTMs/",
+      "type": "article",
+      "level": "intermediate",
+      "description": "Clear explanation of LSTM networks with beautiful diagrams",
+      "tags": ["lstm", "rnn", "sequence-models"]
+    },
+    {
+      "title": "Deep Learning Specialization",
+      "url": "https://www.coursera.org/specializations/deep-learning",
+      "type": "course",
+      "level": "intermediate",
+      "description": "Andrew Ng's comprehensive deep learning course on Coursera",
+      "tags": ["andrew-ng", "comprehensive", "certificates"]
+    }
+  ],
+  "module-03": [
+    {
+      "title": "Train-Test Split and Cross-Validation",
+      "url": "https://scikit-learn.org/stable/modules/cross_validation.html",
+      "type": "documentation",
+      "level": "beginner",
+      "description": "Scikit-learn's guide to splitting data and cross-validation techniques",
+      "tags": ["scikit-learn", "validation", "best-practices"]
+    },
+    {
+      "title": "Overfitting and Underfitting",
+      "url": "https://www.tensorflow.org/tutorials/keras/overfit_and_underfit",
+      "type": "tutorial",
+      "level": "beginner",
+      "description": "TensorFlow tutorial on understanding and preventing overfitting",
+      "tags": ["tensorflow", "regularization", "model-tuning"]
+    },
+    {
+      "title": "Model Evaluation Metrics",
+      "url": "https://scikit-learn.org/stable/modules/model_evaluation.html",
+      "type": "documentation",
+      "level": "intermediate",
+      "description": "Comprehensive guide to metrics for evaluating model performance",
+      "tags": ["metrics", "evaluation", "scikit-learn"]
+    },
+    {
+      "title": "Practical Guide to Hyperparameter Tuning",
+      "url": "https://www.kaggle.com/code/willkoehrsen/intro-to-model-tuning-grid-and-random-search",
+      "type": "tutorial",
+      "level": "intermediate",
+      "description": "Hands-on tutorial for tuning model hyperparameters with grid and random search",
+      "tags": ["hyperparameters", "optimization", "kaggle"]
+    },
+    {
+      "title": "Learning Curves",
+      "url": "https://scikit-learn.org/stable/auto_examples/model_selection/plot_learning_curve.html",
+      "type": "article",
+      "level": "intermediate",
+      "description": "Using learning curves to diagnose model performance issues",
+      "tags": ["diagnostics", "visualization", "debugging"]
+    },
+    {
+      "title": "Fast.ai Practical Deep Learning",
+      "url": "https://course.fast.ai/",
+      "type": "course",
+      "level": "intermediate",
+      "description": "Practical course focused on building and training real models quickly",
+      "tags": ["fastai", "practical", "pytorch"]
+    }
+  ]
+}

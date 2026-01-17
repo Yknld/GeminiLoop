@@ -4,6 +4,30 @@
 
 **Architecture Overview:** GeminiLoop is a closed-loop agent system where Gemini generates code, Playwright MCP evaluates it in a real browser session, and the orchestrator iterates with fixes until evaluation passes. Each run creates an isolated workspace with all artifacts preserved for debugging and transparency.
 
+## 📚 Course Template System (NEW!)
+
+GeminiLoop now includes a modular course template system for creating interactive learning modules. Each module is self-contained with inline CSS/JS, no external dependencies.
+
+**Quick Start:**
+```bash
+# Run local server (required for JSON loading)
+python -m http.server 8080
+
+# Open course hub
+open http://localhost:8080/index.html
+```
+
+**Features:**
+- ✅ Self-contained module pages (no CDNs or external deps)
+- ✅ Progress tracking with localStorage
+- ✅ Interactive components (timelines, diagrams, simulations)
+- ✅ YouTube embed validation
+- ✅ Mobile-responsive design
+- ✅ Accessibility-focused (ARIA, keyboard navigation)
+- ✅ Stable IDs for Playwright testing
+
+📖 **Full Documentation**: [COURSE_STRUCTURE.md](COURSE_STRUCTURE.md)
+
 ## How It Works
 
 The system combines four key components in a continuous feedback loop:

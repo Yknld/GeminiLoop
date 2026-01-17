@@ -1,0 +1,52 @@
+{
+  "course_title": "Introduction to Machine Learning",
+  "course_subtitle": "Master the fundamentals of machine learning through interactive modules and hands-on examples",
+  "audience_level": "Beginner",
+  "estimated_total_minutes": 120,
+  "modules": [
+    {
+      "id": "module-01",
+      "title": "What is Machine Learning?",
+      "slug": "modules/module-01.html",
+      "goals": [
+        "Understand the definition and core concepts of machine learning",
+        "Differentiate between supervised, unsupervised, and reinforcement learning",
+        "Identify real-world applications of machine learning"
+      ],
+      "estimated_minutes": 30,
+      "status": "ready",
+      "embed_ref": "module-01-intro",
+      "resources_ref": "module-01"
+    },
+    {
+      "id": "module-02",
+      "title": "Understanding Neural Networks",
+      "slug": "modules/module-02.html",
+      "goals": [
+        "Learn the basic structure of artificial neural networks",
+        "Understand how neurons, layers, and activation functions work",
+        "Explore the backpropagation algorithm",
+        "Visualize how neural networks learn from data"
+      ],
+      "estimated_minutes": 45,
+      "status": "ready",
+      "embed_ref": "module-02-networks",
+      "resources_ref": "module-02"
+    },
+    {
+      "id": "module-03",
+      "title": "Training Your First Model",
+      "slug": "modules/module-03.html",
+      "goals": [
+        "Set up your first machine learning model",
+        "Understand training data, validation, and testing",
+        "Learn about overfitting and underfitting",
+        "Evaluate model performance using key metrics"
+      ],
+      "estimated_minutes": 45,
+      "status": "ready",
+      "embed_ref": "module-03-training",
+      "resources_ref": "module-03"
+    }
+  ]
+}

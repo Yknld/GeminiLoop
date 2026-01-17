@@ -1,0 +1,25 @@
+{
+  "module-01-intro": {
+    "url": "https://www.youtube.com/watch?v=aircAruvnKk",
+    "start_seconds": 0,
+    "title": "But what is a neural network? | Chapter 1, Deep learning",
+    "notes": "3Blue1Brown's excellent introduction to neural networks and deep learning fundamentals"
+  },
+  "module-02-networks": {
+    "url": "https://www.youtube.com/watch?v=IHZwWFHWa-w",
+    "start_seconds": 0,
+    "title": "Gradient descent, how neural networks learn | Chapter 2, Deep learning",
+    "notes": "Continuation of 3Blue1Brown's series explaining how neural networks learn through gradient descent"
+  },
+  "module-03-training": {
+    "url": "https://www.youtube.com/watch?v=Ilg3gGewQ5U",
+    "start_seconds": 0,
+    "title": "What is backpropagation really doing? | Chapter 3, Deep learning",
+    "notes": "Deep dive into the backpropagation algorithm that enables neural network training"
+  },
+  "_notes": {
+    "usage": "These are real educational videos from 3Blue1Brown. Replace with your own content as needed.",
+    "format": "Each module_id maps to an object with url, start_seconds, title, and notes",
+    "validation": "Modules will validate YouTube URLs and only load approved domains"
+  }
+}

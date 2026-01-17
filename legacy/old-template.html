@@ -1,0 +1,2227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>[COURSE_TITLE] - Mini Course Template</title>
+    <style>
+        /* ==================== CSS VARIABLES (Design System) ==================== */
+        :root {
+            --color-primary: #4f46e5;
+            --color-primary-dark: #4338ca;
+            --color-primary-light: #6366f1;
+            --color-secondary: #0f172a;
+            --color-success: #059669;
+            --color-warning: #d97706;
+            --color-error: #dc2626;
+            --color-bg: #ffffff;
+            --color-bg-secondary: #fafafa;
+            --color-bg-tertiary: #f5f5f5;
+            --color-text: #0f172a;
+            --color-text-secondary: #64748b;
+            --color-text-light: #94a3b8;
+            --color-border: #e2e8f0;
+            --color-border-light: #f1f5f9;
+            --color-accent: #818cf8;
+            
+            --spacing-xs: 0.25rem;
+            --spacing-sm: 0.5rem;
+            --spacing-md: 1rem;
+            --spacing-lg: 1.5rem;
+            --spacing-xl: 2rem;
+            --spacing-2xl: 3rem;
+            --spacing-3xl: 4rem;
+            
+            --radius-sm: 0.25rem;
+            --radius-md: 0.375rem;
+            --radius-lg: 0.5rem;
+            --radius-xl: 0.75rem;
+            
+            --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+            --shadow-md: 0 2px 4px 0 rgba(0, 0, 0, 0.06);
+            --shadow-lg: 0 4px 6px -1px rgba(0, 0, 0, 0.08);
+            
+            --font-xs: 0.75rem;
+            --font-sm: 0.875rem;
+            --font-base: 0.9375rem;
+            --font-lg: 1.0625rem;
+            --font-xl: 1.25rem;
+            --font-2xl: 1.5rem;
+            --font-3xl: 1.875rem;
+            --font-4xl: 2.25rem;
+            
+            --transition-fast: 120ms cubic-bezier(0.4, 0, 0.2, 1);
+            --transition-base: 200ms cubic-bezier(0.4, 0, 0.2, 1);
+            --transition-slow: 300ms cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        /* ==================== RESET & BASE ==================== */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica Neue', sans-serif;
+            font-size: var(--font-base);
+            line-height: 1.7;
+            color: var(--color-text);
+            background: var(--color-bg);
+            overflow-x: hidden;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+        
+        h3 {
+            font-size: var(--font-base);
+            font-weight: 600;
+            margin-bottom: var(--spacing-lg);
+            color: var(--color-text);
+        }
+        
+        h4 {
+            font-size: var(--font-sm);
+            font-weight: 600;
+            color: var(--color-text);
+        }
+        
+        p {
+            margin-bottom: var(--spacing-md);
+        }
+        
+        p:last-child {
+            margin-bottom: 0;
+        }
+        
+        /* ==================== LAYOUT ==================== */
+        .app-container {
+            display: flex;
+            min-height: 100vh;
+        }
+        
+        .sidebar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 280px;
+            height: 100vh;
+            background: var(--color-bg);
+            border-right: 1px solid var(--color-border);
+            padding: var(--spacing-2xl) var(--spacing-lg);
+            overflow-y: auto;
+            z-index: 100;
+            transition: transform var(--transition-base);
+        }
+        
+        .sidebar-header {
+            margin-bottom: var(--spacing-2xl);
+            padding-bottom: var(--spacing-lg);
+            border-bottom: 1px solid var(--color-border-light);
+        }
+        
+        .sidebar-title {
+            font-size: var(--font-sm);
+            font-weight: 600;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+            margin-bottom: var(--spacing-md);
+            color: var(--color-text);
+        }
+        
+        .sidebar-progress {
+            font-size: var(--font-xs);
+            color: var(--color-text-secondary);
+            margin-bottom: var(--spacing-sm);
+            font-weight: 500;
+        }
+        
+        .progress-bar-container {
+            width: 100%;
+            height: 4px;
+            background: var(--color-bg-tertiary);
+            border-radius: var(--radius-sm);
+            overflow: hidden;
+        }
+        
+        .progress-bar-fill {
+            height: 100%;
+            background: var(--color-primary);
+            transition: width var(--transition-slow);
+            border-radius: var(--radius-sm);
+        }
+        
+        .nav-list {
+            list-style: none;
+        }
+        
+        .nav-item {
+            margin-bottom: var(--spacing-sm);
+        }
+        
+        .nav-link {
+            display: flex;
+            align-items: center;
+            padding: var(--spacing-sm) var(--spacing-md);
+            color: var(--color-text-secondary);
+            text-decoration: none;
+            border-radius: var(--radius-sm);
+            transition: all var(--transition-fast);
+            font-size: var(--font-sm);
+            font-weight: 500;
+            border-left: 2px solid transparent;
+            margin-left: -2px;
+        }
+        
+        .nav-link:hover {
+            background: var(--color-bg-secondary);
+            color: var(--color-text);
+            border-left-color: var(--color-border);
+        }
+        
+        .nav-link:focus {
+            outline: 2px solid var(--color-primary);
+            outline-offset: 2px;
+        }
+        
+        .nav-link.active {
+            background: var(--color-bg-secondary);
+            color: var(--color-primary);
+            border-left-color: var(--color-primary);
+        }
+        
+        .nav-number {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 20px;
+            height: 20px;
+            margin-right: var(--spacing-md);
+            background: transparent;
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-sm);
+            font-size: var(--font-xs);
+            font-weight: 600;
+            color: var(--color-text-light);
+        }
+        
+        .nav-link.active .nav-number {
+            background: var(--color-primary);
+            color: white;
+            border-color: var(--color-primary);
+        }
+        
+        .nav-link:hover .nav-number {
+            border-color: var(--color-text-secondary);
+            color: var(--color-text-secondary);
+        }
+        
+        .main-content {
+            flex: 1;
+            margin-left: 280px;
+            padding: var(--spacing-3xl) var(--spacing-2xl);
+            max-width: 820px;
+        }
+        
+        /* ==================== SECTIONS ==================== */
+        .section {
+            margin-bottom: 4rem;
+            scroll-margin-top: var(--spacing-xl);
+        }
+        
+        .section-header {
+            margin-bottom: var(--spacing-2xl);
+            padding-bottom: var(--spacing-lg);
+            border-bottom: 1px solid var(--color-border-light);
+        }
+        
+        .section-label {
+            display: inline-block;
+            padding: 0;
+            background: transparent;
+            color: var(--color-text-secondary);
+            font-size: var(--font-xs);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            margin-bottom: var(--spacing-sm);
+        }
+        
+        .section-title {
+            font-size: var(--font-2xl);
+            font-weight: 700;
+            margin-bottom: var(--spacing-sm);
+            line-height: 1.3;
+            letter-spacing: -0.01em;
+            color: var(--color-text);
+        }
+        
+        .section-subtitle {
+            font-size: var(--font-base);
+            color: var(--color-text-secondary);
+            line-height: 1.6;
+        }
+        
+        /* ==================== HERO SECTION ==================== */
+        .hero {
+            padding: var(--spacing-3xl) 0;
+            max-width: 720px;
+        }
+        
+        .hero-title {
+            font-size: var(--font-4xl);
+            font-weight: 700;
+            margin-bottom: var(--spacing-lg);
+            color: var(--color-text);
+            line-height: 1.2;
+            letter-spacing: -0.02em;
+        }
+        
+        .hero-subtitle {
+            font-size: var(--font-lg);
+            color: var(--color-text-secondary);
+            margin-bottom: var(--spacing-2xl);
+            line-height: 1.6;
+        }
+        
+        .hero-meta {
+            display: flex;
+            gap: var(--spacing-md);
+            margin-bottom: var(--spacing-2xl);
+            flex-wrap: wrap;
+        }
+        
+        .meta-item {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-xs);
+            font-size: var(--font-xs);
+            color: var(--color-text-secondary);
+            padding: var(--spacing-xs) var(--spacing-md);
+            background: var(--color-bg-secondary);
+            border-radius: var(--radius-md);
+            font-weight: 500;
+        }
+        
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            padding: var(--spacing-xs) var(--spacing-md);
+            background: var(--color-bg-tertiary);
+            border-radius: var(--radius-md);
+            font-size: var(--font-xs);
+            font-weight: 600;
+            letter-spacing: 0.025em;
+        }
+        
+        .badge-success {
+            background: var(--color-bg-secondary);
+            color: var(--color-success);
+            border: 1px solid rgba(5, 150, 105, 0.2);
+        }
+        
+        .badge-warning {
+            background: var(--color-bg-secondary);
+            color: var(--color-warning);
+            border: 1px solid rgba(217, 119, 6, 0.2);
+        }
+        
+        .learning-goals {
+            background: var(--color-bg-secondary);
+            padding: var(--spacing-2xl);
+            border-radius: var(--radius-lg);
+            margin-bottom: var(--spacing-2xl);
+            border: 1px solid var(--color-border-light);
+        }
+        
+        .learning-goals h3 {
+            font-size: var(--font-base);
+            margin-bottom: var(--spacing-lg);
+            font-weight: 600;
+            color: var(--color-text);
+        }
+        
+        .learning-goals ul {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: var(--spacing-md);
+        }
+        
+        .learning-goals li {
+            padding-left: var(--spacing-xl);
+            position: relative;
+            color: var(--color-text-secondary);
+            line-height: 1.6;
+        }
+        
+        .learning-goals li::before {
+            content: "";
+            position: absolute;
+            left: 0;
+            top: 0.5em;
+            width: 4px;
+            height: 4px;
+            background: var(--color-primary);
+            border-radius: 50%;
+        }
+        
+        /* ==================== BUTTONS ==================== */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: var(--spacing-sm);
+            padding: var(--spacing-sm) var(--spacing-lg);
+            font-size: var(--font-sm);
+            font-weight: 500;
+            border: 1px solid transparent;
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            transition: all var(--transition-fast);
+            text-decoration: none;
+            white-space: nowrap;
+        }
+        
+        .btn:focus {
+            outline: 2px solid var(--color-primary);
+            outline-offset: 2px;
+        }
+        
+        .btn-primary {
+            background: var(--color-primary);
+            color: white;
+            border-color: var(--color-primary);
+        }
+        
+        .btn-primary:hover {
+            background: var(--color-primary-dark);
+            border-color: var(--color-primary-dark);
+        }
+        
+        .btn-primary:disabled {
+            background: var(--color-bg-tertiary);
+            border-color: var(--color-border);
+            color: var(--color-text-light);
+            cursor: not-allowed;
+        }
+        
+        .btn-secondary {
+            background: var(--color-bg-secondary);
+            color: var(--color-text);
+            border-color: var(--color-border);
+        }
+        
+        .btn-secondary:hover {
+            background: var(--color-bg-tertiary);
+            border-color: var(--color-text-secondary);
+        }
+        
+        .btn-ghost {
+            background: transparent;
+            color: var(--color-text-secondary);
+            border-color: transparent;
+        }
+        
+        .btn-ghost:hover {
+            background: var(--color-bg-secondary);
+            color: var(--color-text);
+        }
+        
+        .btn-ghost:disabled {
+            color: var(--color-text-light);
+            cursor: not-allowed;
+        }
+        
+        .section-nav {
+            display: flex;
+            gap: var(--spacing-sm);
+            margin-top: var(--spacing-3xl);
+            padding-top: var(--spacing-lg);
+            border-top: 1px solid var(--color-border-light);
+        }
+        
+        /* ==================== CARDS ==================== */
+        .card {
+            background: var(--color-bg);
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-lg);
+            padding: var(--spacing-xl);
+            margin-bottom: var(--spacing-lg);
+            transition: all var(--transition-fast);
+        }
+        
+        .card:hover {
+            border-color: var(--color-text-light);
+        }
+        
+        .card-title {
+            font-size: var(--font-base);
+            font-weight: 600;
+            margin-bottom: var(--spacing-md);
+            color: var(--color-text);
+        }
+        
+        .card-content {
+            color: var(--color-text-secondary);
+            line-height: 1.7;
+            font-size: var(--font-sm);
+        }
+        
+        .card-content p {
+            margin-bottom: var(--spacing-md);
+        }
+        
+        .card-content p:last-child {
+            margin-bottom: 0;
+        }
+        
+        .card-content ul {
+            list-style: none;
+            padding-left: 0;
+        }
+        
+        .card-content li {
+            padding: var(--spacing-xs) 0;
+            padding-left: var(--spacing-lg);
+            position: relative;
+            line-height: 1.7;
+        }
+        
+        .card-content li::before {
+            content: "";
+            position: absolute;
+            left: 0;
+            top: 0.75em;
+            width: 4px;
+            height: 4px;
+            background: var(--color-text-secondary);
+            border-radius: 50%;
+        }
+        
+        .card-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: var(--spacing-md);
+            margin-bottom: var(--spacing-xl);
+        }
+        
+        /* ==================== TIMELINE ==================== */
+        .timeline {
+            position: relative;
+            padding-left: var(--spacing-2xl);
+        }
+        
+        .timeline::before {
+            content: "";
+            position: absolute;
+            left: 6px;
+            top: 0;
+            bottom: 0;
+            width: 1px;
+            background: var(--color-border);
+        }
+        
+        .timeline-item {
+            position: relative;
+            padding-bottom: var(--spacing-xl);
+            cursor: pointer;
+        }
+        
+        .timeline-marker {
+            position: absolute;
+            left: -28px;
+            top: 6px;
+            width: 14px;
+            height: 14px;
+            background: var(--color-bg);
+            border: 2px solid var(--color-border);
+            border-radius: 50%;
+            transition: all var(--transition-fast);
+        }
+        
+        .timeline-item:hover .timeline-marker {
+            border-color: var(--color-primary);
+            background: var(--color-primary);
+        }
+        
+        .timeline-date {
+            font-size: var(--font-xs);
+            font-weight: 600;
+            color: var(--color-text-secondary);
+            margin-bottom: var(--spacing-xs);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        
+        .timeline-title {
+            font-size: var(--font-sm);
+            font-weight: 600;
+            margin-bottom: var(--spacing-xs);
+            color: var(--color-text);
+        }
+        
+        .timeline-details {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height var(--transition-base);
+            color: var(--color-text-secondary);
+            font-size: var(--font-sm);
+            line-height: 1.6;
+        }
+        
+        .timeline-item.expanded .timeline-details {
+            max-height: 300px;
+            margin-top: var(--spacing-md);
+        }
+        
+        /* ==================== KEY PEOPLE ==================== */
+        .people-strip {
+            display: flex;
+            gap: var(--spacing-md);
+            overflow-x: auto;
+            padding: var(--spacing-sm) 0;
+            margin-bottom: var(--spacing-xl);
+        }
+        
+        .person-card {
+            min-width: 220px;
+            background: var(--color-bg);
+            padding: var(--spacing-xl);
+            border-radius: var(--radius-lg);
+            text-align: center;
+            border: 1px solid var(--color-border);
+        }
+        
+        .person-avatar {
+            width: 56px;
+            height: 56px;
+            background: var(--color-bg-secondary);
+            border: 2px solid var(--color-border);
+            border-radius: 50%;
+            margin: 0 auto var(--spacing-lg);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: var(--font-lg);
+            font-weight: 600;
+            color: var(--color-text);
+        }
+        
+        .person-name {
+            font-weight: 600;
+            margin-bottom: var(--spacing-xs);
+            font-size: var(--font-sm);
+            color: var(--color-text);
+        }
+        
+        .person-role {
+            font-size: var(--font-xs);
+            color: var(--color-text-secondary);
+            margin-bottom: var(--spacing-md);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        
+        .person-bio {
+            font-size: var(--font-xs);
+            color: var(--color-text-secondary);
+            line-height: 1.5;
+        }
+        
+        /* ==================== VOCABULARY CHIPS ==================== */
+        .vocab-chips {
+            display: flex;
+            flex-wrap: wrap;
+            gap: var(--spacing-sm);
+            margin-bottom: var(--spacing-xl);
+        }
+        
+        .chip {
+            padding: var(--spacing-sm) var(--spacing-md);
+            background: var(--color-bg-secondary);
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-md);
+            font-size: var(--font-xs);
+            font-weight: 500;
+            cursor: pointer;
+            transition: all var(--transition-fast);
+            color: var(--color-text-secondary);
+        }
+        
+        .chip:hover {
+            background: var(--color-bg);
+            color: var(--color-primary);
+            border-color: var(--color-primary);
+        }
+        
+        .chip:focus {
+            outline: 2px solid var(--color-primary);
+            outline-offset: 2px;
+        }
+        
+        /* ==================== CALLOUT BOX ==================== */
+        .callout {
+            padding: var(--spacing-xl);
+            border-left: 2px solid var(--color-warning);
+            background: var(--color-bg-secondary);
+            border-radius: var(--radius-md);
+            margin-bottom: var(--spacing-xl);
+            border: 1px solid var(--color-border);
+            border-left: 3px solid var(--color-warning);
+        }
+        
+        .callout-title {
+            font-weight: 600;
+            margin-bottom: var(--spacing-md);
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+            font-size: var(--font-sm);
+            color: var(--color-text);
+        }
+        
+        .callout-content {
+            color: var(--color-text-secondary);
+            line-height: 1.6;
+            font-size: var(--font-sm);
+        }
+        
+        /* ==================== INTERACTIVE DIAGRAM ==================== */
+        .diagram-container {
+            background: var(--color-bg-secondary);
+            border-radius: var(--radius-lg);
+            padding: var(--spacing-xl);
+            margin-bottom: var(--spacing-xl);
+            border: 1px solid var(--color-border);
+        }
+        
+        .diagram-area {
+            position: relative;
+            width: 100%;
+            height: 300px;
+            background: var(--color-bg);
+            border: 1px dashed var(--color-border);
+            border-radius: var(--radius-md);
+            margin-bottom: var(--spacing-lg);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .hotspot {
+            position: absolute;
+            width: 48px;
+            height: 48px;
+            background: var(--color-primary);
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            transition: all var(--transition-fast);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+            font-size: var(--font-sm);
+            border: 1px solid var(--color-primary-dark);
+        }
+        
+        .hotspot:hover {
+            transform: scale(1.05);
+            background: var(--color-primary-dark);
+        }
+        
+        .hotspot:focus {
+            outline: 2px solid var(--color-primary);
+            outline-offset: 2px;
+        }
+        
+        #hotspotA { top: 20%; left: 20%; }
+        #hotspotB { top: 50%; right: 20%; }
+        #hotspotC { bottom: 20%; left: 50%; transform: translateX(-50%); }
+        
+        .explanation-panel {
+            padding: var(--spacing-xl);
+            background: var(--color-bg);
+            border-radius: var(--radius-md);
+            min-height: 120px;
+            border: 1px solid var(--color-border);
+        }
+        
+        .explanation-title {
+            font-weight: 600;
+            margin-bottom: var(--spacing-md);
+            font-size: var(--font-sm);
+            color: var(--color-text);
+        }
+        
+        .explanation-text {
+            color: var(--color-text-secondary);
+            line-height: 1.6;
+            font-size: var(--font-sm);
+        }
+        
+        /* ==================== WORKED EXAMPLE ==================== */
+        .example-container {
+            background: var(--color-bg-secondary);
+            border-radius: var(--radius-lg);
+            padding: var(--spacing-xl);
+            margin-bottom: var(--spacing-xl);
+            border: 1px solid var(--color-border);
+        }
+        
+        .example-controls {
+            display: flex;
+            gap: var(--spacing-md);
+            margin-bottom: var(--spacing-lg);
+        }
+        
+        .example-panel {
+            background: var(--color-bg);
+            padding: var(--spacing-xl);
+            border-radius: var(--radius-md);
+            margin-bottom: var(--spacing-md);
+            min-height: 180px;
+            border: 1px solid var(--color-border);
+        }
+        
+        .step-indicator {
+            font-size: var(--font-xs);
+            color: var(--color-text-secondary);
+            margin-bottom: var(--spacing-md);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        
+        .step-content {
+            font-size: var(--font-sm);
+            line-height: 1.7;
+            margin-bottom: var(--spacing-lg);
+            color: var(--color-text-secondary);
+        }
+        
+        .step-content h4 {
+            color: var(--color-text);
+            font-size: var(--font-base);
+            margin-bottom: var(--spacing-sm);
+        }
+        
+        .delta-summary {
+            padding: var(--spacing-md);
+            background: var(--color-bg-secondary);
+            border-left: 2px solid var(--color-primary);
+            border-radius: var(--radius-sm);
+            font-size: var(--font-xs);
+            color: var(--color-text-secondary);
+            border: 1px solid var(--color-border);
+            border-left: 2px solid var(--color-primary);
+        }
+        
+        /* ==================== SIMULATION ==================== */
+        .simulation-container {
+            background: var(--color-bg-secondary);
+            border-radius: var(--radius-lg);
+            padding: var(--spacing-xl);
+            margin-bottom: var(--spacing-xl);
+            border: 1px solid var(--color-border);
+        }
+        
+        .sim-controls {
+            margin-bottom: var(--spacing-xl);
+        }
+        
+        .control-group {
+            margin-bottom: var(--spacing-lg);
+        }
+        
+        .control-label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: var(--spacing-md);
+            font-size: var(--font-sm);
+            color: var(--color-text);
+        }
+        
+        .slider {
+            width: 100%;
+            height: 6px;
+            border-radius: var(--radius-sm);
+            background: var(--color-bg-tertiary);
+            outline: none;
+            -webkit-appearance: none;
+            border: 1px solid var(--color-border);
+        }
+        
+        .slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: var(--color-primary);
+            cursor: pointer;
+            border: 2px solid white;
+            box-shadow: var(--shadow-sm);
+        }
+        
+        .slider::-moz-range-thumb {
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: var(--color-primary);
+            cursor: pointer;
+            border: 2px solid white;
+            box-shadow: var(--shadow-sm);
+        }
+        
+        .slider:focus {
+            outline: 2px solid var(--color-primary);
+            outline-offset: 2px;
+        }
+        
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 44px;
+            height: 24px;
+        }
+        
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        
+        .toggle-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: var(--color-bg-tertiary);
+            transition: var(--transition-fast);
+            border-radius: 24px;
+            border: 1px solid var(--color-border);
+        }
+        
+        .toggle-slider::before {
+            position: absolute;
+            content: "";
+            height: 16px;
+            width: 16px;
+            left: 3px;
+            bottom: 3px;
+            background: white;
+            transition: var(--transition-fast);
+            border-radius: 50%;
+            box-shadow: var(--shadow-sm);
+        }
+        
+        input:checked + .toggle-slider {
+            background: var(--color-primary);
+            border-color: var(--color-primary);
+        }
+        
+        input:checked + .toggle-slider::before {
+            transform: translateX(20px);
+        }
+        
+        input:focus + .toggle-slider {
+            outline: 2px solid var(--color-primary);
+            outline-offset: 2px;
+        }
+        
+        .sim-visualization {
+            background: var(--color-bg);
+            padding: var(--spacing-xl);
+            border-radius: var(--radius-md);
+            margin-bottom: var(--spacing-lg);
+            min-height: 240px;
+            border: 1px solid var(--color-border);
+        }
+        
+        .sim-bars {
+            display: flex;
+            align-items: flex-end;
+            gap: var(--spacing-md);
+            height: 150px;
+            margin-bottom: var(--spacing-lg);
+        }
+        
+        .sim-bar {
+            flex: 1;
+            background: var(--color-primary);
+            border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+            min-height: 20px;
+            transition: height var(--transition-base);
+        }
+        
+        .sim-explanation {
+            padding: var(--spacing-md);
+            background: var(--color-bg-secondary);
+            border-radius: var(--radius-sm);
+            font-size: var(--font-xs);
+            color: var(--color-text-secondary);
+            line-height: 1.6;
+            border: 1px solid var(--color-border-light);
+        }
+        
+        .sim-actions {
+            display: flex;
+            gap: var(--spacing-md);
+        }
+        
+        /* ==================== CHECKPOINT / QUESTIONS ==================== */
+        .question {
+            background: var(--color-bg-secondary);
+            padding: var(--spacing-2xl);
+            border-radius: var(--radius-lg);
+            margin-bottom: var(--spacing-xl);
+            border: 1px solid var(--color-border);
+        }
+        
+        .question-header {
+            margin-bottom: var(--spacing-xl);
+        }
+        
+        .question-number {
+            font-size: var(--font-xs);
+            font-weight: 600;
+            color: var(--color-text-secondary);
+            margin-bottom: var(--spacing-sm);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        
+        .question-text {
+            font-size: var(--font-base);
+            font-weight: 600;
+            margin-bottom: var(--spacing-lg);
+            color: var(--color-text);
+            line-height: 1.5;
+        }
+        
+        .options {
+            display: flex;
+            flex-direction: column;
+            gap: var(--spacing-sm);
+            margin-bottom: var(--spacing-lg);
+        }
+        
+        .option {
+            padding: var(--spacing-md) var(--spacing-lg);
+            background: var(--color-bg);
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            transition: all var(--transition-fast);
+            font-size: var(--font-sm);
+        }
+        
+        .option:hover {
+            border-color: var(--color-text-secondary);
+            background: var(--color-bg);
+        }
+        
+        .option input {
+            margin-right: var(--spacing-md);
+        }
+        
+        .text-input {
+            width: 100%;
+            padding: var(--spacing-md);
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-md);
+            font-size: var(--font-sm);
+            transition: border-color var(--transition-fast);
+            margin-bottom: var(--spacing-lg);
+            font-family: inherit;
+        }
+        
+        .text-input:focus {
+            outline: none;
+            border-color: var(--color-primary);
+        }
+        
+        .feedback {
+            padding: var(--spacing-md);
+            border-radius: var(--radius-sm);
+            margin-top: var(--spacing-md);
+            display: none;
+            font-size: var(--font-xs);
+            line-height: 1.6;
+            border: 1px solid;
+        }
+        
+        .feedback.visible {
+            display: block;
+        }
+        
+        .feedback-success {
+            background: var(--color-bg-secondary);
+            color: var(--color-success);
+            border-color: var(--color-success);
+            border-left-width: 3px;
+        }
+        
+        .feedback-error {
+            background: var(--color-bg-secondary);
+            color: var(--color-error);
+            border-color: var(--color-error);
+            border-left-width: 3px;
+        }
+        
+        .draggable-items {
+            display: flex;
+            gap: var(--spacing-sm);
+            margin-bottom: var(--spacing-lg);
+            flex-wrap: wrap;
+        }
+        
+        .draggable-item {
+            padding: var(--spacing-sm) var(--spacing-md);
+            background: var(--color-bg);
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-md);
+            cursor: move;
+            transition: all var(--transition-fast);
+            font-size: var(--font-xs);
+            font-weight: 500;
+        }
+        
+        .draggable-item:hover {
+            border-color: var(--color-text-secondary);
+        }
+        
+        .drop-zones {
+            display: flex;
+            gap: var(--spacing-md);
+            margin-bottom: var(--spacing-lg);
+        }
+        
+        .drop-zone {
+            flex: 1;
+            min-height: 120px;
+            padding: var(--spacing-md);
+            border: 1px dashed var(--color-border);
+            border-radius: var(--radius-md);
+            text-align: center;
+            background: var(--color-bg);
+        }
+        
+        .drop-zone.over {
+            border-color: var(--color-primary);
+            background: var(--color-bg-secondary);
+        }
+        
+        .drop-zone-label {
+            font-size: var(--font-xs);
+            color: var(--color-text-secondary);
+            margin-bottom: var(--spacing-md);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        
+        /* ==================== TOAST ==================== */
+        .toast {
+            position: fixed;
+            bottom: var(--spacing-xl);
+            right: var(--spacing-xl);
+            padding: var(--spacing-md) var(--spacing-lg);
+            background: var(--color-text);
+            color: white;
+            border-radius: var(--radius-md);
+            box-shadow: var(--shadow-md);
+            transform: translateY(150%);
+            transition: transform var(--transition-base);
+            z-index: 1000;
+            max-width: 320px;
+            font-size: var(--font-sm);
+        }
+        
+        .toast.visible {
+            transform: translateY(0);
+        }
+        
+        /* ==================== FUN FACTS PANEL ==================== */
+        .fun-facts-toggle {
+            position: fixed;
+            bottom: var(--spacing-xl);
+            left: 320px;
+            z-index: 200;
+        }
+        
+        .fun-facts-panel {
+            position: fixed;
+            bottom: 0;
+            left: 280px;
+            right: 0;
+            background: var(--color-bg);
+            border-top: 1px solid var(--color-border);
+            box-shadow: 0 -2px 4px 0 rgba(0, 0, 0, 0.04);
+            padding: var(--spacing-2xl);
+            transform: translateY(100%);
+            transition: transform var(--transition-base);
+            z-index: 150;
+            max-height: 280px;
+            overflow-y: auto;
+        }
+        
+        .fun-facts-panel.open {
+            transform: translateY(0);
+        }
+        
+        .fun-fact-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: var(--spacing-lg);
+        }
+        
+        .fun-fact-header h3 {
+            font-size: var(--font-sm);
+            font-weight: 600;
+            color: var(--color-text);
+        }
+        
+        .fun-fact-card {
+            padding: var(--spacing-xl);
+            background: var(--color-bg-secondary);
+            border-radius: var(--radius-lg);
+            margin-bottom: var(--spacing-md);
+            border: 1px solid var(--color-border);
+        }
+        
+        .fun-fact-title {
+            font-weight: 600;
+            margin-bottom: var(--spacing-sm);
+            font-size: var(--font-sm);
+            color: var(--color-text);
+        }
+        
+        .fun-fact-content {
+            color: var(--color-text-secondary);
+            line-height: 1.6;
+            font-size: var(--font-xs);
+        }
+        
+        /* ==================== DEBUG DRAWER ==================== */
+        .debug-drawer {
+            position: fixed;
+            bottom: var(--spacing-xl);
+            right: var(--spacing-xl);
+            background: var(--color-text);
+            color: white;
+            padding: var(--spacing-md);
+            border-radius: var(--radius-md);
+            font-size: var(--font-xs);
+            font-family: 'SF Mono', 'Monaco', 'Inconsolata', monospace;
+            z-index: 300;
+            min-width: 140px;
+            box-shadow: var(--shadow-md);
+        }
+        
+        .debug-drawer.collapsed {
+            width: 36px;
+            height: 36px;
+            min-width: unset;
+            padding: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+        }
+        
+        .debug-content {
+            display: none;
+        }
+        
+        .debug-drawer:not(.collapsed) .debug-content {
+            display: block;
+        }
+        
+        .debug-toggle {
+            cursor: pointer;
+            text-align: right;
+            margin-bottom: var(--spacing-sm);
+            font-size: var(--font-xs);
+        }
+        
+        .debug-item {
+            margin: var(--spacing-xs) 0;
+            font-size: var(--font-xs);
+        }
+        
+        /* ==================== MOBILE RESPONSIVE ==================== */
+        @media (max-width: 768px) {
+            .sidebar {
+                transform: translateX(-100%);
+            }
+            
+            .sidebar.open {
+                transform: translateX(0);
+            }
+            
+            .main-content {
+                margin-left: 0;
+                padding: var(--spacing-2xl) var(--spacing-lg);
+            }
+            
+            .hero {
+                padding: var(--spacing-xl) 0;
+            }
+            
+            .hero-title {
+                font-size: var(--font-3xl);
+            }
+            
+            .section-title {
+                font-size: var(--font-xl);
+            }
+            
+            .card-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .people-strip {
+                flex-direction: column;
+            }
+            
+            .person-card {
+                min-width: unset;
+            }
+            
+            .fun-facts-toggle {
+                left: var(--spacing-md);
+            }
+            
+            .fun-facts-panel {
+                left: 0;
+            }
+            
+            .section-nav {
+                flex-direction: column;
+            }
+            
+            .section-nav .btn {
+                width: 100%;
+                justify-content: center;
+            }
+        }
+        
+        /* ==================== SMOOTH SCROLLING ==================== */
+        html {
+            scroll-behavior: smooth;
+        }
+        
+        /* ==================== UTILITIES ==================== */
+        .sr-only {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border-width: 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <!-- SIDEBAR NAVIGATION -->
+        <nav class="sidebar" role="navigation" aria-label="Course navigation">
+            <div class="sidebar-header">
+                <h2 class="sidebar-title">Course Map</h2>
+                <div class="sidebar-progress">
+                    <span id="progressText">0% Complete</span>
+                </div>
+                <div class="progress-bar-container">
+                    <div class="progress-bar-fill" id="progressBar" style="width: 0%"></div>
+                </div>
+            </div>
+            <ul class="nav-list">
+                <li class="nav-item">
+                    <a href="#hero" class="nav-link active" data-section="0">
+                        <span class="nav-number">0</span>
+                        <span>Start Here</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="#section-1" class="nav-link" data-section="1">
+                        <span class="nav-number">1</span>
+                        <span>Background & Story</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="#section-2" class="nav-link" data-section="2">
+                        <span class="nav-number">2</span>
+                        <span>Core Concept</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="#section-3" class="nav-link" data-section="3">
+                        <span class="nav-number">3</span>
+                        <span>Visual Model</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="#section-4" class="nav-link" data-section="4">
+                        <span class="nav-number">4</span>
+                        <span>Worked Example</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="#section-5" class="nav-link" data-section="5">
+                        <span class="nav-number">5</span>
+                        <span>Try It / Simulation</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="#section-6" class="nav-link" data-section="6">
+                        <span class="nav-number">6</span>
+                        <span>Checkpoint</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="#section-7" class="nav-link" data-section="7">
+                        <span class="nav-number">7</span>
+                        <span>Summary & Transfer</span>
+                    </a>
+                </li>
+            </ul>
+        </nav>
+
+        <!-- MAIN CONTENT -->
+        <main class="main-content">
+            <!-- HERO SECTION -->
+            <header id="hero" class="section hero">
+                <h1 class="hero-title">[COURSE_TITLE]</h1>
+                <p class="hero-subtitle">[COURSE_SUBTITLE]</p>
+                
+                <div class="hero-meta">
+                    <div class="meta-item">
+                        <span>[ESTIMATED_TIME] min</span>
+                    </div>
+                    <div class="meta-item">
+                        <span class="badge badge-success">[DIFFICULTY_LEVEL]</span>
+                    </div>
+                </div>
+                
+                <div class="learning-goals">
+                    <h3>What You'll Learn</h3>
+                    <ul>
+                        <li>[LEARNING_GOAL_1]</li>
+                        <li>[LEARNING_GOAL_2]</li>
+                        <li>[LEARNING_GOAL_3]</li>
+                        <li>[LEARNING_GOAL_4]</li>
+                        <li>[LEARNING_GOAL_5]</li>
+                    </ul>
+                </div>
+                
+                <button id="startBtn" class="btn btn-primary">Begin Learning →</button>
+            </header>
+
+            <!-- SECTION 1: BACKGROUND & STORY -->
+            <section id="section-1" class="section">
+                <div class="section-header">
+                    <span class="section-label">Section 1</span>
+                    <h2 class="section-title">Background & Story</h2>
+                    <p class="section-subtitle">Why this exists</p>
+                </div>
+                
+                <div class="card">
+                    <h3 class="card-title">Origin Story</h3>
+                    <div class="card-content">
+                        <p>[ORIGIN_STORY_PARAGRAPH_1]</p>
+                        <p>[ORIGIN_STORY_PARAGRAPH_2]</p>
+                    </div>
+                </div>
+                
+                <h3>Historical Timeline</h3>
+                <div id="timeline" class="timeline">
+                    <div id="milestone-1" class="timeline-item" tabindex="0" role="button" aria-expanded="false">
+                        <div class="timeline-marker"></div>
+                        <div class="timeline-date">[DATE_1]</div>
+                        <div class="timeline-title">[MILESTONE_1_TITLE]</div>
+                        <div class="timeline-details">[MILESTONE_1_DETAILS]</div>
+                    </div>
+                    <div id="milestone-2" class="timeline-item" tabindex="0" role="button" aria-expanded="false">
+                        <div class="timeline-marker"></div>
+                        <div class="timeline-date">[DATE_2]</div>
+                        <div class="timeline-title">[MILESTONE_2_TITLE]</div>
+                        <div class="timeline-details">[MILESTONE_2_DETAILS]</div>
+                    </div>
+                    <div id="milestone-3" class="timeline-item" tabindex="0" role="button" aria-expanded="false">
+                        <div class="timeline-marker"></div>
+                        <div class="timeline-date">[DATE_3]</div>
+                        <div class="timeline-title">[MILESTONE_3_TITLE]</div>
+                        <div class="timeline-details">[MILESTONE_3_DETAILS]</div>
+                    </div>
+                    <div id="milestone-4" class="timeline-item" tabindex="0" role="button" aria-expanded="false">
+                        <div class="timeline-marker"></div>
+                        <div class="timeline-date">[DATE_4]</div>
+                        <div class="timeline-title">[MILESTONE_4_TITLE]</div>
+                        <div class="timeline-details">[MILESTONE_4_DETAILS]</div>
+                    </div>
+                    <div id="milestone-5" class="timeline-item" tabindex="0" role="button" aria-expanded="false">
+                        <div class="timeline-marker"></div>
+                        <div class="timeline-date">[DATE_5]</div>
+                        <div class="timeline-title">[MILESTONE_5_TITLE]</div>
+                        <div class="timeline-details">[MILESTONE_5_DETAILS]</div>
+                    </div>
+                </div>
+                
+                <h3>Key People</h3>
+                <div class="people-strip">
+                    <div class="person-card">
+                        <div class="person-avatar">[I1]</div>
+                        <div class="person-name">[PERSON_1_NAME]</div>
+                        <div class="person-role">[PERSON_1_ROLE]</div>
+                        <p class="person-bio">[PERSON_1_BIO]</p>
+                    </div>
+                    <div class="person-card">
+                        <div class="person-avatar">[I2]</div>
+                        <div class="person-name">[PERSON_2_NAME]</div>
+                        <div class="person-role">[PERSON_2_ROLE]</div>
+                        <p class="person-bio">[PERSON_2_BIO]</p>
+                    </div>
+                    <div class="person-card">
+                        <div class="person-avatar">[I3]</div>
+                        <div class="person-name">[PERSON_3_NAME]</div>
+                        <div class="person-role">[PERSON_3_ROLE]</div>
+                        <p class="person-bio">[PERSON_3_BIO]</p>
+                    </div>
+                </div>
+                
+                <div class="section-nav">
+                    <button id="prevBtn-1" class="btn btn-ghost" disabled>← Previous</button>
+                    <button id="nextBtn-1" class="btn btn-primary">Next →</button>
+                </div>
+            </section>
+
+            <!-- SECTION 2: CORE CONCEPT -->
+            <section id="section-2" class="section">
+                <div class="section-header">
+                    <span class="section-label">Section 2</span>
+                    <h2 class="section-title">Core Concept</h2>
+                    <p class="section-subtitle">What it is</p>
+                </div>
+                
+                <div class="card">
+                    <h3 class="card-title">Definition</h3>
+                    <div class="card-content">
+                        <p>[CORE_DEFINITION]</p>
+                    </div>
+                </div>
+                
+                <h3>Key Vocabulary</h3>
+                <div class="vocab-chips">
+                    <button class="chip" tabindex="0">[VOCAB_1]</button>
+                    <button class="chip" tabindex="0">[VOCAB_2]</button>
+                    <button class="chip" tabindex="0">[VOCAB_3]</button>
+                    <button class="chip" tabindex="0">[VOCAB_4]</button>
+                    <button class="chip" tabindex="0">[VOCAB_5]</button>
+                    <button class="chip" tabindex="0">[VOCAB_6]</button>
+                    <button class="chip" tabindex="0">[VOCAB_7]</button>
+                    <button class="chip" tabindex="0">[VOCAB_8]</button>
+                    <button class="chip" tabindex="0">[VOCAB_9]</button>
+                    <button class="chip" tabindex="0">[VOCAB_10]</button>
+                </div>
+                
+                <div class="callout">
+                    <div class="callout-title">Common Misconception</div>
+                    <div class="callout-content">
+                        <p>[MISCONCEPTION_TEXT]</p>
+                    </div>
+                </div>
+                
+                <div class="section-nav">
+                    <button id="prevBtn-2" class="btn btn-ghost">← Previous</button>
+                    <button id="nextBtn-2" class="btn btn-primary">Next →</button>
+                </div>
+            </section>
+
+            <!-- SECTION 3: VISUAL MODEL -->
+            <section id="section-3" class="section">
+                <div class="section-header">
+                    <span class="section-label">Section 3</span>
+                    <h2 class="section-title">Visual Model</h2>
+                    <p class="section-subtitle">How it works</p>
+                </div>
+                
+                <div class="diagram-container">
+                    <div class="diagram-area">
+                        <button id="hotspotA" class="hotspot" tabindex="0" aria-label="Hotspot A">A</button>
+                        <button id="hotspotB" class="hotspot" tabindex="0" aria-label="Hotspot B">B</button>
+                        <button id="hotspotC" class="hotspot" tabindex="0" aria-label="Hotspot C">C</button>
+                    </div>
+                    
+                    <div id="modelExplanation" class="explanation-panel" aria-live="polite">
+                        <h4 class="explanation-title">Click a hotspot to explore</h4>
+                        <p class="explanation-text">Select any of the interactive points above to learn more about this concept.</p>
+                    </div>
+                    
+                    <button id="modelResetBtn" class="btn btn-secondary">Reset Model</button>
+                </div>
+                
+                <div class="section-nav">
+                    <button id="prevBtn-3" class="btn btn-ghost">← Previous</button>
+                    <button id="nextBtn-3" class="btn btn-primary">Next →</button>
+                </div>
+            </section>
+
+            <!-- SECTION 4: WORKED EXAMPLE -->
+            <section id="section-4" class="section">
+                <div class="section-header">
+                    <span class="section-label">Section 4</span>
+                    <h2 class="section-title">Worked Example</h2>
+                    <p class="section-subtitle">Show me</p>
+                </div>
+                
+                <div class="example-container">
+                    <div class="example-controls">
+                        <button id="examplePrevStepBtn" class="btn btn-ghost" disabled>← Previous Step</button>
+                        <button id="exampleNextStepBtn" class="btn btn-primary">Next Step →</button>
+                    </div>
+                    
+                    <div id="examplePanel" class="example-panel">
+                        <div class="step-indicator">Step <span id="currentStep">1</span> of <span id="totalSteps">4</span></div>
+                        <div class="step-content" id="stepContent">
+                            <h4>[STEP_1_TITLE]</h4>
+                            <p>[STEP_1_CONTENT]</p>
+                        </div>
+                    </div>
+                    
+                    <div id="exampleDelta" class="delta-summary" aria-live="polite">
+                        <strong>What changed:</strong> <span id="deltaText">[STEP_1_DELTA]</span>
+                    </div>
+                </div>
+                
+                <div class="section-nav">
+                    <button id="prevBtn-4" class="btn btn-ghost">← Previous</button>
+                    <button id="nextBtn-4" class="btn btn-primary">Next →</button>
+                </div>
+            </section>
+
+            <!-- SECTION 5: TRY IT / SIMULATION -->
+            <section id="section-5" class="section">
+                <div class="section-header">
+                    <span class="section-label">Section 5</span>
+                    <h2 class="section-title">Try It Yourself</h2>
+                    <p class="section-subtitle">Let me play</p>
+                </div>
+                
+                <div class="simulation-container">
+                    <div class="sim-controls">
+                        <div class="control-group">
+                            <label for="simSlider" class="control-label">[SLIDER_LABEL]: <span id="sliderValue">50</span></label>
+                            <input type="range" id="simSlider" class="slider" min="0" max="100" value="50" aria-label="Simulation slider control">
+                        </div>
+                        
+                        <div class="control-group">
+                            <label for="simToggle" class="control-label">[TOGGLE_LABEL]</label>
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="simToggle" aria-label="Simulation toggle control">
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div id="simViz" class="sim-visualization">
+                        <div class="sim-bars">
+                            <div class="sim-bar" id="bar1" style="height: 50%"></div>
+                            <div class="sim-bar" id="bar2" style="height: 60%"></div>
+                            <div class="sim-bar" id="bar3" style="height: 40%"></div>
+                        </div>
+                        <div id="simExplanation" class="sim-explanation" aria-live="polite">
+                            [SIMULATION_EXPLANATION]
+                        </div>
+                    </div>
+                    
+                    <div class="sim-actions">
+                        <button id="simApplyBtn" class="btn btn-primary">Apply Changes</button>
+                        <button id="simResetBtn" class="btn btn-secondary">Reset</button>
+                    </div>
+                </div>
+                
+                <div class="section-nav">
+                    <button id="prevBtn-5" class="btn btn-ghost">← Previous</button>
+                    <button id="nextBtn-5" class="btn btn-primary">Next →</button>
+                </div>
+            </section>
+
+            <!-- SECTION 6: CHECKPOINT -->
+            <section id="section-6" class="section">
+                <div class="section-header">
+                    <span class="section-label">Section 6</span>
+                    <h2 class="section-title">Checkpoint</h2>
+                    <p class="section-subtitle">Do I get it?</p>
+                </div>
+                
+                <!-- Question 1: Multiple Choice -->
+                <div class="question">
+                    <div class="question-header">
+                        <div class="question-number">Question 1</div>
+                        <h3 class="question-text">[QUESTION_1_TEXT]</h3>
+                    </div>
+                    
+                    <div class="options">
+                        <label class="option">
+                            <input type="radio" name="q1" value="a" aria-label="Option A">
+                            <span>[OPTION_1A]</span>
+                        </label>
+                        <label class="option">
+                            <input type="radio" name="q1" value="b" aria-label="Option B">
+                            <span>[OPTION_1B]</span>
+                        </label>
+                        <label class="option">
+                            <input type="radio" name="q1" value="c" aria-label="Option C">
+                            <span>[OPTION_1C]</span>
+                        </label>
+                        <label class="option">
+                            <input type="radio" name="q1" value="d" aria-label="Option D">
+                            <span>[OPTION_1D]</span>
+                        </label>
+                    </div>
+                    
+                    <button id="q1CheckBtn" class="btn btn-primary">Check Answer</button>
+                    <div id="q1Feedback" class="feedback" aria-live="polite"></div>
+                </div>
+                
+                <!-- Question 2: Short Input -->
+                <div class="question">
+                    <div class="question-header">
+                        <div class="question-number">Question 2</div>
+                        <h3 class="question-text">[QUESTION_2_TEXT]</h3>
+                    </div>
+                    
+                    <input type="text" id="q2Input" class="text-input" placeholder="Type your answer here..." aria-label="Answer for question 2">
+                    
+                    <button id="q2CheckBtn" class="btn btn-primary">Check Answer</button>
+                    <div id="q2Feedback" class="feedback" aria-live="polite"></div>
+                </div>
+                
+                <!-- Question 3: Interactive Matching -->
+                <div class="question">
+                    <div class="question-header">
+                        <div class="question-number">Question 3</div>
+                        <h3 class="question-text">[QUESTION_3_TEXT]</h3>
+                    </div>
+                    
+                    <p style="margin-bottom: var(--spacing-md); color: var(--color-text-secondary);">Drag items to the correct category</p>
+                    
+                    <div class="draggable-items" id="draggableItems">
+                        <div class="draggable-item" draggable="true" data-id="item1">[ITEM_1]</div>
+                        <div class="draggable-item" draggable="true" data-id="item2">[ITEM_2]</div>
+                        <div class="draggable-item" draggable="true" data-id="item3">[ITEM_3]</div>
+                        <div class="draggable-item" draggable="true" data-id="item4">[ITEM_4]</div>
+                    </div>
+                    
+                    <div class="drop-zones">
+                        <div class="drop-zone" data-category="category1">
+                            <div class="drop-zone-label">[CATEGORY_1]</div>
+                        </div>
+                        <div class="drop-zone" data-category="category2">
+                            <div class="drop-zone-label">[CATEGORY_2]</div>
+                        </div>
+                    </div>
+                    
+                    <button id="q3CheckBtn" class="btn btn-primary">Check Answer</button>
+                    <div id="q3Feedback" class="feedback" aria-live="polite"></div>
+                </div>
+                
+                <div class="section-nav">
+                    <button id="prevBtn-6" class="btn btn-ghost">← Previous</button>
+                    <button id="nextBtn-6" class="btn btn-primary">Next →</button>
+                </div>
+            </section>
+
+            <!-- SECTION 7: SUMMARY & TRANSFER -->
+            <section id="section-7" class="section">
+                <div class="section-header">
+                    <span class="section-label">Section 7</span>
+                    <h2 class="section-title">Summary & Transfer</h2>
+                    <p class="section-subtitle">Why it matters</p>
+                </div>
+                
+                <h3>Key Takeaways</h3>
+                <div class="card-grid">
+                    <div class="card">
+                        <h4 class="card-title">Takeaway 1</h4>
+                        <p class="card-content">[TAKEAWAY_1]</p>
+                    </div>
+                    <div class="card">
+                        <h4 class="card-title">Takeaway 2</h4>
+                        <p class="card-content">[TAKEAWAY_2]</p>
+                    </div>
+                    <div class="card">
+                        <h4 class="card-title">Takeaway 3</h4>
+                        <p class="card-content">[TAKEAWAY_3]</p>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <h3 class="card-title">Real-World Applications</h3>
+                    <ul class="card-content">
+                        <li>[APPLICATION_1]</li>
+                        <li>[APPLICATION_2]</li>
+                        <li>[APPLICATION_3]</li>
+                        <li>[APPLICATION_4]</li>
+                        <li>[APPLICATION_5]</li>
+                        <li>[APPLICATION_6]</li>
+                    </ul>
+                </div>
+                
+                <div class="card">
+                    <h3 class="card-title">What's Next?</h3>
+                    <p class="card-content">[NEXT_LESSON_DESCRIPTION]</p>
+                    <a href="#" class="btn btn-primary" style="margin-top: var(--spacing-md);">Continue to Next Lesson →</a>
+                </div>
+                
+                <div class="section-nav">
+                    <button id="prevBtn-7" class="btn btn-ghost">← Previous</button>
+                    <button id="nextBtn-7" class="btn btn-primary" disabled>Finished!</button>
+                </div>
+            </section>
+        </main>
+
+        <!-- FUN FACTS PANEL -->
+        <div class="fun-facts-toggle">
+            <button id="funFactsToggle" class="btn btn-secondary" aria-expanded="false" aria-controls="funFactsPanel">
+                Fun Facts
+            </button>
+        </div>
+        
+        <aside id="funFactsPanel" class="fun-facts-panel" role="complementary" aria-label="Fun facts panel">
+            <div class="fun-fact-header">
+                <h3>Did You Know?</h3>
+                <button id="funFactsNext" class="btn btn-ghost">Next Fact →</button>
+            </div>
+            <div id="funFactCard" class="fun-fact-card">
+                <h4 class="fun-fact-title">[FUN_FACT_1_TITLE]</h4>
+                <p class="fun-fact-content">[FUN_FACT_1_CONTENT]</p>
+            </div>
+        </aside>
+
+        <!-- TOAST NOTIFICATION -->
+        <div id="toast" class="toast" role="alert" aria-live="assertive" aria-atomic="true"></div>
+
+        <!-- DEBUG DRAWER -->
+        <div id="debugDrawer" class="debug-drawer collapsed">
+            <div class="debug-content">
+                <div class="debug-toggle" onclick="toggleDebug()">✕</div>
+                <div class="debug-item">Section: <span id="debugSection">0</span></div>
+                <div class="debug-item">Progress: <span id="debugProgress">0</span>%</div>
+            </div>
+            <div class="debug-icon" onclick="toggleDebug()">⚙</div>
+        </div>
+    </div>
+
+    <script>
+        // ==================== STATE MANAGEMENT ====================
+        const state = {
+            currentSection: 0,
+            completedSections: new Set(),
+            currentStep: 1,
+            totalSteps: 4,
+            currentFunFact: 0,
+            funFacts: [
+                { title: '[FUN_FACT_1_TITLE]', content: '[FUN_FACT_1_CONTENT]' },
+                { title: '[FUN_FACT_2_TITLE]', content: '[FUN_FACT_2_CONTENT]' },
+                { title: '[FUN_FACT_3_TITLE]', content: '[FUN_FACT_3_CONTENT]' },
+                { title: '[FUN_FACT_4_TITLE]', content: '[FUN_FACT_4_CONTENT]' },
+                { title: '[FUN_FACT_5_TITLE]', content: '[FUN_FACT_5_CONTENT]' }
+            ],
+            steps: [
+                { title: '[STEP_1_TITLE]', content: '[STEP_1_CONTENT]', delta: '[STEP_1_DELTA]' },
+                { title: '[STEP_2_TITLE]', content: '[STEP_2_CONTENT]', delta: '[STEP_2_DELTA]' },
+                { title: '[STEP_3_TITLE]', content: '[STEP_3_CONTENT]', delta: '[STEP_3_DELTA]' },
+                { title: '[STEP_4_TITLE]', content: '[STEP_4_CONTENT]', delta: '[STEP_4_DELTA]' }
+            ],
+            hotspots: {
+                A: { title: '[HOTSPOT_A_TITLE]', text: '[HOTSPOT_A_TEXT]' },
+                B: { title: '[HOTSPOT_B_TITLE]', text: '[HOTSPOT_B_TEXT]' },
+                C: { title: '[HOTSPOT_C_TITLE]', text: '[HOTSPOT_C_TEXT]' }
+            }
+        };
+
+        // ==================== PROGRESS TRACKING ====================
+        function updateProgress() {
+            const totalSections = 8;
+            const progress = Math.round((state.completedSections.size / totalSections) * 100);
+            document.getElementById('progressBar').style.width = progress + '%';
+            document.getElementById('progressText').textContent = progress + '% Complete';
+            document.getElementById('debugProgress').textContent = progress;
+        }
+
+        function markSectionComplete(sectionIndex) {
+            state.completedSections.add(sectionIndex);
+            updateProgress();
+        }
+
+        // ==================== NAVIGATION ====================
+        function navigateToSection(sectionIndex) {
+            state.currentSection = sectionIndex;
+            document.getElementById('debugSection').textContent = sectionIndex;
+            
+            // Update active nav link
+            document.querySelectorAll('.nav-link').forEach((link, index) => {
+                link.classList.toggle('active', index === sectionIndex);
+            });
+            
+            // Scroll to section
+            const sections = ['hero', 'section-1', 'section-2', 'section-3', 'section-4', 'section-5', 'section-6', 'section-7'];
+            const target = document.getElementById(sections[sectionIndex]);
+            if (target) {
+                target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        }
+
+        // ==================== INTERSECTION OBSERVER ====================
+        const observerOptions = {
+            root: null,
+            rootMargin: '-50% 0px -50% 0px',
+            threshold: 0
+        };
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    const sectionId = entry.target.id;
+                    const sections = ['hero', 'section-1', 'section-2', 'section-3', 'section-4', 'section-5', 'section-6', 'section-7'];
+                    const sectionIndex = sections.indexOf(sectionId);
+                    if (sectionIndex !== -1) {
+                        state.currentSection = sectionIndex;
+                        document.getElementById('debugSection').textContent = sectionIndex;
+                        document.querySelectorAll('.nav-link').forEach((link, index) => {
+                            link.classList.toggle('active', index === sectionIndex);
+                        });
+                    }
+                }
+            });
+        }, observerOptions);
+
+        // Observe all sections
+        document.querySelectorAll('.section').forEach(section => {
+            observer.observe(section);
+        });
+
+        // ==================== TOAST NOTIFICATIONS ====================
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.classList.add('visible');
+            setTimeout(() => {
+                toast.classList.remove('visible');
+            }, 3000);
+        }
+
+        // ==================== HERO SECTION ====================
+        document.getElementById('startBtn').addEventListener('click', () => {
+            navigateToSection(1);
+            markSectionComplete(0);
+        });
+
+        // ==================== SECTION NAVIGATION BUTTONS ====================
+        for (let i = 1; i <= 7; i++) {
+            const nextBtn = document.getElementById(`nextBtn-${i}`);
+            const prevBtn = document.getElementById(`prevBtn-${i}`);
+            
+            if (nextBtn) {
+                nextBtn.addEventListener('click', () => {
+                    markSectionComplete(i);
+                    if (i < 7) {
+                        navigateToSection(i + 1);
+                    }
+                });
+            }
+            
+            if (prevBtn) {
+                prevBtn.addEventListener('click', () => {
+                    navigateToSection(i - 1);
+                });
+            }
+        }
+
+        // ==================== TIMELINE ====================
+        document.querySelectorAll('.timeline-item').forEach((item) => {
+            item.addEventListener('click', function() {
+                const isExpanded = this.classList.contains('expanded');
+                this.classList.toggle('expanded');
+                this.setAttribute('aria-expanded', !isExpanded);
+            });
+            
+            item.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    this.click();
+                }
+            });
+        });
+
+        // ==================== VISUAL MODEL / HOTSPOTS ====================
+        document.querySelectorAll('.hotspot').forEach((hotspot) => {
+            hotspot.addEventListener('click', function() {
+                const id = this.id.replace('hotspot', '');
+                const data = state.hotspots[id];
+                const panel = document.getElementById('modelExplanation');
+                panel.innerHTML = `
+                    <h4 class="explanation-title">${data.title}</h4>
+                    <p class="explanation-text">${data.text}</p>
+                `;
+            });
+        });
+
+        document.getElementById('modelResetBtn').addEventListener('click', () => {
+            const panel = document.getElementById('modelExplanation');
+            panel.innerHTML = `
+                <h4 class="explanation-title">Click a hotspot to explore</h4>
+                <p class="explanation-text">Select any of the interactive points above to learn more about this concept.</p>
+            `;
+            showToast('Model reset');
+        });
+
+        // ==================== WORKED EXAMPLE ====================
+        function updateStep() {
+            const stepData = state.steps[state.currentStep - 1];
+            document.getElementById('currentStep').textContent = state.currentStep;
+            document.getElementById('stepContent').innerHTML = `
+                <h4>${stepData.title}</h4>
+                <p>${stepData.content}</p>
+            `;
+            document.getElementById('deltaText').textContent = stepData.delta;
+            
+            document.getElementById('examplePrevStepBtn').disabled = state.currentStep === 1;
+            document.getElementById('exampleNextStepBtn').disabled = state.currentStep === state.totalSteps;
+        }
+
+        document.getElementById('exampleNextStepBtn').addEventListener('click', () => {
+            if (state.currentStep < state.totalSteps) {
+                state.currentStep++;
+                updateStep();
+            }
+        });
+
+        document.getElementById('examplePrevStepBtn').addEventListener('click', () => {
+            if (state.currentStep > 1) {
+                state.currentStep--;
+                updateStep();
+            }
+        });
+
+        // ==================== SIMULATION ====================
+        const slider = document.getElementById('simSlider');
+        const sliderValue = document.getElementById('sliderValue');
+        
+        slider.addEventListener('input', (e) => {
+            sliderValue.textContent = e.target.value;
+        });
+
+        document.getElementById('simApplyBtn').addEventListener('click', () => {
+            const value = parseInt(slider.value);
+            const toggleOn = document.getElementById('simToggle').checked;
+            
+            // Update visualization
+            const multiplier = toggleOn ? 1.2 : 1.0;
+            document.getElementById('bar1').style.height = (value * multiplier * 0.8) + '%';
+            document.getElementById('bar2').style.height = (value * multiplier) + '%';
+            document.getElementById('bar3').style.height = (value * multiplier * 0.6) + '%';
+            
+            // Update explanation
+            const explanation = document.getElementById('simExplanation');
+            explanation.textContent = `With value at ${value} and toggle ${toggleOn ? 'ON' : 'OFF'}, the visualization shows [SIMULATION_RESULT_EXPLANATION]`;
+            
+            showToast('Changes applied');
+        });
+
+        document.getElementById('simResetBtn').addEventListener('click', () => {
+            slider.value = 50;
+            sliderValue.textContent = '50';
+            document.getElementById('simToggle').checked = false;
+            document.getElementById('bar1').style.height = '50%';
+            document.getElementById('bar2').style.height = '60%';
+            document.getElementById('bar3').style.height = '40%';
+            document.getElementById('simExplanation').textContent = '[SIMULATION_EXPLANATION]';
+            showToast('Simulation reset');
+        });
+
+        // ==================== CHECKPOINT QUESTIONS ====================
+        
+        // Question 1: Multiple Choice
+        document.getElementById('q1CheckBtn').addEventListener('click', () => {
+            const selected = document.querySelector('input[name="q1"]:checked');
+            const feedback = document.getElementById('q1Feedback');
+            
+            if (!selected) {
+                feedback.className = 'feedback feedback-error visible';
+                feedback.textContent = 'Please select an answer.';
+                return;
+            }
+            
+            // Template: correct answer is 'b' - AI should update this
+            const correct = 'b';
+            if (selected.value === correct) {
+                feedback.className = 'feedback feedback-success visible';
+                feedback.textContent = '✓ Correct! [EXPLANATION_Q1]';
+            } else {
+                feedback.className = 'feedback feedback-error visible';
+                feedback.textContent = '✗ Not quite. [HINT_Q1]';
+            }
+        });
+
+        // Question 2: Short Input
+        document.getElementById('q2CheckBtn').addEventListener('click', () => {
+            const input = document.getElementById('q2Input').value.trim().toLowerCase();
+            const feedback = document.getElementById('q2Feedback');
+            
+            if (!input) {
+                feedback.className = 'feedback feedback-error visible';
+                feedback.textContent = 'Please enter an answer.';
+                return;
+            }
+            
+            // Template: correct answer contains keywords - AI should update this
+            const correctKeywords = ['[KEYWORD_1]', '[KEYWORD_2]'];
+            const isCorrect = correctKeywords.some(keyword => input.includes(keyword.toLowerCase()));
+            
+            if (isCorrect) {
+                feedback.className = 'feedback feedback-success visible';
+                feedback.textContent = '✓ Great answer! [EXPLANATION_Q2]';
+            } else {
+                feedback.className = 'feedback feedback-error visible';
+                feedback.textContent = '✗ Try again. [HINT_Q2]';
+            }
+        });
+
+        // Question 3: Drag and Drop
+        let draggedElement = null;
+
+        document.querySelectorAll('.draggable-item').forEach(item => {
+            item.addEventListener('dragstart', function(e) {
+                draggedElement = this;
+                this.style.opacity = '0.5';
+            });
+            
+            item.addEventListener('dragend', function() {
+                this.style.opacity = '1';
+            });
+        });
+
+        document.querySelectorAll('.drop-zone').forEach(zone => {
+            zone.addEventListener('dragover', function(e) {
+                e.preventDefault();
+                this.classList.add('over');
+            });
+            
+            zone.addEventListener('dragleave', function() {
+                this.classList.remove('over');
+            });
+            
+            zone.addEventListener('drop', function(e) {
+                e.preventDefault();
+                this.classList.remove('over');
+                if (draggedElement) {
+                    this.appendChild(draggedElement);
+                }
+            });
+        });
+
+        document.getElementById('q3CheckBtn').addEventListener('click', () => {
+            const feedback = document.getElementById('q3Feedback');
+            const zones = document.querySelectorAll('.drop-zone');
+            
+            // Template: correct mapping - AI should update this
+            const correctAnswers = {
+                'item1': 'category1',
+                'item2': 'category2',
+                'item3': 'category1',
+                'item4': 'category2'
+            };
+            
+            let allCorrect = true;
+            zones.forEach(zone => {
+                const items = zone.querySelectorAll('.draggable-item');
+                const category = zone.dataset.category;
+                items.forEach(item => {
+                    const itemId = item.dataset.id;
+                    if (correctAnswers[itemId] !== category) {
+                        allCorrect = false;
+                    }
+                });
+            });
+            
+            if (allCorrect && zones[0].querySelectorAll('.draggable-item').length > 0 && zones[1].querySelectorAll('.draggable-item').length > 0) {
+                feedback.className = 'feedback feedback-success visible';
+                feedback.textContent = '✓ Perfect! You matched everything correctly. [EXPLANATION_Q3]';
+            } else {
+                feedback.className = 'feedback feedback-error visible';
+                feedback.textContent = '✗ Some items are in the wrong category. [HINT_Q3]';
+            }
+        });
+
+        // ==================== FUN FACTS PANEL ====================
+        const funFactsPanel = document.getElementById('funFactsPanel');
+        const funFactsToggle = document.getElementById('funFactsToggle');
+        
+        funFactsToggle.addEventListener('click', () => {
+            const isOpen = funFactsPanel.classList.toggle('open');
+            funFactsToggle.setAttribute('aria-expanded', isOpen);
+        });
+
+        document.getElementById('funFactsNext').addEventListener('click', () => {
+            state.currentFunFact = (state.currentFunFact + 1) % state.funFacts.length;
+            const fact = state.funFacts[state.currentFunFact];
+            document.getElementById('funFactCard').innerHTML = `
+                <h4 class="fun-fact-title">${fact.title}</h4>
+                <p class="fun-fact-content">${fact.content}</p>
+            `;
+        });
+
+        // ==================== KEYBOARD SHORTCUTS ====================
+        document.addEventListener('keydown', (e) => {
+            // Ignore if typing in input
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+                return;
+            }
+            
+            if (e.key === 'j' || e.key === 'J') {
+                // Next section
+                if (state.currentSection < 7) {
+                    navigateToSection(state.currentSection + 1);
+                }
+            } else if (e.key === 'k' || e.key === 'K') {
+                // Previous section
+                if (state.currentSection > 0) {
+                    navigateToSection(state.currentSection - 1);
+                }
+            } else if (e.key === 'Escape') {
+                // Close fun facts panel
+                funFactsPanel.classList.remove('open');
+                funFactsToggle.setAttribute('aria-expanded', 'false');
+            }
+        });
+
+        // ==================== DEBUG DRAWER ====================
+        function toggleDebug() {
+            document.getElementById('debugDrawer').classList.toggle('collapsed');
+        }
+
+        // ==================== SIDEBAR NAV LINKS ====================
+        document.querySelectorAll('.nav-link').forEach((link, index) => {
+            link.addEventListener('click', (e) => {
+                e.preventDefault();
+                navigateToSection(index);
+            });
+        });
+
+        // ==================== INIT ====================
+        updateProgress();
+        updateStep();
+    </script>
+</body>
+</html>

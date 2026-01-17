@@ -1,0 +1,1561 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Module 02 - Understanding Neural Networks</title>
+    <style>
+        :root {
+            --color-primary: #4f46e5;
+            --color-primary-dark: #4338ca;
+            --color-success: #059669;
+            --color-warning: #d97706;
+            --color-error: #dc2626;
+            --color-bg: #ffffff;
+            --color-bg-secondary: #fafafa;
+            --color-bg-tertiary: #f5f5f5;
+            --color-text: #0f172a;
+            --color-text-secondary: #64748b;
+            --color-text-light: #94a3b8;
+            --color-border: #e2e8f0;
+            --color-border-light: #f1f5f9;
+            --spacing-xs: 0.25rem;
+            --spacing-sm: 0.5rem;
+            --spacing-md: 1rem;
+            --spacing-lg: 1.5rem;
+            --spacing-xl: 2rem;
+            --spacing-2xl: 3rem;
+            --spacing-3xl: 4rem;
+            --radius-sm: 0.25rem;
+            --radius-md: 0.375rem;
+            --radius-lg: 0.5rem;
+            --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+            --shadow-md: 0 2px 4px 0 rgba(0, 0, 0, 0.06);
+            --transition-fast: 120ms cubic-bezier(0.4, 0, 0.2, 1);
+            --transition-base: 200ms cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+            font-size: 0.9375rem;
+            line-height: 1.7;
+            color: var(--color-text);
+            background: var(--color-bg);
+            -webkit-font-smoothing: antialiased;
+        }
+        
+        .container {
+            max-width: 820px;
+            margin: 0 auto;
+            padding: var(--spacing-3xl) var(--spacing-xl);
+        }
+        
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+            color: var(--color-text-secondary);
+            text-decoration: none;
+            font-size: 0.875rem;
+            margin-bottom: var(--spacing-xl);
+            font-weight: 500;
+        }
+        
+        .back-link:hover {
+            color: var(--color-primary);
+        }
+        
+        .hero {
+            margin-bottom: 4rem;
+        }
+        
+        .module-label {
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--color-text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            margin-bottom: var(--spacing-sm);
+        }
+        
+        h1 {
+            font-size: 2.25rem;
+            font-weight: 700;
+            margin-bottom: var(--spacing-lg);
+            color: var(--color-text);
+            line-height: 1.2;
+            letter-spacing: -0.02em;
+        }
+        
+        .goals {
+            background: var(--color-bg-secondary);
+            padding: var(--spacing-xl);
+            border-radius: var(--radius-lg);
+            margin-bottom: var(--spacing-2xl);
+            border: 1px solid var(--color-border-light);
+        }
+        
+        .goals h3 {
+            font-size: 0.875rem;
+            font-weight: 600;
+            margin-bottom: var(--spacing-md);
+        }
+        
+        .goals ul {
+            list-style: none;
+        }
+        
+        .goals li {
+            padding: var(--spacing-sm) 0;
+            padding-left: var(--spacing-lg);
+            position: relative;
+            font-size: 0.875rem;
+            color: var(--color-text-secondary);
+        }
+        
+        .goals li::before {
+            content: "";
+            position: absolute;
+            left: 0;
+            top: 0.8em;
+            width: 4px;
+            height: 4px;
+            background: var(--color-primary);
+            border-radius: 50%;
+        }
+        
+        .section {
+            margin-bottom: 4rem;
+            scroll-margin-top: var(--spacing-xl);
+        }
+        
+        .section-header {
+            margin-bottom: var(--spacing-2xl);
+            padding-bottom: var(--spacing-lg);
+            border-bottom: 1px solid var(--color-border-light);
+        }
+        
+        .section-label {
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--color-text-secondary);
+            margin-bottom: var(--spacing-sm);
+        }
+        
+        h2 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: var(--spacing-sm);
+            line-height: 1.3;
+            letter-spacing: -0.01em;
+            color: var(--color-text);
+        }
+        
+        .section-subtitle {
+            font-size: 0.9375rem;
+            color: var(--color-text-secondary);
+            line-height: 1.6;
+        }
+        
+        h3 {
+            font-size: 0.9375rem;
+            font-weight: 600;
+            margin-bottom: var(--spacing-lg);
+            margin-top: var(--spacing-xl);
+            color: var(--color-text);
+        }
+        
+        p {
+            margin-bottom: var(--spacing-md);
+            line-height: 1.7;
+            color: var(--color-text-secondary);
+        }
+        
+        .card {
+            background: var(--color-bg);
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-lg);
+            padding: var(--spacing-xl);
+            margin-bottom: var(--spacing-lg);
+        }
+        
+        .timeline {
+            position: relative;
+            padding-left: var(--spacing-2xl);
+        }
+        
+        .timeline::before {
+            content: "";
+            position: absolute;
+            left: 6px;
+            top: 0;
+            bottom: 0;
+            width: 1px;
+            background: var(--color-border);
+        }
+        
+        .timeline-item {
+            position: relative;
+            padding-bottom: var(--spacing-xl);
+            cursor: pointer;
+        }
+        
+        .timeline-marker {
+            position: absolute;
+            left: -28px;
+            top: 6px;
+            width: 14px;
+            height: 14px;
+            background: var(--color-bg);
+            border: 2px solid var(--color-border);
+            border-radius: 50%;
+            transition: all var(--transition-fast);
+        }
+        
+        .timeline-item:hover .timeline-marker {
+            border-color: var(--color-primary);
+            background: var(--color-primary);
+        }
+        
+        .timeline-date {
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--color-text-secondary);
+            margin-bottom: var(--spacing-xs);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        
+        .timeline-title {
+            font-size: 0.875rem;
+            font-weight: 600;
+            margin-bottom: var(--spacing-xs);
+            color: var(--color-text);
+        }
+        
+        .timeline-details {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height var(--transition-base);
+            color: var(--color-text-secondary);
+            font-size: 0.875rem;
+            line-height: 1.6;
+        }
+        
+        .timeline-item.expanded .timeline-details {
+            max-height: 300px;
+            margin-top: var(--spacing-md);
+        }
+        
+        .vocab-chips {
+            display: flex;
+            flex-wrap: wrap;
+            gap: var(--spacing-sm);
+            margin-bottom: var(--spacing-xl);
+        }
+        
+        .chip {
+            padding: var(--spacing-sm) var(--spacing-md);
+            background: var(--color-bg-secondary);
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-md);
+            font-size: 0.75rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all var(--transition-fast);
+            color: var(--color-text-secondary);
+        }
+        
+        .chip:hover {
+            background: var(--color-bg);
+            color: var(--color-primary);
+            border-color: var(--color-primary);
+        }
+        
+        .callout {
+            padding: var(--spacing-xl);
+            border-left: 2px solid var(--color-warning);
+            background: var(--color-bg-secondary);
+            border-radius: var(--radius-md);
+            margin-bottom: var(--spacing-xl);
+            border: 1px solid var(--color-border);
+            border-left: 3px solid var(--color-warning);
+        }
+        
+        .callout-title {
+            font-weight: 600;
+            margin-bottom: var(--spacing-md);
+            font-size: 0.875rem;
+            color: var(--color-text);
+        }
+        
+        .diagram-container {
+            background: var(--color-bg-secondary);
+            border-radius: var(--radius-lg);
+            padding: var(--spacing-xl);
+            margin-bottom: var(--spacing-xl);
+            border: 1px solid var(--color-border);
+        }
+        
+        .diagram-area {
+            position: relative;
+            width: 100%;
+            height: 300px;
+            background: var(--color-bg);
+            border: 1px dashed var(--color-border);
+            border-radius: var(--radius-md);
+            margin-bottom: var(--spacing-lg);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .hotspot {
+            position: absolute;
+            width: 48px;
+            height: 48px;
+            background: var(--color-primary);
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            transition: all var(--transition-fast);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+            font-size: 0.875rem;
+            border: 1px solid var(--color-primary-dark);
+        }
+        
+        .hotspot:hover {
+            transform: scale(1.05);
+            background: var(--color-primary-dark);
+        }
+        
+        .hotspot:focus {
+            outline: 2px solid var(--color-primary);
+            outline-offset: 2px;
+        }
+        
+        #hotspotA { top: 20%; left: 20%; }
+        #hotspotB { top: 50%; right: 20%; }
+        #hotspotC { bottom: 20%; left: 50%; transform: translateX(-50%); }
+        
+        .explanation-panel {
+            padding: var(--spacing-xl);
+            background: var(--color-bg);
+            border-radius: var(--radius-md);
+            min-height: 120px;
+            border: 1px solid var(--color-border);
+        }
+        
+        .explanation-title {
+            font-weight: 600;
+            margin-bottom: var(--spacing-md);
+            font-size: 0.875rem;
+            color: var(--color-text);
+        }
+        
+        .explanation-text {
+            color: var(--color-text-secondary);
+            line-height: 1.6;
+            font-size: 0.875rem;
+        }
+        
+        .example-container {
+            background: var(--color-bg-secondary);
+            border-radius: var(--radius-lg);
+            padding: var(--spacing-xl);
+            margin-bottom: var(--spacing-xl);
+            border: 1px solid var(--color-border);
+        }
+        
+        .example-controls {
+            display: flex;
+            gap: var(--spacing-md);
+            margin-bottom: var(--spacing-lg);
+        }
+        
+        .example-panel {
+            background: var(--color-bg);
+            padding: var(--spacing-xl);
+            border-radius: var(--radius-md);
+            margin-bottom: var(--spacing-md);
+            min-height: 180px;
+            border: 1px solid var(--color-border);
+        }
+        
+        .step-indicator {
+            font-size: 0.75rem;
+            color: var(--color-text-secondary);
+            margin-bottom: var(--spacing-md);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        
+        .step-content {
+            font-size: 0.875rem;
+            line-height: 1.7;
+            color: var(--color-text-secondary);
+        }
+        
+        .step-content h4 {
+            color: var(--color-text);
+            font-size: 0.9375rem;
+            margin-bottom: var(--spacing-sm);
+        }
+        
+        .delta-summary {
+            padding: var(--spacing-md);
+            background: var(--color-bg-secondary);
+            border-left: 2px solid var(--color-primary);
+            border-radius: var(--radius-sm);
+            font-size: 0.75rem;
+            color: var(--color-text-secondary);
+            border: 1px solid var(--color-border);
+            border-left: 2px solid var(--color-primary);
+        }
+        
+        .simulation-container {
+            background: var(--color-bg-secondary);
+            border-radius: var(--radius-lg);
+            padding: var(--spacing-xl);
+            margin-bottom: var(--spacing-xl);
+            border: 1px solid var(--color-border);
+        }
+        
+        .sim-controls {
+            margin-bottom: var(--spacing-xl);
+        }
+        
+        .control-group {
+            margin-bottom: var(--spacing-lg);
+        }
+        
+        .control-label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: var(--spacing-md);
+            font-size: 0.875rem;
+            color: var(--color-text);
+        }
+        
+        .slider {
+            width: 100%;
+            height: 6px;
+            border-radius: var(--radius-sm);
+            background: var(--color-bg-tertiary);
+            outline: none;
+            -webkit-appearance: none;
+            border: 1px solid var(--color-border);
+        }
+        
+        .slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: var(--color-primary);
+            cursor: pointer;
+            border: 2px solid white;
+            box-shadow: var(--shadow-sm);
+        }
+        
+        .slider::-moz-range-thumb {
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: var(--color-primary);
+            cursor: pointer;
+            border: 2px solid white;
+            box-shadow: var(--shadow-sm);
+        }
+        
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 44px;
+            height: 24px;
+        }
+        
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        
+        .toggle-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: var(--color-bg-tertiary);
+            transition: var(--transition-fast);
+            border-radius: 24px;
+            border: 1px solid var(--color-border);
+        }
+        
+        .toggle-slider::before {
+            position: absolute;
+            content: "";
+            height: 16px;
+            width: 16px;
+            left: 3px;
+            bottom: 3px;
+            background: white;
+            transition: var(--transition-fast);
+            border-radius: 50%;
+            box-shadow: var(--shadow-sm);
+        }
+        
+        input:checked + .toggle-slider {
+            background: var(--color-primary);
+            border-color: var(--color-primary);
+        }
+        
+        input:checked + .toggle-slider::before {
+            transform: translateX(20px);
+        }
+        
+        .sim-visualization {
+            background: var(--color-bg);
+            padding: var(--spacing-xl);
+            border-radius: var(--radius-md);
+            margin-bottom: var(--spacing-lg);
+            min-height: 240px;
+            border: 1px solid var(--color-border);
+        }
+        
+        .sim-bars {
+            display: flex;
+            align-items: flex-end;
+            gap: var(--spacing-md);
+            height: 150px;
+            margin-bottom: var(--spacing-lg);
+        }
+        
+        .sim-bar {
+            flex: 1;
+            background: var(--color-primary);
+            border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+            min-height: 20px;
+            transition: height var(--transition-base);
+        }
+        
+        .sim-explanation {
+            padding: var(--spacing-md);
+            background: var(--color-bg-secondary);
+            border-radius: var(--radius-sm);
+            font-size: 0.75rem;
+            color: var(--color-text-secondary);
+            line-height: 1.6;
+            border: 1px solid var(--color-border-light);
+        }
+        
+        .checkpoint {
+            background: var(--color-bg-secondary);
+            padding: var(--spacing-2xl);
+            border-radius: var(--radius-lg);
+            margin-bottom: var(--spacing-xl);
+            border: 1px solid var(--color-border);
+        }
+        
+        .question-header {
+            margin-bottom: var(--spacing-xl);
+        }
+        
+        .question-text {
+            font-size: 0.9375rem;
+            font-weight: 600;
+            margin-bottom: var(--spacing-lg);
+            color: var(--color-text);
+            line-height: 1.5;
+        }
+        
+        .options {
+            display: flex;
+            flex-direction: column;
+            gap: var(--spacing-sm);
+            margin-bottom: var(--spacing-lg);
+        }
+        
+        .option {
+            padding: var(--spacing-md) var(--spacing-lg);
+            background: var(--color-bg);
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            transition: all var(--transition-fast);
+            font-size: 0.875rem;
+        }
+        
+        .option:hover {
+            border-color: var(--color-text-secondary);
+        }
+        
+        .option input {
+            margin-right: var(--spacing-md);
+        }
+        
+        .feedback {
+            padding: var(--spacing-md);
+            border-radius: var(--radius-sm);
+            margin-top: var(--spacing-md);
+            display: none;
+            font-size: 0.75rem;
+            line-height: 1.6;
+            border: 1px solid;
+        }
+        
+        .feedback.visible {
+            display: block;
+        }
+        
+        .feedback-success {
+            background: var(--color-bg-secondary);
+            color: var(--color-success);
+            border-color: var(--color-success);
+            border-left-width: 3px;
+        }
+        
+        .feedback-error {
+            background: var(--color-bg-secondary);
+            color: var(--color-error);
+            border-color: var(--color-error);
+            border-left-width: 3px;
+        }
+        
+        .resources-section {
+            margin-bottom: var(--spacing-xl);
+        }
+        
+        .embed-controls {
+            background: var(--color-bg-secondary);
+            padding: var(--spacing-xl);
+            border-radius: var(--radius-lg);
+            margin-bottom: var(--spacing-lg);
+            border: 1px solid var(--color-border);
+        }
+        
+        .embed-input-group {
+            display: flex;
+            gap: var(--spacing-sm);
+            margin-bottom: var(--spacing-md);
+        }
+        
+        input[type="text"] {
+            flex: 1;
+            padding: var(--spacing-sm) var(--spacing-md);
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-md);
+            font-size: 0.875rem;
+            font-family: inherit;
+        }
+        
+        input[type="text"]:focus {
+            outline: none;
+            border-color: var(--color-primary);
+        }
+        
+        .embed-area {
+            background: var(--color-bg);
+            border: 1px dashed var(--color-border);
+            border-radius: var(--radius-lg);
+            padding: var(--spacing-xl);
+            text-align: center;
+            color: var(--color-text-secondary);
+            font-size: 0.875rem;
+            margin-bottom: var(--spacing-lg);
+            min-height: 400px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .embed-area iframe {
+            width: 100%;
+            height: 400px;
+            border: none;
+            border-radius: var(--radius-md);
+        }
+        
+        .embed-error {
+            padding: var(--spacing-md);
+            background: var(--color-bg-secondary);
+            color: var(--color-error);
+            border-left: 3px solid var(--color-error);
+            border-radius: var(--radius-sm);
+            font-size: 0.75rem;
+            margin-top: var(--spacing-sm);
+            display: none;
+            border: 1px solid var(--color-error);
+            border-left: 3px solid var(--color-error);
+        }
+        
+        .embed-error.visible {
+            display: block;
+        }
+        
+        .resources-list {
+            list-style: none;
+        }
+        
+        .resource-item {
+            background: var(--color-bg);
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-lg);
+            padding: var(--spacing-lg);
+            margin-bottom: var(--spacing-md);
+            transition: all var(--transition-fast);
+        }
+        
+        .resource-item:hover {
+            border-color: var(--color-text-light);
+        }
+        
+        .resource-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: var(--spacing-sm);
+        }
+        
+        .resource-title {
+            font-weight: 600;
+            font-size: 0.875rem;
+            color: var(--color-text);
+        }
+        
+        .resource-type {
+            font-size: 0.75rem;
+            padding: var(--spacing-xs) var(--spacing-sm);
+            background: var(--color-bg-tertiary);
+            border-radius: var(--radius-sm);
+            color: var(--color-text-secondary);
+            font-weight: 500;
+        }
+        
+        .resource-description {
+            font-size: 0.875rem;
+            color: var(--color-text-secondary);
+            margin-bottom: var(--spacing-sm);
+            line-height: 1.6;
+        }
+        
+        .resource-link {
+            font-size: 0.75rem;
+            color: var(--color-primary);
+            text-decoration: none;
+            font-weight: 500;
+        }
+        
+        .resource-link:hover {
+            text-decoration: underline;
+        }
+        
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: var(--spacing-sm);
+            padding: var(--spacing-sm) var(--spacing-lg);
+            font-size: 0.875rem;
+            font-weight: 500;
+            border: 1px solid transparent;
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            transition: all var(--transition-fast);
+            text-decoration: none;
+            white-space: nowrap;
+            font-family: inherit;
+            background: transparent;
+        }
+        
+        .btn:focus {
+            outline: 2px solid var(--color-primary);
+            outline-offset: 2px;
+        }
+        
+        .btn-primary {
+            background: var(--color-primary);
+            color: white;
+            border-color: var(--color-primary);
+        }
+        
+        .btn-primary:hover {
+            background: var(--color-primary-dark);
+            border-color: var(--color-primary-dark);
+        }
+        
+        .btn-primary:disabled {
+            background: var(--color-bg-tertiary);
+            border-color: var(--color-border);
+            color: var(--color-text-light);
+            cursor: not-allowed;
+        }
+        
+        .btn-secondary {
+            background: var(--color-bg-secondary);
+            color: var(--color-text);
+            border-color: var(--color-border);
+        }
+        
+        .btn-secondary:hover {
+            background: var(--color-bg-tertiary);
+            border-color: var(--color-text-secondary);
+        }
+        
+        .btn-ghost {
+            background: transparent;
+            color: var(--color-text-secondary);
+            border-color: transparent;
+        }
+        
+        .btn-ghost:hover {
+            background: var(--color-bg-secondary);
+            color: var(--color-text);
+        }
+        
+        .btn-ghost:disabled {
+            color: var(--color-text-light);
+            cursor: not-allowed;
+        }
+        
+        .section-nav {
+            display: flex;
+            gap: var(--spacing-sm);
+            margin-top: var(--spacing-3xl);
+            padding-top: var(--spacing-lg);
+            border-top: 1px solid var(--color-border-light);
+        }
+        
+        #toast {
+            position: fixed;
+            bottom: var(--spacing-xl);
+            right: var(--spacing-xl);
+            padding: var(--spacing-md) var(--spacing-lg);
+            background: var(--color-text);
+            color: white;
+            border-radius: var(--radius-md);
+            box-shadow: var(--shadow-md);
+            transform: translateY(150%);
+            transition: transform var(--transition-base);
+            z-index: 1000;
+            max-width: 320px;
+            font-size: 0.875rem;
+        }
+        
+        #toast.visible {
+            transform: translateY(0);
+        }
+        
+        .completion-section {
+            background: var(--color-bg-secondary);
+            padding: var(--spacing-2xl);
+            border-radius: var(--radius-lg);
+            text-align: center;
+            border: 1px solid var(--color-border);
+        }
+        
+        .completion-section h2 {
+            margin-bottom: var(--spacing-lg);
+        }
+        
+        .completion-section p {
+            margin-bottom: var(--spacing-xl);
+        }
+        
+        @media (max-width: 768px) {
+            .container {
+                padding: var(--spacing-xl) var(--spacing-md);
+            }
+            
+            h1 {
+                font-size: 1.875rem;
+            }
+            
+            .section-nav {
+                flex-direction: column;
+            }
+            
+            .embed-input-group {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="../index.html" class="back-link">← Back to Course Hub</a>
+        
+        <!-- A) HERO -->
+        <section class="hero">
+            <div class="module-label">Module 02</div>
+            <h1>Understanding Neural Networks</h1>
+            <div class="goals">
+                <h3>Learning Goals</h3>
+                <ul>
+                    <li>Learn the basic structure of artificial neural networks</li>
+                    <li>Understand how neurons, layers, and activation functions work</li>
+                    <li>Explore the backpropagation algorithm</li>
+                    <li>Visualize how neural networks learn from data</li>
+                </ul>
+            </div>
+            <button id="startBtn" class="btn btn-primary">Start Learning</button>
+        </section>
+        
+        <!-- B) BACKGROUND/STORY -->
+        <section id="section-background" class="section">
+            <div class="section-header">
+                <div class="section-label">Section 1</div>
+                <h2>Background & Story</h2>
+                <p class="section-subtitle">How machine learning came to be</p>
+            </div>
+            
+            <div class="card">
+                <p>Neural networks were inspired by the human brain's structure. In 1943, Warren McCulloch and Walter Pitts created the first computational model of a neuron. This simple mathematical model would eventually evolve into the sophisticated deep learning systems we use today.</p>
+                <p>Modern neural networks can recognize images, understand speech, translate languages, and even generate creative content.</p>
+            </div>
+            
+            <h3>Historical Timeline</h3>
+            <div id="timeline" class="timeline">
+                <div id="milestone-1" class="timeline-item" tabindex="0" role="button" aria-expanded="false">
+                    <div class="timeline-marker"></div>
+                    <div class="timeline-date">1943</div>
+                    <div class="timeline-title">First Neural Model</div>
+                    <div class="timeline-details">McCulloch and Pitts created the first mathematical model of an artificial neuron, laying the foundation for neural networks.</div>
+                </div>
+                <div id="milestone-2" class="timeline-item" tabindex="0" role="button" aria-expanded="false">
+                    <div class="timeline-marker"></div>
+                    <div class="timeline-date">1986</div>
+                    <div class="timeline-title">Backpropagation</div>
+                    <div class="timeline-details">Rumelhart, Hinton, and Williams popularized the backpropagation algorithm, enabling efficient training of multi-layer neural networks.</div>
+                </div>
+                <div id="milestone-3" class="timeline-item" tabindex="0" role="button" aria-expanded="false">
+                    <div class="timeline-marker"></div>
+                    <div class="timeline-date">2017</div>
+                    <div class="timeline-title">Transformer Architecture</div>
+                    <div class="timeline-details">The Transformer architecture revolutionized natural language processing, leading to models like GPT and BERT that understand language at unprecedented levels.</div>
+                </div>
+            </div>
+            
+            <div class="section-nav">
+                <button id="prevBtn" class="btn btn-ghost" disabled>← Previous</button>
+                <button id="nextBtn" class="btn btn-primary">Next →</button>
+            </div>
+        </section>
+        
+        <!-- C) CORE CONCEPT -->
+        <section id="section-concept" class="section">
+            <div class="section-header">
+                <div class="section-label">Section 2</div>
+                <h2>Core Concept</h2>
+                <p class="section-subtitle">What machine learning really means</p>
+            </div>
+            
+            <div class="card">
+                <h3>Definition</h3>
+                <p>A neural network is a computational model inspired by the human brain, consisting of interconnected nodes (neurons) organized in layers. Each connection has a weight that adjusts during learning, allowing the network to recognize patterns and make predictions.</p>
+            </div>
+            
+            <h3>Key Vocabulary</h3>
+            <div class="vocab-chips">
+                <button class="chip" tabindex="0">Neuron</button>
+                <button class="chip" tabindex="0">Layer</button>
+                <button class="chip" tabindex="0">Weight</button>
+                <button class="chip" tabindex="0">Bias</button>
+                <button class="chip" tabindex="0">Activation Function</button>
+                <button class="chip" tabindex="0">Backpropagation</button>
+                <button class="chip" tabindex="0">Hidden Layer</button>
+                <button class="chip" tabindex="0">Deep Learning</button>
+            </div>
+            
+            <div class="callout">
+                <div class="callout-title">Common Misconception</div>
+                <p>Neural networks aren't actually brains. While inspired by biological neurons, artificial neural networks are mathematical functions that transform inputs to outputs through weighted connections. They don't replicate biological brain processes.</p>
+            </div>
+            
+            <div class="section-nav">
+                <button class="btn btn-ghost nav-prev">← Previous</button>
+                <button class="btn btn-primary nav-next">Next →</button>
+            </div>
+        </section>
+        
+        <!-- D) VISUAL MODEL -->
+        <section id="section-model" class="section">
+            <div class="section-header">
+                <div class="section-label">Section 3</div>
+                <h2>Visual Model</h2>
+                <p class="section-subtitle">How machine learning works</p>
+            </div>
+            
+            <div class="diagram-container">
+                <div class="diagram-area">
+                    <button id="hotspotA" class="hotspot" tabindex="0" aria-label="Data">A</button>
+                    <button id="hotspotB" class="hotspot" tabindex="0" aria-label="Training">B</button>
+                    <button id="hotspotC" class="hotspot" tabindex="0" aria-label="Prediction">C</button>
+                </div>
+                
+                <div id="modelExplanation" class="explanation-panel" aria-live="polite">
+                    <h4 class="explanation-title">Click a hotspot to explore</h4>
+                    <p class="explanation-text">Select any point above to learn about the machine learning process.</p>
+                </div>
+                
+                <button id="modelResetBtn" class="btn btn-secondary">Reset Model</button>
+            </div>
+            
+            <div class="section-nav">
+                <button class="btn btn-ghost nav-prev">← Previous</button>
+                <button class="btn btn-primary nav-next">Next →</button>
+            </div>
+        </section>
+        
+        <!-- E) WORKED EXAMPLE -->
+        <section id="section-example" class="section">
+            <div class="section-header">
+                <div class="section-label">Section 4</div>
+                <h2>Worked Example</h2>
+                <p class="section-subtitle">Training a spam detector</p>
+            </div>
+            
+            <div class="example-container">
+                <div class="example-controls">
+                    <button id="examplePrevStepBtn" class="btn btn-ghost" disabled>← Previous Step</button>
+                    <button id="exampleNextStepBtn" class="btn btn-primary">Next Step →</button>
+                </div>
+                
+                <div id="examplePanel" class="example-panel">
+                    <div class="step-indicator">Step <span id="currentStep">1</span> of <span id="totalSteps">3</span></div>
+                    <div class="step-content" id="stepContent">
+                        <h4>Collect Training Data</h4>
+                        <p>First, we gather thousands of emails, each labeled as either "spam" or "not spam". This labeled dataset teaches the model what spam looks like.</p>
+                    </div>
+                </div>
+                
+                <div id="exampleDelta" class="delta-summary" aria-live="polite">
+                    <strong>What changed:</strong> <span id="deltaText">We now have a labeled dataset ready for training.</span>
+                </div>
+            </div>
+            
+            <div class="section-nav">
+                <button class="btn btn-ghost nav-prev">← Previous</button>
+                <button class="btn btn-primary nav-next">Next →</button>
+            </div>
+        </section>
+        
+        <!-- F) TRY IT -->
+        <section id="section-simulation" class="section">
+            <div class="section-header">
+                <div class="section-label">Section 5</div>
+                <h2>Try It Yourself</h2>
+                <p class="section-subtitle">Experiment with model parameters</p>
+            </div>
+            
+            <div class="simulation-container">
+                <div class="sim-controls">
+                    <div class="control-group">
+                        <label for="simSlider" class="control-label">Training Data Size: <span id="sliderValue">50</span>%</label>
+                        <input type="range" id="simSlider" class="slider" min="0" max="100" value="50" aria-label="Training data size">
+                    </div>
+                    
+                    <div class="control-group">
+                        <label for="simToggle" class="control-label">Feature Engineering</label>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="simToggle" aria-label="Feature engineering toggle">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                </div>
+                
+                <div id="simViz" class="sim-visualization">
+                    <div class="sim-bars">
+                        <div class="sim-bar" id="bar1" style="height: 50%"></div>
+                        <div class="sim-bar" id="bar2" style="height: 60%"></div>
+                        <div class="sim-bar" id="bar3" style="height: 40%"></div>
+                    </div>
+                    <div id="simExplanation" class="sim-explanation" aria-live="polite">
+                        Adjust the controls above and click Apply to see how training data size and feature engineering affect model accuracy.
+                    </div>
+                </div>
+                
+                <div class="sim-actions">
+                    <button id="simApplyBtn" class="btn btn-primary">Apply Changes</button>
+                    <button id="simResetBtn" class="btn btn-secondary">Reset</button>
+                </div>
+            </div>
+            
+            <div class="section-nav">
+                <button class="btn btn-ghost nav-prev">← Previous</button>
+                <button class="btn btn-primary nav-next">Next →</button>
+            </div>
+        </section>
+        
+        <!-- G) CHECKPOINT -->
+        <section id="section-checkpoint" class="section">
+            <div class="section-header">
+                <div class="section-label">Section 6</div>
+                <h2>Checkpoint</h2>
+                <p class="section-subtitle">Test your understanding</p>
+            </div>
+            
+            <div class="checkpoint">
+                <div class="question-header">
+                    <h3 class="question-text">What is the primary purpose of an activation function in a neural network?</h3>
+                </div>
+                
+                <div class="options">
+                    <label class="option">
+                        <input type="radio" name="q1" value="a" aria-label="Option A">
+                        <span>To store the network's weights</span>
+                    </label>
+                    <label class="option">
+                        <input type="radio" name="q1" value="b" aria-label="Option B">
+                        <span>To introduce non-linearity into the network</span>
+                    </label>
+                    <label class="option">
+                        <input type="radio" name="q1" value="c" aria-label="Option C">
+                        <span>To calculate the loss function</span>
+                    </label>
+                    <label class="option">
+                        <input type="radio" name="q1" value="d" aria-label="Option D">
+                        <span>To normalize the input data</span>
+                    </label>
+                </div>
+                
+                <button id="checkpointCheckBtn" class="btn btn-primary">Check Answer</button>
+                <div id="checkpointFeedback" class="feedback" aria-live="polite"></div>
+            </div>
+            
+            <div class="section-nav">
+                <button class="btn btn-ghost nav-prev">← Previous</button>
+                <button class="btn btn-primary nav-next">Next →</button>
+            </div>
+        </section>
+        
+        <!-- H) RESOURCES -->
+        <section id="section-resources" class="section resources-section">
+            <div class="section-header">
+                <div class="section-label">Section 7</div>
+                <h2>Resources</h2>
+                <p class="section-subtitle">Learn more</p>
+            </div>
+            
+            <h3>Video Resource</h3>
+            <div class="embed-controls">
+                <div class="embed-input-group">
+                    <input type="text" id="embedInput" placeholder="Paste YouTube URL here" aria-label="YouTube URL input">
+                    <button id="loadEmbedBtn" class="btn btn-primary">Load</button>
+                    <button id="clearEmbedBtn" class="btn btn-secondary">Clear</button>
+                </div>
+                <div id="embedError" class="embed-error" aria-live="polite"></div>
+            </div>
+            
+            <div id="embedArea" class="embed-area">
+                <p>Enter a YouTube URL above to load a video resource</p>
+            </div>
+            
+            <h3>Useful Resources</h3>
+            <ul id="resourcesList" class="resources-list">
+                <li class="resource-item">
+                    <div class="resource-header">
+                        <div class="resource-title">Machine Learning Crash Course</div>
+                        <div class="resource-type">Course</div>
+                    </div>
+                    <div class="resource-description">Google's fast-paced introduction to machine learning fundamentals</div>
+                    <a href="https://developers.google.com/machine-learning/crash-course" class="resource-link" target="_blank" rel="noopener">Visit Resource →</a>
+                </li>
+                <li class="resource-item">
+                    <div class="resource-header">
+                        <div class="resource-title">Intro to Machine Learning</div>
+                        <div class="resource-type">Tutorial</div>
+                    </div>
+                    <div class="resource-description">Interactive tutorial covering ML basics with Python examples</div>
+                    <a href="https://www.kaggle.com/learn/intro-to-machine-learning" class="resource-link" target="_blank" rel="noopener">Visit Resource →</a>
+                </li>
+            </ul>
+            
+            <div class="section-nav">
+                <button class="btn btn-ghost nav-prev">← Previous</button>
+                <button class="btn btn-primary nav-next">Next →</button>
+            </div>
+        </section>
+        
+        <!-- I) SUMMARY -->
+        <section id="section-summary" class="section">
+            <div class="section-header">
+                <div class="section-label">Section 8</div>
+                <h2>Summary</h2>
+                <p class="section-subtitle">Key takeaways</p>
+            </div>
+            
+            <div class="card">
+                <h3>What You've Learned</h3>
+                <ul class="goals">
+                    <li>Machine learning enables computers to learn from data without explicit programming</li>
+                    <li>Supervised learning uses labeled data, while unsupervised learning finds patterns in unlabeled data</li>
+                    <li>Machine learning powers many real-world applications from spam filters to recommendation systems</li>
+                </ul>
+            </div>
+            
+            <div class="completion-section">
+                <h2>Module Complete!</h2>
+                <p>You've finished Module 01. Continue to the next module or return to the course hub.</p>
+                <button id="completionBtn" class="btn btn-primary">Mark Complete & Return to Hub</button>
+            </div>
+        </section>
+    </div>
+    
+    <div id="toast" role="alert" aria-live="assertive" aria-atomic="true"></div>
+    
+    <script>
+        // Module ID
+        const MODULE_ID = 'module-02';
+        const STORAGE_KEY = 'course_progress';
+        
+        // State
+        let currentSection = 0;
+        const sections = ['section-background', 'section-concept', 'section-model', 'section-example', 'section-simulation', 'section-checkpoint', 'section-resources', 'section-summary'];
+        
+        // Example steps
+        const exampleSteps = [
+            {
+                title: 'Collect Training Data',
+                content: 'First, we gather thousands of emails, each labeled as either "spam" or "not spam". This labeled dataset teaches the model what spam looks like.',
+                delta: 'We now have a labeled dataset ready for training.'
+            },
+            {
+                title: 'Train the Model',
+                content: 'The algorithm analyzes the training data, learning patterns that distinguish spam from legitimate emails. It identifies features like certain words, sender patterns, and email structure.',
+                delta: 'The model has learned to recognize spam patterns.'
+            },
+            {
+                title: 'Make Predictions',
+                content: 'Now the trained model can classify new, unseen emails. When a new email arrives, the model analyzes its features and predicts whether it\'s spam or not.',
+                delta: 'The model is now deployed and making real-time predictions.'
+            }
+        ];
+        
+        let currentStep = 0;
+        
+        // Hotspot data
+        const hotspots = {
+            A: {
+                title: 'Data Collection',
+                text: 'Everything starts with data. We need examples that represent the problem we want to solve. This data becomes the foundation for learning.'
+            },
+            B: {
+                title: 'Training Process',
+                text: 'During training, the algorithm analyzes the data to find patterns. It adjusts its internal parameters to minimize errors and improve accuracy.'
+            },
+            C: {
+                title: 'Making Predictions',
+                text: 'Once trained, the model can make predictions on new, unseen data. It applies what it learned to classify or predict outcomes.'
+            }
+        };
+        
+        // Toast notification
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.classList.add('visible');
+            setTimeout(() => {
+                toast.classList.remove('visible');
+            }, 3000);
+        }
+        
+        // Navigation
+        function updateNavigation() {
+            const prevButtons = document.querySelectorAll('.nav-prev, #prevBtn');
+            const nextButtons = document.querySelectorAll('.nav-next, #nextBtn');
+            
+            prevButtons.forEach(btn => {
+                btn.disabled = currentSection === 0;
+            });
+            
+            nextButtons.forEach(btn => {
+                btn.disabled = currentSection === sections.length - 1;
+            });
+        }
+        
+        function navigateToSection(index) {
+            if (index < 0 || index >= sections.length) return;
+            currentSection = index;
+            const section = document.getElementById(sections[index]);
+            if (section) {
+                section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+            updateNavigation();
+        }
+        
+        // Start button
+        document.getElementById('startBtn').addEventListener('click', () => {
+            navigateToSection(0);
+            showToast('Let\'s begin!');
+        });
+        
+        // Next/Prev buttons
+        document.querySelectorAll('.nav-next, #nextBtn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                navigateToSection(currentSection + 1);
+            });
+        });
+        
+        document.querySelectorAll('.nav-prev, #prevBtn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                navigateToSection(currentSection - 1);
+            });
+        });
+        
+        // Timeline
+        document.querySelectorAll('.timeline-item').forEach(item => {
+            item.addEventListener('click', function() {
+                const isExpanded = this.classList.contains('expanded');
+                this.classList.toggle('expanded');
+                this.setAttribute('aria-expanded', !isExpanded);
+            });
+            
+            item.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    this.click();
+                }
+            });
+        });
+        
+        // Hotspots
+        document.querySelectorAll('.hotspot').forEach(hotspot => {
+            hotspot.addEventListener('click', function() {
+                const id = this.id.replace('hotspot', '');
+                const data = hotspots[id];
+                const panel = document.getElementById('modelExplanation');
+                panel.innerHTML = `
+                    <h4 class="explanation-title">${data.title}</h4>
+                    <p class="explanation-text">${data.text}</p>
+                `;
+            });
+        });
+        
+        document.getElementById('modelResetBtn').addEventListener('click', () => {
+            const panel = document.getElementById('modelExplanation');
+            panel.innerHTML = `
+                <h4 class="explanation-title">Click a hotspot to explore</h4>
+                <p class="explanation-text">Select any point above to learn about the machine learning process.</p>
+            `;
+            showToast('Model reset');
+        });
+        
+        // Worked Example
+        function updateStep() {
+            const step = exampleSteps[currentStep];
+            document.getElementById('currentStep').textContent = currentStep + 1;
+            document.getElementById('totalSteps').textContent = exampleSteps.length;
+            document.getElementById('stepContent').innerHTML = `
+                <h4>${step.title}</h4>
+                <p>${step.content}</p>
+            `;
+            document.getElementById('deltaText').textContent = step.delta;
+            
+            document.getElementById('examplePrevStepBtn').disabled = currentStep === 0;
+            document.getElementById('exampleNextStepBtn').disabled = currentStep === exampleSteps.length - 1;
+        }
+        
+        document.getElementById('exampleNextStepBtn').addEventListener('click', () => {
+            if (currentStep < exampleSteps.length - 1) {
+                currentStep++;
+                updateStep();
+            }
+        });
+        
+        document.getElementById('examplePrevStepBtn').addEventListener('click', () => {
+            if (currentStep > 0) {
+                currentStep--;
+                updateStep();
+            }
+        });
+        
+        // Simulation
+        const slider = document.getElementById('simSlider');
+        const sliderValue = document.getElementById('sliderValue');
+        
+        slider.addEventListener('input', (e) => {
+            sliderValue.textContent = e.target.value;
+        });
+        
+        document.getElementById('simApplyBtn').addEventListener('click', () => {
+            const value = parseInt(slider.value);
+            const toggleOn = document.getElementById('simToggle').checked;
+            
+            const multiplier = toggleOn ? 1.2 : 1.0;
+            document.getElementById('bar1').style.height = (value * multiplier * 0.7) + '%';
+            document.getElementById('bar2').style.height = (value * multiplier * 0.85) + '%';
+            document.getElementById('bar3').style.height = (value * multiplier * 0.6) + '%';
+            
+            const explanation = document.getElementById('simExplanation');
+            explanation.textContent = `With ${value}% training data and feature engineering ${toggleOn ? 'enabled' : 'disabled'}, the model shows ${toggleOn ? 'improved' : 'baseline'} accuracy across different metrics.`;
+            
+            showToast('Changes applied');
+        });
+        
+        document.getElementById('simResetBtn').addEventListener('click', () => {
+            slider.value = 50;
+            sliderValue.textContent = '50';
+            document.getElementById('simToggle').checked = false;
+            document.getElementById('bar1').style.height = '50%';
+            document.getElementById('bar2').style.height = '60%';
+            document.getElementById('bar3').style.height = '40%';
+            document.getElementById('simExplanation').textContent = 'Adjust the controls above and click Apply to see how training data size and feature engineering affect model accuracy.';
+            showToast('Simulation reset');
+        });
+        
+        // Checkpoint
+        document.getElementById('checkpointCheckBtn').addEventListener('click', () => {
+            const selected = document.querySelector('input[name="q1"]:checked');
+            const feedback = document.getElementById('checkpointFeedback');
+            
+            if (!selected) {
+                feedback.className = 'feedback feedback-error visible';
+                feedback.textContent = 'Please select an answer.';
+                return;
+            }
+            
+            const correct = 'b';
+            if (selected.value === correct) {
+                feedback.className = 'feedback feedback-success visible';
+                feedback.textContent = 'Correct! Activation functions introduce non-linearity, allowing neural networks to learn complex patterns and relationships in data. Without them, the network would only learn linear transformations.';
+            } else {
+                feedback.className = 'feedback feedback-error visible';
+                feedback.textContent = 'Not quite. Think about what makes neural networks capable of learning complex, non-linear patterns rather than just linear transformations.';
+            }
+        });
+        
+        // YouTube Embed
+        function validateYouTubeUrl(url) {
+            const patterns = [
+                /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/,
+                /youtube\.com.*[?&]v=([a-zA-Z0-9_-]{11})/
+            ];
+            
+            for (let pattern of patterns) {
+                const match = url.match(pattern);
+                if (match) {
+                    return match[1];
+                }
+            }
+            return null;
+        }
+        
+        document.getElementById('loadEmbedBtn').addEventListener('click', () => {
+            const input = document.getElementById('embedInput');
+            const url = input.value.trim();
+            const embedArea = document.getElementById('embedArea');
+            const errorEl = document.getElementById('embedError');
+            
+            errorEl.classList.remove('visible');
+            
+            if (!url) {
+                errorEl.textContent = 'Please enter a YouTube URL.';
+                errorEl.classList.add('visible');
+                return;
+            }
+            
+            const videoId = validateYouTubeUrl(url);
+            
+            if (!videoId) {
+                errorEl.textContent = 'Invalid YouTube URL. Please enter a valid YouTube link.';
+                errorEl.classList.add('visible');
+                return;
+            }
+            
+            embedArea.innerHTML = `<iframe src="https://www.youtube.com/embed/${videoId}" allowfullscreen></iframe>`;
+            showToast('Video loaded');
+        });
+        
+        document.getElementById('clearEmbedBtn').addEventListener('click', () => {
+            document.getElementById('embedInput').value = '';
+            document.getElementById('embedArea').innerHTML = '<p>Enter a YouTube URL above to load a video resource</p>';
+            document.getElementById('embedError').classList.remove('visible');
+            showToast('Embed cleared');
+        });
+        
+        // Load resources from JSON if available
+        async function loadResources() {
+            try {
+                const response = await fetch('../assets/resources/resources.json');
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data[MODULE_ID] && data[MODULE_ID].length > 0) {
+                        renderResources(data[MODULE_ID]);
+                    }
+                }
+            } catch (e) {
+                // Use default resources
+            }
+        }
+        
+        function renderResources(resources) {
+            const list = document.getElementById('resourcesList');
+            list.innerHTML = resources.map(r => `
+                <li class="resource-item">
+                    <div class="resource-header">
+                        <div class="resource-title">${r.title}</div>
+                        <div class="resource-type">${r.type}</div>
+                    </div>
+                    <div class="resource-description">${r.description}</div>
+                    <a href="${r.url}" class="resource-link" target="_blank" rel="noopener">Visit Resource →</a>
+                </li>
+            `).join('');
+        }
+        
+        // Completion
+        document.getElementById('completionBtn').addEventListener('click', () => {
+            try {
+                const stored = localStorage.getItem(STORAGE_KEY);
+                const progress = stored ? JSON.parse(stored) : {};
+                progress[MODULE_ID] = true;
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(progress));
+                
+                showToast('Module completed!');
+                setTimeout(() => {
+                    window.location.href = '../index.html';
+                }, 1000);
+            } catch (e) {
+                showToast('Completed! Returning to hub...');
+                setTimeout(() => {
+                    window.location.href = '../index.html';
+                }, 1000);
+            }
+        });
+        
+        // Keyboard shortcuts
+        document.addEventListener('keydown', (e) => {
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+                return;
+            }
+            
+            if (e.key === 'j' || e.key === 'J') {
+                navigateToSection(currentSection + 1);
+            } else if (e.key === 'k' || e.key === 'K') {
+                navigateToSection(currentSection - 1);
+            } else if (e.key === 'Escape') {
+                // Close any open panels
+            }
+        });
+        
+        // Initialize
+        updateNavigation();
+        updateStep();
+        loadResources();
+    </script>
+</body>
+</html>

@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Course Hub</title>
+    <style>
+        :root {
+            --color-primary: #4f46e5;
+            --color-primary-dark: #4338ca;
+            --color-success: #059669;
+            --color-bg: #ffffff;
+            --color-bg-secondary: #fafafa;
+            --color-bg-tertiary: #f5f5f5;
+            --color-text: #0f172a;
+            --color-text-secondary: #64748b;
+            --color-text-light: #94a3b8;
+            --color-border: #e2e8f0;
+            --color-border-light: #f1f5f9;
+            --spacing-xs: 0.25rem;
+            --spacing-sm: 0.5rem;
+            --spacing-md: 1rem;
+            --spacing-lg: 1.5rem;
+            --spacing-xl: 2rem;
+            --spacing-2xl: 3rem;
+            --spacing-3xl: 4rem;
+            --radius-sm: 0.25rem;
+            --radius-md: 0.375rem;
+            --radius-lg: 0.5rem;
+            --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+            --shadow-md: 0 2px 4px 0 rgba(0, 0, 0, 0.06);
+            --transition-fast: 120ms cubic-bezier(0.4, 0, 0.2, 1);
+            --transition-base: 200ms cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica Neue', sans-serif;
+            font-size: 0.9375rem;
+            line-height: 1.7;
+            color: var(--color-text);
+            background: var(--color-bg);
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: var(--spacing-3xl) var(--spacing-xl);
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: var(--spacing-3xl);
+            padding-bottom: var(--spacing-2xl);
+            border-bottom: 1px solid var(--color-border-light);
+        }
+        
+        #hubTitle {
+            font-size: 2.25rem;
+            font-weight: 700;
+            margin-bottom: var(--spacing-md);
+            color: var(--color-text);
+            letter-spacing: -0.02em;
+        }
+        
+        #hubSubtitle {
+            font-size: 1.0625rem;
+            color: var(--color-text-secondary);
+            margin-bottom: var(--spacing-xl);
+            line-height: 1.6;
+        }
+        
+        .meta {
+            display: flex;
+            gap: var(--spacing-md);
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-bottom: var(--spacing-xl);
+        }
+        
+        .meta-item {
+            display: inline-flex;
+            align-items: center;
+            padding: var(--spacing-xs) var(--spacing-md);
+            background: var(--color-bg-secondary);
+            border-radius: var(--radius-md);
+            font-size: 0.75rem;
+            font-weight: 500;
+            color: var(--color-text-secondary);
+        }
+        
+        .progress-section {
+            background: var(--color-bg-secondary);
+            padding: var(--spacing-xl);
+            border-radius: var(--radius-lg);
+            margin-bottom: var(--spacing-xl);
+            border: 1px solid var(--color-border);
+        }
+        
+        .progress-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: var(--spacing-md);
+        }
+        
+        .progress-label {
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: var(--color-text);
+        }
+        
+        .progress-percent {
+            font-size: 0.75rem;
+            color: var(--color-text-secondary);
+            font-weight: 500;
+        }
+        
+        .progress-bar-container {
+            width: 100%;
+            height: 8px;
+            background: var(--color-bg-tertiary);
+            border-radius: var(--radius-sm);
+            overflow: hidden;
+            border: 1px solid var(--color-border);
+        }
+        
+        .progress-bar-fill {
+            height: 100%;
+            background: var(--color-primary);
+            transition: width var(--transition-base);
+            border-radius: var(--radius-sm);
+        }
+        
+        #modulesGrid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: var(--spacing-lg);
+            margin-bottom: var(--spacing-2xl);
+        }
+        
+        .module-card {
+            background: var(--color-bg);
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-lg);
+            padding: var(--spacing-xl);
+            transition: all var(--transition-fast);
+            text-decoration: none;
+            color: inherit;
+            display: block;
+        }
+        
+        .module-card:hover {
+            border-color: var(--color-text-light);
+            box-shadow: var(--shadow-md);
+        }
+        
+        .module-card.completed {
+            border-color: var(--color-success);
+            background: rgba(5, 150, 105, 0.02);
+        }
+        
+        .module-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: var(--spacing-md);
+        }
+        
+        .module-number {
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--color-text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        
+        .completion-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: var(--spacing-xs) var(--spacing-sm);
+            background: var(--color-success);
+            color: white;
+            border-radius: var(--radius-md);
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+        
+        .module-title {
+            font-size: 1.125rem;
+            font-weight: 600;
+            margin-bottom: var(--spacing-md);
+            color: var(--color-text);
+            line-height: 1.4;
+        }
+        
+        .module-goals {
+            list-style: none;
+            margin-bottom: var(--spacing-lg);
+        }
+        
+        .module-goals li {
+            padding: var(--spacing-xs) 0;
+            padding-left: var(--spacing-lg);
+            position: relative;
+            font-size: 0.875rem;
+            color: var(--color-text-secondary);
+            line-height: 1.6;
+        }
+        
+        .module-goals li::before {
+            content: "";
+            position: absolute;
+            left: 0;
+            top: 0.65em;
+            width: 4px;
+            height: 4px;
+            background: var(--color-primary);
+            border-radius: 50%;
+        }
+        
+        .module-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-top: var(--spacing-md);
+            border-top: 1px solid var(--color-border-light);
+        }
+        
+        .module-time {
+            font-size: 0.75rem;
+            color: var(--color-text-secondary);
+        }
+        
+        .module-status {
+            font-size: 0.75rem;
+            padding: var(--spacing-xs) var(--spacing-sm);
+            background: var(--color-bg-tertiary);
+            border-radius: var(--radius-sm);
+            color: var(--color-text-secondary);
+            font-weight: 500;
+        }
+        
+        .actions {
+            display: flex;
+            justify-content: center;
+            gap: var(--spacing-md);
+        }
+        
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: var(--spacing-sm);
+            padding: var(--spacing-sm) var(--spacing-lg);
+            font-size: 0.875rem;
+            font-weight: 500;
+            border: 1px solid transparent;
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            transition: all var(--transition-fast);
+            text-decoration: none;
+            white-space: nowrap;
+            background: transparent;
+            font-family: inherit;
+        }
+        
+        .btn:focus {
+            outline: 2px solid var(--color-primary);
+            outline-offset: 2px;
+        }
+        
+        #resetProgressBtn {
+            color: var(--color-text-secondary);
+            border-color: var(--color-border);
+        }
+        
+        #resetProgressBtn:hover {
+            background: var(--color-bg-secondary);
+            border-color: var(--color-text-secondary);
+        }
+        
+        #toast {
+            position: fixed;
+            bottom: var(--spacing-xl);
+            right: var(--spacing-xl);
+            padding: var(--spacing-md) var(--spacing-lg);
+            background: var(--color-text);
+            color: white;
+            border-radius: var(--radius-md);
+            box-shadow: var(--shadow-md);
+            transform: translateY(150%);
+            transition: transform var(--transition-base);
+            z-index: 1000;
+            max-width: 320px;
+            font-size: 0.875rem;
+        }
+        
+        #toast.visible {
+            transform: translateY(0);
+        }
+        
+        .warning {
+            background: var(--color-bg-secondary);
+            border: 1px solid var(--color-border);
+            border-left: 3px solid #d97706;
+            border-radius: var(--radius-md);
+            padding: var(--spacing-xl);
+            margin-bottom: var(--spacing-xl);
+        }
+        
+        .warning h3 {
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: var(--color-text);
+            margin-bottom: var(--spacing-sm);
+        }
+        
+        .warning p {
+            font-size: 0.875rem;
+            color: var(--color-text-secondary);
+            line-height: 1.6;
+            margin-bottom: var(--spacing-sm);
+        }
+        
+        .warning code {
+            display: block;
+            background: var(--color-bg-tertiary);
+            padding: var(--spacing-sm) var(--spacing-md);
+            border-radius: var(--radius-sm);
+            font-family: 'SF Mono', 'Monaco', monospace;
+            font-size: 0.8125rem;
+            margin: var(--spacing-sm) 0;
+            border: 1px solid var(--color-border);
+        }
+        
+        @media (max-width: 768px) {
+            .container {
+                padding: var(--spacing-xl) var(--spacing-md);
+            }
+            
+            #hubTitle {
+                font-size: 1.875rem;
+            }
+            
+            #modulesGrid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1 id="hubTitle">Loading...</h1>
+            <p id="hubSubtitle"></p>
+            <div class="meta" id="courseMeta"></div>
+        </header>
+        
+        <div class="progress-section">
+            <div class="progress-header">
+                <span class="progress-label">Course Progress</span>
+                <span class="progress-percent" id="progressPercent">0%</span>
+            </div>
+            <div class="progress-bar-container">
+                <div class="progress-bar-fill" id="progressBarFill" style="width: 0%"></div>
+            </div>
+        </div>
+        
+        <div id="warningArea"></div>
+        
+        <div id="modulesGrid"></div>
+        
+        <div class="actions">
+            <button id="resetProgressBtn" class="btn">Reset Progress</button>
+        </div>
+    </div>
+    
+    <div id="toast" role="alert" aria-live="assertive" aria-atomic="true"></div>
+    
+    <script>
+        // State
+        let courseData = null;
+        const STORAGE_KEY = 'course_progress';
+        
+        // Get progress from localStorage
+        function getProgress() {
+            try {
+                const stored = localStorage.getItem(STORAGE_KEY);
+                return stored ? JSON.parse(stored) : {};
+            } catch (e) {
+                return {};
+            }
+        }
+        
+        // Save progress to localStorage
+        function saveProgress(progress) {
+            try {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(progress));
+            } catch (e) {
+                showToast('Failed to save progress');
+            }
+        }
+        
+        // Show toast notification
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.classList.add('visible');
+            setTimeout(() => {
+                toast.classList.remove('visible');
+            }, 3000);
+        }
+        
+        // Show warning about local file access
+        function showWarning() {
+            const warningArea = document.getElementById('warningArea');
+            warningArea.innerHTML = `
+                <div class="warning">
+                    <h3>Local File Access Detected</h3>
+                    <p>To load course data, please run a local server:</p>
+                    <code>python -m http.server 8080</code>
+                    <p>Then open: <strong>http://localhost:8080</strong></p>
+                </div>
+            `;
+        }
+        
+        // Load course data
+        async function loadCourseData() {
+            try {
+                const response = await fetch('./course.json');
+                if (!response.ok) {
+                    throw new Error('Failed to load course data');
+                }
+                courseData = await response.json();
+                renderCourse();
+            } catch (error) {
+                console.error('Error loading course:', error);
+                if (window.location.protocol === 'file:') {
+                    showWarning();
+                }
+                document.getElementById('hubTitle').textContent = 'Course Hub';
+                document.getElementById('hubSubtitle').textContent = 'Unable to load course data. Please run a local server.';
+            }
+        }
+        
+        // Render course
+        function renderCourse() {
+            if (!courseData) return;
+            
+            // Header
+            document.getElementById('hubTitle').textContent = courseData.course_title || 'Course Hub';
+            document.getElementById('hubSubtitle').textContent = courseData.course_subtitle || '';
+            
+            // Meta
+            const metaEl = document.getElementById('courseMeta');
+            metaEl.innerHTML = `
+                <div class="meta-item">${courseData.estimated_total_minutes || 0} min</div>
+                <div class="meta-item">${courseData.audience_level || 'All Levels'}</div>
+            `;
+            
+            // Progress
+            updateProgress();
+            
+            // Modules
+            renderModules();
+        }
+        
+        // Render modules
+        function renderModules() {
+            if (!courseData || !courseData.modules) return;
+            
+            const grid = document.getElementById('modulesGrid');
+            const progress = getProgress();
+            
+            grid.innerHTML = courseData.modules.map(module => {
+                const isCompleted = progress[module.id] === true;
+                const completedClass = isCompleted ? 'completed' : '';
+                const completedBadge = isCompleted ? '<span class="completion-badge">✓</span>' : '';
+                
+                const goals = module.goals ? module.goals.map(goal => 
+                    `<li>${goal}</li>`
+                ).join('') : '';
+                
+                return `
+                    <a href="${module.slug}" class="module-card ${completedClass}">
+                        <div class="module-header">
+                            <div class="module-number">${module.id}</div>
+                            ${completedBadge}
+                        </div>
+                        <h2 class="module-title">${module.title}</h2>
+                        <ul class="module-goals">
+                            ${goals}
+                        </ul>
+                        <div class="module-footer">
+                            <span class="module-time">${module.estimated_minutes || 0} min</span>
+                            <span class="module-status">${module.status || 'draft'}</span>
+                        </div>
+                    </a>
+                `;
+            }).join('');
+        }
+        
+        // Update progress
+        function updateProgress() {
+            if (!courseData || !courseData.modules) return;
+            
+            const progress = getProgress();
+            const totalModules = courseData.modules.length;
+            const completedModules = courseData.modules.filter(m => progress[m.id] === true).length;
+            const percentage = totalModules > 0 ? Math.round((completedModules / totalModules) * 100) : 0;
+            
+            document.getElementById('progressPercent').textContent = percentage + '%';
+            document.getElementById('progressBarFill').style.width = percentage + '%';
+        }
+        
+        // Reset progress
+        document.getElementById('resetProgressBtn').addEventListener('click', () => {
+            if (courseData && courseData.modules) {
+                const confirmReset = {};
+                courseData.modules.forEach(m => {
+                    confirmReset[m.id] = false;
+                });
+                saveProgress({});
+                updateProgress();
+                renderModules();
+                showToast('Progress reset successfully');
+            }
+        });
+        
+        // Listen for storage changes (when a module marks complete)
+        window.addEventListener('storage', (e) => {
+            if (e.key === STORAGE_KEY) {
+                updateProgress();
+                renderModules();
+            }
+        });
+        
+        // Check for completion message from module
+        window.addEventListener('message', (e) => {
+            if (e.data.type === 'module_complete') {
+                const progress = getProgress();
+                progress[e.data.moduleId] = true;
+                saveProgress(progress);
+                updateProgress();
+                renderModules();
+                showToast(`Module completed: ${e.data.moduleId}`);
+            }
+        });
+        
+        // Initialize
+        loadCourseData();
+    </script>
+</body>
+</html>
