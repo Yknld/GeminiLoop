@@ -38,17 +38,8 @@ EVALUATION_RUBRIC = {
             "No JavaScript errors in console"
         ]
     },
-    "ux": {
-        "weight": 15,
-        "description": "User experience is intuitive and pleasant",
-        "criteria": [
-            "Clear visual hierarchy",
-            "Intuitive navigation and flow",
-            "Appropriate feedback for user actions"
-        ]
-    },
     "visual_design": {
-        "weight": 35,
+        "weight": 25,
         "description": "Visual design is modern, beautiful, and professional",
         "criteria": [
             "BEAUTIFUL, modern aesthetic (not basic HTML)",
@@ -60,8 +51,17 @@ EVALUATION_RUBRIC = {
             "Polished, production-ready appearance"
         ]
     },
+    "ux": {
+        "weight": 15,
+        "description": "User experience is intuitive and pleasant",
+        "criteria": [
+            "Clear visual hierarchy",
+            "Intuitive navigation and flow",
+            "Appropriate feedback for user actions"
+        ]
+    },
     "accessibility": {
-        "weight": 20,
+        "weight": 15,
         "description": "Accessible to all users",
         "criteria": [
             "Semantic HTML elements",
@@ -71,7 +71,7 @@ EVALUATION_RUBRIC = {
         ]
     },
     "responsiveness": {
-        "weight": 20,
+        "weight": 15,
         "description": "Works well on different screen sizes",
         "criteria": [
             "Mobile layout (375px) is usable",
@@ -81,7 +81,7 @@ EVALUATION_RUBRIC = {
         ]
     },
     "robustness": {
-        "weight": 10,
+        "weight": 5,
         "description": "Handles edge cases and errors gracefully",
         "criteria": [
             "No console errors",

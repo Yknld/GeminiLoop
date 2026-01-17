@@ -11,6 +11,9 @@ openhands-workspace>=0.1.0
 # Core AI
 google-generativeai>=0.8.0
 
+# Image processing (for agentic evaluator multimodal vision)
+Pillow>=10.0.0
+
 # Browser automation
 playwright>=1.40.0
 

@@ -166,6 +166,16 @@ class PlaywrightMCPClient:
         logger.info(f"Console: {len(messages)} messages")
         return messages
     
+    async def evaluate(self, expression: str) -> Dict[str, Any]:
+        """Evaluate JavaScript expression"""
+        logger.debug(f"Evaluate: {expression[:100]}")
+        
+        result = await self.call_tool("browser_evaluate", {
+            "expression": expression
+        })
+        
+        return {"result": result}
+    
     async def call_tool(self, tool_name: str, arguments: Dict[str, Any]) -> Any:
         """Call MCP tool"""
         logger.debug(f"Tool call: {tool_name}")
