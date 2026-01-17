@@ -79,11 +79,13 @@ class Planner:
         # Format notes - use custom_notes if provided, otherwise use user_requirements
         notes_text = custom_notes if custom_notes else user_requirements
         
-        # Build the full prompt using the template format
-        full_prompt = self.planner_prompt.format(
-            user_requirements=user_requirements,
-            notes=notes_text,
-            youtube_links=youtube_links_text
+        # Build the full prompt using string replacement (not .format() to avoid JSON brace conflicts)
+        full_prompt = self.planner_prompt.replace(
+            "{user_requirements}", user_requirements
+        ).replace(
+            "{notes}", notes_text
+        ).replace(
+            "{youtube_links}", youtube_links_text
         )
         
         print("🧠 Planner: Generating detailed prompt with Gemini 3.0 Pro Preview...")

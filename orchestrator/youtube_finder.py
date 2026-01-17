@@ -100,8 +100,28 @@ Return ONLY the JSON array, no other text."""
                 }
             )
             
-            # Extract text from response
-            response_text = response.text.strip()
+            # Check for blocked/filtered responses
+            if not response.candidates:
+                print("⚠️  Response was blocked or filtered by safety settings")
+                return []
+            
+            candidate = response.candidates[0]
+            if candidate.finish_reason == 2:  # SAFETY
+                print("⚠️  Response was blocked by safety filters")
+                return []
+            
+            # Extract text from response - handle cases where text might not be available
+            try:
+                response_text = response.text.strip()
+            except ValueError as e:
+                # Response might not have text content
+                print(f"⚠️  Could not extract text from response: {e}")
+                print(f"   Finish reason: {candidate.finish_reason}")
+                # Try to get content from parts
+                if candidate.content and candidate.content.parts:
+                    response_text = ''.join(part.text for part in candidate.content.parts if hasattr(part, 'text'))
+                else:
+                    return []
             
             # Try to extract JSON from the response
             # Sometimes Gemini wraps JSON in markdown code blocks
@@ -178,7 +198,7 @@ Return ONLY the JSON array, no other text."""
     ) -> List[Dict[str, Any]]:
         """
         Find YouTube videos based on user requirements and optional custom notes.
-        This is the main entry point for the planner integration.
+        Uses Gemini to understand the context and extract the main topic.
         
         Args:
             user_requirements: The user's high-level description
@@ -188,44 +208,66 @@ Return ONLY the JSON array, no other text."""
         Returns:
             List of video dictionaries
         """
-        # Determine the main topic from requirements or notes
+        # Use Gemini to understand context and extract topic
         if custom_notes:
-            # Extract topic from custom notes - clean up markdown and parenthetical notes
-            first_line = custom_notes.split('\n')[0].strip()
+            print("📖 Analyzing notes with Gemini to understand context...")
             
-            # Remove markdown headers (# ## ###)
-            topic = re.sub(r'^#+\s*', '', first_line)
+            analysis_prompt = f"""Analyze the following educational notes and extract:
+1. The main subject/topic (e.g., "geometry", "circles", "coordinate geometry")
+2. Key concepts covered
+3. Educational level (e.g., "high school", "undergraduate", "general")
+
+NOTES:
+{custom_notes[:3000]}
+
+Return a JSON object with:
+{{
+  "main_topic": "clear topic name for YouTube search",
+  "key_concepts": ["concept1", "concept2"],
+  "educational_level": "level"
+}}
+
+Return ONLY the JSON, no other text."""
             
-            # Remove parenthetical notes like "(Mock)", "(Optional)", etc.
-            topic = re.sub(r'\s*\([^)]*\)\s*', '', topic)
-            
-            # Remove common prefixes
-            topic = re.sub(r'^(Module Notes|Notes|Content|Topic):\s*', '', topic, flags=re.IGNORECASE)
-            
-            # Clean up extra whitespace
-            topic = ' '.join(topic.split())
-            
-            # If topic is still too generic or empty, use a better extraction
-            if not topic or len(topic) < 3:
-                # Try to find a better topic from the content
-                lines = custom_notes.split('\n')[:10]  # Check first 10 lines
-                for line in lines:
-                    line = line.strip()
-                    if line and not line.startswith('#') and len(line) > 10:
-                        # Remove markdown and parentheticals
-                        clean_line = re.sub(r'^#+\s*', '', line)
-                        clean_line = re.sub(r'\s*\([^)]*\)\s*', '', clean_line)
-                        clean_line = re.sub(r'^(Module Notes|Notes|Content|Topic):\s*', '', clean_line, flags=re.IGNORECASE)
-                        clean_line = ' '.join(clean_line.split())
-                        if clean_line and len(clean_line) > 10:
-                            topic = clean_line[:200]
-                            break
-            
-            # Fallback to user_requirements if topic extraction failed
-            if not topic or len(topic) < 3:
-                topic = user_requirements
-            
-            context = custom_notes[:2000]  # Use first 2000 chars as context
+            try:
+                analysis_response = self.model.generate_content(
+                    analysis_prompt,
+                    generation_config={
+                        'temperature': 0.3,
+                        'max_output_tokens': 512,
+                    }
+                )
+                
+                # Extract JSON from response
+                analysis_text = analysis_response.text.strip()
+                json_match = re.search(r'```(?:json)?\s*(\{.*?\})\s*```', analysis_text, re.DOTALL)
+                if json_match:
+                    analysis_text = json_match.group(1)
+                else:
+                    json_match = re.search(r'(\{.*?\})', analysis_text, re.DOTALL)
+                    if json_match:
+                        analysis_text = json_match.group(1)
+                
+                analysis = json.loads(analysis_text)
+                topic = analysis.get('main_topic', user_requirements)
+                key_concepts = analysis.get('key_concepts', [])
+                
+                print(f"✅ Extracted topic: {topic}")
+                if key_concepts:
+                    print(f"   Key concepts: {', '.join(key_concepts[:3])}")
+                
+                # Build context with key concepts
+                context = f"Educational notes covering: {topic}"
+                if key_concepts:
+                    context += f". Key concepts: {', '.join(key_concepts[:5])}"
+                context += f"\n\nNotes excerpt:\n{custom_notes[:1500]}"
+                
+            except Exception as e:
+                print(f"⚠️  Error analyzing notes: {e}")
+                print("   Falling back to simple topic extraction...")
+                # Fallback to simple extraction
+                topic = self._extract_topic_simple(custom_notes) or user_requirements
+                context = custom_notes[:2000]
         else:
             topic = user_requirements
             context = None
@@ -235,6 +277,15 @@ Return ONLY the JSON array, no other text."""
             content_context=context,
             count=count
         )
+    
+    def _extract_topic_simple(self, notes: str) -> str:
+        """Simple topic extraction fallback"""
+        first_line = notes.split('\n')[0].strip()
+        topic = re.sub(r'^#+\s*', '', first_line)
+        topic = re.sub(r'\s*\([^)]*\)\s*', '', topic)
+        topic = re.sub(r'^(Module Notes|Notes|Content|Topic):\s*', '', topic, flags=re.IGNORECASE)
+        topic = ' '.join(topic.split())
+        return topic if len(topic) > 3 else None
 
 
 def main():
