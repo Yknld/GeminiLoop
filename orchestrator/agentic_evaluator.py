@@ -304,14 +304,26 @@ class AgenticEvaluator(GeminiEvaluator):
                 artifacts_dir
             )
             
-            # Phase 3: Final vision evaluation
-            logger.info("\n👁️  Phase 3: Final Vision Evaluation")
-            final_eval = await self._run_vision_evaluation(
-                task,
-                exploration_result["final_observation"],
-                rubric,
-                exploration_result
-            )
+        # Phase 3: Check single-file compliance
+        logger.info("\n📋 Phase 3a: Checking Single-File Compliance")
+        file_compliance = await self._check_single_file_compliance(mcp_client)
+        
+        if file_compliance.get('compliant') is False:
+            logger.warning("❌ VIOLATION: External CSS/JS files detected!")
+            logger.warning(f"   External CSS: {file_compliance.get('external_css_count', 0)}")
+            logger.warning(f"   External JS: {file_compliance.get('external_js_count', 0)}")
+        elif file_compliance.get('compliant') is True:
+            logger.info("✅ Single-file compliance verified")
+        
+        # Phase 3: Final vision evaluation
+        logger.info("\n👁️  Phase 3b: Final Vision Evaluation")
+        final_eval = await self._run_vision_evaluation(
+            task,
+            exploration_result["final_observation"],
+            rubric,
+            exploration_result,
+            file_compliance
+        )
         finally:
             # Stop video recording
             if video_path:
@@ -1034,7 +1046,8 @@ Begin systematic testing. You have vision - use it!"""
         task: str,
         final_observation: Dict[str, Any],
         rubric: Dict[str, Any],
-        exploration_result: Dict[str, Any]
+        exploration_result: Dict[str, Any],
+        file_compliance: Dict[str, Any] = None
     ) -> EvaluationResult:
         """
         Run final vision evaluation using the original GeminiEvaluator logic
@@ -1060,7 +1073,7 @@ Begin systematic testing. You have vision - use it!"""
         )
         
         # Build evaluation prompt
-        prompt = self._build_vision_prompt(task, observation, rubric, exploration_result)
+        prompt = self._build_vision_prompt(task, observation, rubric, exploration_result, file_compliance)
         
         # Call Gemini for final scoring WITH SCREENSHOTS
         model = genai.GenerativeModel(
@@ -1097,20 +1110,97 @@ Begin systematic testing. You have vision - use it!"""
         
         return eval_result
     
+    async def _check_single_file_compliance(self, mcp_client) -> Dict[str, Any]:
+        """
+        Check if the page uses inline CSS/JS (single-file compliance)
+        
+        Returns:
+            Dict with compliance status and details
+        """
+        try:
+            # Check for external CSS files
+            css_check = """
+            (function() {
+                const links = Array.from(document.querySelectorAll('link[rel="stylesheet"]'));
+                return {
+                    external_css_count: links.length,
+                    external_css_hrefs: links.map(l => l.href),
+                    has_inline_style: document.querySelector('style') !== null
+                };
+            })()
+            """
+            
+            # Check for external JS files
+            js_check = """
+            (function() {
+                const scripts = Array.from(document.querySelectorAll('script[src]'));
+                return {
+                    external_js_count: scripts.length,
+                    external_js_srcs: scripts.map(s => s.src),
+                    has_inline_script: Array.from(document.querySelectorAll('script')).some(s => !s.src && s.textContent.trim().length > 0)
+                };
+            })()
+            """
+            
+            css_result = await mcp_client.evaluate(css_check)
+            js_result = await mcp_client.evaluate(js_check)
+            
+            css_data = css_result.get('result', {})
+            js_data = js_result.get('result', {})
+            
+            external_css = css_data.get('external_css_count', 0)
+            external_js = js_data.get('external_js_count', 0)
+            has_inline_css = css_data.get('has_inline_style', False)
+            has_inline_js = js_data.get('has_inline_script', False)
+            
+            is_compliant = external_css == 0 and external_js == 0
+            
+            return {
+                'compliant': is_compliant,
+                'external_css_count': external_css,
+                'external_js_count': external_js,
+                'has_inline_css': has_inline_css,
+                'has_inline_js': has_inline_js,
+                'external_css_files': css_data.get('external_css_hrefs', []),
+                'external_js_files': js_data.get('external_js_srcs', [])
+            }
+        except Exception as e:
+            logger.warning(f"Failed to check single-file compliance: {e}")
+            return {
+                'compliant': None,
+                'error': str(e)
+            }
+    
     def _build_vision_prompt(
         self,
         task: str,
         observation: BrowserObservation,
         rubric: Dict[str, Any],
-        exploration: Dict[str, Any]
+        exploration: Dict[str, Any],
+        file_compliance: Dict[str, Any] = None
     ) -> str:
         """Build prompt for final vision evaluation with correct rubric weights"""
+        
+        # Add file compliance check results
+        compliance_section = ""
+        if file_compliance:
+            if file_compliance.get('compliant') is False:
+                compliance_section = f"""
+**❌ CRITICAL VIOLATION - Single-File Requirement:**
+- External CSS files found: {file_compliance.get('external_css_count', 0)}
+- External JS files found: {file_compliance.get('external_js_count', 0)}
+- External files: {', '.join(file_compliance.get('external_css_files', []) + file_compliance.get('external_js_files', []))}
+**THIS IS A CRITICAL FAILURE - The requirement is for ALL CSS/JS to be INLINE in the HTML file.**
+**Score must be heavily penalized (deduct at least 30 points) for this violation.**
+"""
+            elif file_compliance.get('compliant') is True:
+                compliance_section = "\n**✅ Single-File Compliance: Verified - All CSS/JS are inline**\n"
         
         prompt = f"""# CRITICAL EVALUATION - Evidence-Based Assessment
 
 **Original Task Requirements:**
 {task}
-
+{compliance_section}
 **Autonomous Testing Results:**
 - Total test steps: {exploration['steps_taken']}
 - Completion status: {exploration['completion_reason']}

@@ -18,10 +18,16 @@ B) NOTES (raw class notes, may be messy)
 C) YOUTUBE LINKS (optional list of URLs relevant to the notes)
 
 HARD CONSTRAINTS FOR THE COURSE THAT OPENHANDS MUST BUILD:
-- Output is either:
-  Option 1: one index.html with internal "pages" (tabs/sections) OR
-  Option 2: multiple HTML pages (index.html + module pages)
+- **CRITICAL FILE STRUCTURE REQUIREMENT**: 
+  * ALL CSS MUST BE INLINE within <style> tags in the HTML file
+  * ALL JAVASCRIPT MUST BE INLINE within <script> tags in the HTML file
+  * NO external CSS files (no <link rel="stylesheet">)
+  * NO external JavaScript files (no <script src="...">)
+  * Output is either:
+    Option 1: ONE SINGLE index.html file with internal "pages" (tabs/sections) - ALL CSS/JS INLINE
+    Option 2: Multiple HTML pages (index.html + module pages) - EACH page must have ALL CSS/JS INLINE
   (Choose the best option based on the notes complexity and explicitly justify your choice.)
+  **VIOLATION OF THIS RULE = AUTOMATIC FAILURE**
 - Must be highly interactive and visually polished.
 - Must work beautifully on:
   Mobile 375px and Tablet 768px (touch targets >= 44px; no horizontal scroll).
@@ -103,7 +109,7 @@ Return a JSON object with EXACT keys below. No extra keys. No markdown.
       "reduced motion support"
     ]
   },
-  "openhands_build_prompt": "A single, extremely detailed instruction prompt for OpenHands to implement the course. It must include: file structure decision, UI spec, module-by-module requirements, exact interactive elements to build, math rendering requirement, YouTube embedding rules, and responsive requirements."
+  "openhands_build_prompt": "A single, extremely detailed instruction prompt for OpenHands to implement the course. It must include: file structure decision (with EXPLICIT requirement for INLINE CSS/JS - no external files), UI spec, module-by-module requirements, exact interactive elements to build, math rendering requirement, YouTube embedding rules, and responsive requirements. CRITICAL: Emphasize that ALL CSS must be in <style> tags and ALL JavaScript must be in <script> tags within the HTML file(s). NO external CSS or JS files are allowed."
 }
 
 PLANNING GUIDELINES (IMPORTANT):
