@@ -89,14 +89,20 @@ async def handler(job: Dict[str, Any]) -> Dict[str, Any]:
         
         # Extract input from job
         input_data = job.get("input", {})
-        task = input_data.get("task")
+        task = input_data.get("task", "")
         custom_notes = input_data.get("notes")  # Custom prompt/notes (optional)
         
-        if not task:
+        # If notes provided, task is optional (use notes as prompt)
+        # If no notes, task is required
+        if not custom_notes and not task:
             return {
-                "error": "Missing required field: task",
+                "error": "Missing required field: either 'task' or 'notes' must be provided",
                 "status": "error"
             }
+        
+        # If only notes provided, use a placeholder task
+        if custom_notes and not task:
+            task = "Custom notes provided"
         
         # Extract optional parameters
         max_iterations = input_data.get("max_iterations", 10)  # Increased default to 10
