@@ -1,7 +1,7 @@
 """
 YouTube Video Finder
 
-Uses Gemini 3 Pro Preview to find relevant YouTube videos for course topics.
+Uses YouTube Data API v3 to find real YouTube videos, with Gemini fallback.
 Can be run beforehand to provide video options to the planner.
 """
 
@@ -11,21 +11,46 @@ import re
 from typing import Dict, Any, List, Optional
 import google.generativeai as genai
 
+# Try to import YouTube API client
+try:
+    from googleapiclient.discovery import build
+    YOUTUBE_API_AVAILABLE = True
+except ImportError:
+    YOUTUBE_API_AVAILABLE = False
+
 
 class YouTubeFinder:
     """
     Finds relevant YouTube videos for educational content using Gemini 3 Pro Preview.
     """
     
-    def __init__(self, api_key: str = None):
+    def __init__(self, api_key: str = None, youtube_api_key: str = None):
         self.api_key = api_key or os.getenv('GOOGLE_AI_STUDIO_API_KEY')
         if not self.api_key:
             raise ValueError("GOOGLE_AI_STUDIO_API_KEY not set")
         
         genai.configure(api_key=self.api_key)
         
-        # Use Gemini 3 Pro Preview for finding videos
+        # Use Gemini 3 Pro Preview for finding videos (fallback)
         self.model = genai.GenerativeModel('gemini-3-pro-preview')
+        
+        # YouTube Data API v3 key (optional)
+        self.youtube_api_key = youtube_api_key or os.getenv('YOUTUBE_API_KEY')
+        self.use_youtube_api = YOUTUBE_API_AVAILABLE and self.youtube_api_key is not None
+        
+        if self.use_youtube_api:
+            try:
+                self.youtube_service = build('youtube', 'v3', developerKey=self.youtube_api_key)
+                print("✅ YouTube Data API v3 initialized")
+            except Exception as e:
+                print(f"⚠️  Failed to initialize YouTube API: {e}")
+                print("   Falling back to Gemini-based search")
+                self.use_youtube_api = False
+        else:
+            if not YOUTUBE_API_AVAILABLE:
+                print("⚠️  google-api-python-client not installed, using Gemini fallback")
+            elif not self.youtube_api_key:
+                print("⚠️  YOUTUBE_API_KEY not set, using Gemini fallback")
     
     def find_videos(
         self, 
@@ -88,6 +113,197 @@ Return the results as a JSON array with this structure:
 Return ONLY the JSON array, no other text."""
 
         print(f"🔍 Finding YouTube videos for: {topic}")
+        
+        # Use YouTube Data API if available, otherwise fallback to Gemini
+        if self.use_youtube_api:
+            return self._find_videos_with_api(topic, content_context, count, preferred_duration_min)
+        else:
+            return self._find_videos_with_gemini(topic, content_context, count, preferred_duration_min)
+    
+    def _find_videos_with_api(
+        self,
+        topic: str,
+        content_context: str = None,
+        count: int = 5,
+        preferred_duration_min: tuple = (5, 20)
+    ) -> List[Dict[str, Any]]:
+        """Find videos using YouTube Data API v3"""
+        print("📺 Using YouTube Data API v3...")
+        
+        try:
+            # Build search query
+            query = topic
+            if content_context:
+                # Add key terms from context
+                context_words = content_context.split()[:10]  # First 10 words
+                query = f"{topic} {' '.join(context_words)}"
+            
+            # Search for videos
+            request = self.youtube_service.search().list(
+                part='snippet',
+                q=query,
+                type='video',
+                videoDuration='medium',  # 4-20 minutes (closest to preferred range)
+                videoEmbeddable='true',  # Only embeddable videos
+                order='relevance',  # Most relevant first
+                maxResults=min(count * 2, 50)  # Get more to filter
+            )
+            
+            response = request.execute()
+            
+            videos = []
+            for item in response.get('items', []):
+                video_id = item['id']['videoId']
+                snippet = item['snippet']
+                
+                # Get video details for duration
+                try:
+                    video_details = self.youtube_service.videos().list(
+                        part='contentDetails',
+                        id=video_id
+                    ).execute()
+                    
+                    duration_str = video_details['items'][0]['contentDetails']['duration']
+                    # Parse ISO 8601 duration (e.g., "PT5M30S" = 5 minutes 30 seconds)
+                    duration_min = self._parse_duration(duration_str)
+                    
+                    # Filter by preferred duration if specified
+                    if preferred_duration_min and not (preferred_duration_min[0] <= duration_min <= preferred_duration_min[1]):
+                        continue
+                except Exception as e:
+                    print(f"   ⚠️  Could not get duration for video {video_id}: {e}")
+                    duration_min = None
+                
+                video = {
+                    'url': f"https://www.youtube.com/watch?v={video_id}",
+                    'title': snippet['title'],
+                    'topic_section': topic,  # Can be refined with Gemini
+                    'reason': f"Educational video about {topic}",
+                    'channel': snippet['channelTitle'],
+                    'published': snippet['publishedAt'],
+                    'duration_min': duration_min
+                }
+                
+                videos.append(video)
+                
+                if len(videos) >= count:
+                    break
+            
+            print(f"✅ Found {len(videos)} videos via YouTube API")
+            
+            # Optionally use Gemini to refine relevance and add context
+            if videos and content_context:
+                videos = self._refine_videos_with_gemini(videos, topic, content_context)
+            
+            return videos
+            
+        except Exception as e:
+            print(f"❌ Error using YouTube API: {e}")
+            print("   Falling back to Gemini-based search...")
+            return self._find_videos_with_gemini(topic, content_context, count, preferred_duration_min)
+    
+    def _parse_duration(self, duration_str: str) -> float:
+        """Parse ISO 8601 duration to minutes"""
+        import re
+        # PT5M30S -> 5.5 minutes
+        hours = re.search(r'(\d+)H', duration_str)
+        minutes = re.search(r'(\d+)M', duration_str)
+        seconds = re.search(r'(\d+)S', duration_str)
+        
+        total_minutes = 0.0
+        if hours:
+            total_minutes += float(hours.group(1)) * 60
+        if minutes:
+            total_minutes += float(minutes.group(1))
+        if seconds:
+            total_minutes += float(seconds.group(1)) / 60
+        
+        return total_minutes
+    
+    def _refine_videos_with_gemini(
+        self,
+        videos: List[Dict[str, Any]],
+        topic: str,
+        content_context: str
+    ) -> List[Dict[str, Any]]:
+        """Use Gemini to refine video relevance and add better context"""
+        try:
+            prompt = f"""Given these YouTube videos about {topic}, match them to specific aspects of the content:
+
+CONTENT CONTEXT:
+{content_context[:1500]}
+
+VIDEOS:
+{json.dumps([{'url': v['url'], 'title': v['title']} for v in videos], indent=2)}
+
+For each video, provide:
+- topic_section: Which specific aspect of {topic} this video covers
+- reason: Why this video is relevant to the content
+
+Return JSON array matching the video order:
+[
+  {{"topic_section": "...", "reason": "..."}},
+  ...
+]"""
+            
+            response = self.model.generate_content(prompt)
+            refinement = json.loads(response.text)
+            
+            for i, video in enumerate(videos):
+                if i < len(refinement):
+                    video['topic_section'] = refinement[i].get('topic_section', topic)
+                    video['reason'] = refinement[i].get('reason', video.get('reason', ''))
+        except Exception as e:
+            print(f"   ⚠️  Could not refine videos with Gemini: {e}")
+        
+        return videos
+    
+    def _find_videos_with_gemini(
+        self,
+        topic: str,
+        content_context: str = None,
+        count: int = 5,
+        preferred_duration_min: tuple = (5, 20)
+    ) -> List[Dict[str, Any]]:
+        """Find videos using Gemini (fallback when API not available)"""
+        print("🤖 Using Gemini to suggest videos (may not be real URLs)...")
+        
+        # Build prompt for Gemini
+        context_part = ""
+        if content_context:
+            context_part = f"""
+CONTENT CONTEXT:
+{content_context[:2000]}  # Limit context to avoid token limits
+"""
+        
+        prompt = f"""Find {count} relevant YouTube explainer videos for the following educational topic.
+
+TOPIC: {topic}
+{context_part}
+Please find YouTube videos that are:
+- Clear, educational explainer videos
+- Relevant to the topic
+- Ideally {preferred_duration_min[0]}-{preferred_duration_min[1]} minutes long (but any length is acceptable)
+- From educational channels when possible
+
+For each video, provide:
+1. The full YouTube URL (https://www.youtube.com/watch?v=...)
+2. The video title (if you can determine it)
+3. Which specific aspect of the topic this video covers
+4. A brief reason why this video is relevant
+
+Return the results as a JSON array with this structure:
+[
+  {{
+    "url": "https://www.youtube.com/watch?v=...",
+    "title": "Video title here",
+    "topic_section": "Specific aspect this covers",
+    "reason": "Why this video is relevant"
+  }},
+  ...
+]
+
+Return ONLY the JSON array, no other text."""
         
         try:
             response = self.model.generate_content(
