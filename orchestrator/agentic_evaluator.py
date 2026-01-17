@@ -213,8 +213,12 @@ class AgenticEvaluator(GeminiEvaluator):
         self.step_artifacts = []  # Per-step artifact metadata
         
         # Configure Gemini with function calling
+        # Use EVALUATOR_MODEL env var, fallback to gemini-3-flash-preview for stability
+        agent_model_name = os.getenv("EVALUATOR_MODEL", "gemini-3-flash-preview")
+        logger.info(f"Using agent model: {agent_model_name}")
+        
         self.agent_model = genai.GenerativeModel(
-            model_name=os.getenv("GEMINI_MODEL", "gemini-2.0-flash-exp"),
+            model_name=agent_model_name,
             tools=BROWSER_TOOLS
         )
         
@@ -855,28 +859,54 @@ Begin systematic testing. You have vision - use it!"""
         try:
             if tool_name == "browser_click":
                 selector = args["selector"]
-                # Use MCP client's click if available, otherwise fallback to evaluate
+                # Try MCP tool first, fallback to JS if not available
                 try:
-                    await mcp_client.call_tool("browser_click", {"selector": selector})
-                except:
+                    result = await mcp_client.call_tool("browser_click", {"selector": selector})
+                    success = result.get("success", False)
+                    return {"success": success, "message": f"Clicked {selector}" if success else f"Element not found: {selector}"}
+                except Exception as e:
                     # Fallback: click via JS
-                    click_js = f"document.querySelector({json.dumps(selector)})?.click()"
-                    await mcp_client.evaluate(click_js)
-                return {"success": True, "message": f"Clicked {selector}"}
+                    logger.debug(f"MCP click failed, using JS fallback: {e}")
+                    click_js = f"""
+                    (function() {{
+                        const el = document.querySelector({json.dumps(selector)});
+                        if (el) {{
+                            el.click();
+                            return true;
+                        }}
+                        return false;
+                    }})()
+                    """
+                    result = await mcp_client.evaluate(click_js)
+                    success = result.get("result", False)
+                    return {"success": success, "message": f"Clicked {selector}" if success else f"Element not found: {selector}"}
             
             elif tool_name == "browser_type":
                 selector = args["selector"]
                 text = args["text"]
+                # Try MCP tool first, fallback to JS if not available
                 try:
-                    await mcp_client.call_tool("browser_type", {"selector": selector, "text": text})
-                except:
+                    result = await mcp_client.call_tool("browser_type", {"selector": selector, "text": text})
+                    success = result.get("success", False)
+                    return {"success": success, "message": f"Typed '{text}' into {selector}" if success else f"Element not found: {selector}"}
+                except Exception as e:
                     # Fallback: type via JS
+                    logger.debug(f"MCP type failed, using JS fallback: {e}")
                     type_js = f"""
-                    const el = document.querySelector({json.dumps(selector)});
-                    if (el) {{ el.value = {json.dumps(text)}; el.dispatchEvent(new Event('input', {{bubbles: true}})); }}
+                    (function() {{
+                        const el = document.querySelector({json.dumps(selector)});
+                        if (el) {{
+                            el.value = {json.dumps(text)};
+                            el.dispatchEvent(new Event('input', {{bubbles: true}}));
+                            el.dispatchEvent(new Event('change', {{bubbles: true}}));
+                            return true;
+                        }}
+                        return false;
+                    }})()
                     """
-                    await mcp_client.evaluate(type_js)
-                return {"success": True, "message": f"Typed '{text}' into {selector}"}
+                    result = await mcp_client.evaluate(type_js)
+                    success = result.get("result", False)
+                    return {"success": success, "message": f"Typed '{text}' into {selector}" if success else f"Element not found: {selector}"}
             
             elif tool_name == "browser_scroll":
                 direction = args["direction"]

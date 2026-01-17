@@ -190,6 +190,29 @@ class MCPServer {
             },
             required: ['duration']
           }
+        },
+        {
+          name: 'browser_click',
+          description: 'Click an element by CSS selector',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              selector: { type: 'string', description: 'CSS selector for the element to click' }
+            },
+            required: ['selector']
+          }
+        },
+        {
+          name: 'browser_type',
+          description: 'Type text into an input field',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              selector: { type: 'string', description: 'CSS selector for the input field' },
+              text: { type: 'string', description: 'Text to type' }
+            },
+            required: ['selector', 'text']
+          }
         }
       ]
     };
@@ -218,6 +241,12 @@ class MCPServer {
       
       case 'browser_wait':
         return await this.wait(args.duration);
+      
+      case 'browser_click':
+        return await this.click(args.selector);
+      
+      case 'browser_type':
+        return await this.type(args.selector, args.text);
       
       default:
         throw new Error(`Unknown tool: ${name}`);
@@ -314,6 +343,51 @@ class MCPServer {
       success: true,
       duration
     };
+  }
+  
+  async click(selector) {
+    this.log(`Clicking: ${selector}`);
+    
+    try {
+      await this.page.click(selector);
+      this.log('Click successful');
+      
+      return {
+        success: true,
+        selector
+      };
+    } catch (error) {
+      this.log(`Click failed: ${error.message}`);
+      
+      return {
+        success: false,
+        error: error.message,
+        selector
+      };
+    }
+  }
+  
+  async type(selector, text) {
+    this.log(`Typing into ${selector}: ${text.substring(0, 50)}...`);
+    
+    try {
+      await this.page.fill(selector, text);
+      this.log('Type successful');
+      
+      return {
+        success: true,
+        selector,
+        textLength: text.length
+      };
+    } catch (error) {
+      this.log(`Type failed: ${error.message}`);
+      
+      return {
+        success: false,
+        error: error.message,
+        selector
+      };
+    }
   }
   
   sendResponse(id, result) {
