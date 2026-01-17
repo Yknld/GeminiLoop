@@ -190,8 +190,41 @@ Return ONLY the JSON array, no other text."""
         """
         # Determine the main topic from requirements or notes
         if custom_notes:
-            # Extract topic from custom notes (first line or first sentence)
-            topic = custom_notes.split('\n')[0].strip()[:200]
+            # Extract topic from custom notes - clean up markdown and parenthetical notes
+            first_line = custom_notes.split('\n')[0].strip()
+            
+            # Remove markdown headers (# ## ###)
+            topic = re.sub(r'^#+\s*', '', first_line)
+            
+            # Remove parenthetical notes like "(Mock)", "(Optional)", etc.
+            topic = re.sub(r'\s*\([^)]*\)\s*', '', topic)
+            
+            # Remove common prefixes
+            topic = re.sub(r'^(Module Notes|Notes|Content|Topic):\s*', '', topic, flags=re.IGNORECASE)
+            
+            # Clean up extra whitespace
+            topic = ' '.join(topic.split())
+            
+            # If topic is still too generic or empty, use a better extraction
+            if not topic or len(topic) < 3:
+                # Try to find a better topic from the content
+                lines = custom_notes.split('\n')[:10]  # Check first 10 lines
+                for line in lines:
+                    line = line.strip()
+                    if line and not line.startswith('#') and len(line) > 10:
+                        # Remove markdown and parentheticals
+                        clean_line = re.sub(r'^#+\s*', '', line)
+                        clean_line = re.sub(r'\s*\([^)]*\)\s*', '', clean_line)
+                        clean_line = re.sub(r'^(Module Notes|Notes|Content|Topic):\s*', '', clean_line, flags=re.IGNORECASE)
+                        clean_line = ' '.join(clean_line.split())
+                        if clean_line and len(clean_line) > 10:
+                            topic = clean_line[:200]
+                            break
+            
+            # Fallback to user_requirements if topic extraction failed
+            if not topic or len(topic) < 3:
+                topic = user_requirements
+            
             context = custom_notes[:2000]  # Use first 2000 chars as context
         else:
             topic = user_requirements
