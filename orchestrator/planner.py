@@ -36,12 +36,13 @@ class Planner:
         
         return prompt_path.read_text(encoding='utf-8')
     
-    def generate_openhands_prompt(self, user_requirements: str) -> Dict[str, Any]:
+    def generate_openhands_prompt(self, user_requirements: str, custom_notes: str = None) -> Dict[str, Any]:
         """
         Generate a detailed prompt for OpenHands based on user requirements.
         
         Args:
             user_requirements: The user's high-level description of what they want
+            custom_notes: Optional custom notes/content to base the course on
         
         Returns:
             Dict containing:
@@ -49,13 +50,31 @@ class Planner:
                 - thinking: Gemini's thinking process
                 - metadata: Additional planning metadata
         """
-        # Combine planner prompt with user requirements
-        full_prompt = f"""{self.planner_prompt}
+        # Build input for planner
+        if custom_notes:
+            # Use custom notes as the primary content source
+            planner_input = f"""CUSTOM NOTES/CONTENT PROVIDED:
+{custom_notes}
 
-USER REQUIREMENTS:
+TASK: {user_requirements}
+
+Based on the custom notes/content above, generate a comprehensive, detailed prompt for OpenHands to create a single HTML file course page that covers all the topics and content from the notes. The prompt should instruct OpenHands to:
+1. Create ONE single HTML file (index.html) with tabbed navigation
+2. Organize the content from the notes into logical sections/tabs
+3. Include all formulas, examples, and practice problems from the notes
+4. Make it interactive and visually appealing
+5. Ensure mathematical symbols render correctly (use KaTeX or MathJax)"""
+        else:
+            # Use standard task-based planning
+            planner_input = f"""USER REQUIREMENTS:
 {user_requirements}
 
 Now generate a comprehensive, detailed prompt for OpenHands to implement this course. The prompt should be a clear set of instructions that OpenHands can follow to create the HTML files from scratch."""
+        
+        # Combine planner prompt with input
+        full_prompt = f"""{self.planner_prompt}
+
+{planner_input}"""
         
         print("🧠 Planner: Generating detailed prompt with Gemini 3.0 Pro Preview...")
         
@@ -93,6 +112,8 @@ Now generate a comprehensive, detailed prompt for OpenHands to implement this co
                 'metadata': {
                     'model': 'gemini-3-pro-preview',
                     'user_requirements': user_requirements,
+                    'used_custom_notes': custom_notes is not None,
+                    'custom_notes_length': len(custom_notes) if custom_notes else 0,
                     'prompt_length': len(generated_prompt),
                     'has_thinking': thinking is not None
                 }

@@ -226,47 +226,47 @@ async def run_loop(task: str, max_iterations: int = 5, base_dir: Path = None, cu
         # Do this BEFORE MCP connection since planner doesn't need browser
         print(f"\n{'=' * 70}")
         
+        # Phase 0c: Planning with Gemini (always use planner)
+        # If custom_notes provided, planner uses them to generate prompt
+        # If not, planner uses task description
+        print(f"\n{'=' * 70}")
         if custom_notes:
-            # Use custom notes/prompt directly (skip planner)
-            print(f"📝 Phase 0c: Using Custom Notes/Prompt")
+            print(f"🧠 Phase 0c: Planning with Gemini (using custom notes)")
             print(f"{'=' * 70}")
-            openhands_prompt = custom_notes
             
             # Save custom notes to artifacts for reference
             notes_file = state.artifacts_dir / "custom_notes.txt"
             notes_file.write_text(custom_notes, encoding='utf-8')
-            
-            print(f"✅ Using custom prompt ({len(openhands_prompt)} characters)")
-            print(f"   Saved to: {notes_file}")
-            
-            trace.info("Using custom notes", data={
-                'prompt_length': len(openhands_prompt),
-                'source': 'custom_notes'
-            })
+            print(f"📝 Custom notes saved: {notes_file}")
+            print(f"   Notes length: {len(custom_notes)} characters")
         else:
-            # Use planner to generate prompt
             print(f"🧠 Phase 0c: Planning with Gemini")
             print(f"{'=' * 70}")
-            
-            planner = Planner()
-            plan = planner.generate_openhands_prompt(task)
-            
-            # Save plan to artifacts
-            planner.save_plan(plan, state.artifacts_dir)
-            
-            # Store generated prompt for OpenHands
-            openhands_prompt = plan['prompt']
-            
-            print(f"✅ Planning complete")
-            print(f"   Generated prompt: {len(openhands_prompt)} characters")
-            if plan.get('thinking'):
-                print(f"   Thinking process: {len(plan['thinking'])} characters")
-            
-            trace.info("Planning complete", data={
-                'prompt_length': len(openhands_prompt),
-                'has_thinking': plan.get('thinking') is not None,
-                'model': plan['metadata']['model']
-            })
+        
+        # Always use planner - it will use custom_notes if provided
+        planner = Planner()
+        plan = planner.generate_openhands_prompt(
+            user_requirements=task,
+            custom_notes=custom_notes
+        )
+        
+        # Save plan to artifacts
+        planner.save_plan(plan, state.artifacts_dir)
+        
+        # Store generated prompt for OpenHands
+        openhands_prompt = plan['prompt']
+        
+        print(f"✅ Planning complete")
+        print(f"   Generated prompt: {len(openhands_prompt)} characters")
+        if plan.get('thinking'):
+            print(f"   Thinking process: {len(plan['thinking'])} characters")
+        
+        trace.info("Planning complete", data={
+            'prompt_length': len(openhands_prompt),
+            'has_thinking': plan.get('thinking') is not None,
+            'model': plan['metadata']['model'],
+            'used_custom_notes': custom_notes is not None
+        })
         
         # Start MCP client
         print(f"\n🌐 Starting Playwright MCP server...")

@@ -36,7 +36,7 @@ def generate_patch_plan(
     logger.info(f"   Issues found: {len(issues)}")
     
     # Build instructions for OpenHands
-    instructions = _build_instructions(task, feedback, score, issues)
+    instructions = _build_instructions(task, evaluation, issues)
     
     # Determine which files need changes
     files_to_patch = []
@@ -78,44 +78,112 @@ def extract_issues_from_evaluation(evaluation: Dict[str, Any]) -> List[Dict[str,
     
     issues = []
     
-    # Extract issues from categories
+    # Debug: Log evaluation structure
+    logger.debug(f"Evaluation keys: {list(evaluation.keys())}")
+    logger.debug(f"Has 'issues' key: {'issues' in evaluation}")
+    if "issues" in evaluation:
+        logger.debug(f"Issues type: {type(evaluation['issues'])}, length: {len(evaluation['issues']) if isinstance(evaluation['issues'], list) else 'N/A'}")
+    
+    # First, extract from issues list if available (preferred)
+    if "issues" in evaluation and isinstance(evaluation["issues"], list):
+        logger.debug(f"Extracting from evaluation['issues'] list ({len(evaluation['issues'])} items)")
+        for issue_data in evaluation["issues"]:
+            if isinstance(issue_data, dict):
+                issue_desc = issue_data.get("description", "")
+                if issue_desc:  # Only add if description exists
+                    issues.append({
+                        "category": issue_data.get("category", "unknown"),
+                        "issue": issue_desc,
+                        "severity": issue_data.get("severity", "medium"),
+                        "repro_steps": issue_data.get("repro_steps", [])
+                    })
+                    logger.debug(f"  Extracted issue: {issue_desc[:50]}...")
+    
+    # Also extract issues from category data (fallback)
     for category_name, category_data in evaluation.items():
         if isinstance(category_data, dict) and "issues" in category_data:
             for issue in category_data["issues"]:
-                issues.append({
-                    "category": category_name,
-                    "issue": issue,
-                    "severity": "high" if not category_data.get("passed", False) else "medium"
-                })
+                issue_str = issue if isinstance(issue, str) else str(issue)
+                # Avoid duplicates
+                if issue_str and not any(i.get("issue") == issue_str for i in issues):
+                    issues.append({
+                        "category": category_name,
+                        "issue": issue_str,
+                        "severity": "high" if not category_data.get("passed", False) else "medium"
+                    })
     
+    logger.debug(f"Total issues extracted: {len(issues)}")
     return issues
 
 
 def _build_instructions(
     task: str,
-    feedback: str,
-    score: int,
+    evaluation: Dict[str, Any],
     issues: List[Dict[str, Any]]
 ) -> str:
     """Build extremely detailed instructions for OpenHands"""
+    
+    feedback = evaluation.get("feedback", "")
+    score = evaluation.get("score", 0)
+    category_scores = evaluation.get("category_scores", {})
+    detailed_issues = evaluation.get("issues", [])
+    fix_suggestions = evaluation.get("fix_suggestions", [])
+    
+    # Build category scores breakdown
+    category_breakdown = ""
+    if category_scores:
+        category_breakdown = "\nCATEGORY SCORES BREAKDOWN:\n"
+        max_scores = {
+            "functionality": 25,
+            "ux": 25,
+            "accessibility": 20,
+            "responsiveness": 20,
+            "robustness": 10
+        }
+        for category, cat_score in category_scores.items():
+            max_score = max_scores.get(category, 100)
+            percentage = (cat_score / max_score * 100) if max_score > 0 else 0
+            status = "✅" if percentage >= 70 else "❌"
+            category_breakdown += f"  {status} {category.replace('_', ' ').title()}: {cat_score}/{max_score} ({percentage:.0f}%)\n"
     
     instructions = f"""CRITICAL TASK: Fix ALL issues to achieve 80+ score
 
 ORIGINAL TASK: {task}
 CURRENT SCORE: {score}/100 ❌ UNACCEPTABLE
 TARGET SCORE: 80+/100 ✅ REQUIRED
-
+{category_breakdown}
 =====================================================
-EVALUATION FEEDBACK
+EVALUATION FEEDBACK SUMMARY
 =====================================================
 {feedback}
 
 =====================================================
-SPECIFIC ISSUES THAT MUST BE FIXED
+KEY ISSUES THAT MUST BE FIXED ({len(detailed_issues)} total)
 =====================================================
 """
     
-    if issues:
+    if detailed_issues:
+        # Sort by severity: critical > high > medium > low
+        severity_order = {"critical": 0, "high": 1, "medium": 2, "low": 3}
+        sorted_issues = sorted(detailed_issues, key=lambda x: severity_order.get(x.get("severity", "medium"), 2))
+        
+        for i, issue in enumerate(sorted_issues, 1):
+            severity = issue.get("severity", "medium")
+            category = issue.get("category", "unknown")
+            description = issue.get("description", "")
+            repro_steps = issue.get("repro_steps", [])
+            
+            instructions += f"""
+{i}. [{severity.upper()}] {category.replace('_', ' ').title()} Issue:
+   Description: {description}
+"""
+            if repro_steps:
+                instructions += "   Reproduction Steps:\n"
+                for step_num, step in enumerate(repro_steps, 1):
+                    instructions += f"      {step_num}. {step}\n"
+            instructions += "   Action Required: Fix this issue completely\n"
+    elif issues:
+        # Fallback to extracted issues if detailed_issues not available
         for i, issue in enumerate(issues, 1):
             instructions += f"""
 {i}. ISSUE: [{issue['category'].upper()}]
@@ -125,6 +193,15 @@ SPECIFIC ISSUES THAT MUST BE FIXED
 """
     else:
         instructions += "\n- Multiple quality issues detected\n- See feedback above for details\n"
+    
+    if fix_suggestions:
+        instructions += f"""
+=====================================================
+FIX SUGGESTIONS ({len(fix_suggestions)} total)
+=====================================================
+"""
+        for i, suggestion in enumerate(fix_suggestions, 1):
+            instructions += f"{i}. {suggestion}\n"
     
     instructions += """
 =====================================================
