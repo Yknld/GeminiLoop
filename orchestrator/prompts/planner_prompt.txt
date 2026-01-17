@@ -109,10 +109,15 @@ Return a JSON object with EXACT keys below. No extra keys. No markdown.
       "reduced motion support"
     ]
   },
-  "openhands_build_prompt": "A single, extremely detailed instruction prompt for OpenHands to implement the course. It must include: file structure decision (with EXPLICIT requirement for INLINE CSS/JS - no external files), UI spec, module-by-module requirements, exact interactive elements to build, math rendering requirement, YouTube embedding rules, and responsive requirements. CRITICAL: Emphasize that ALL CSS must be in <style> tags and ALL JavaScript must be in <script> tags within the HTML file(s). NO external CSS or JS files are allowed."
+  "openhands_build_prompt": "A single, extremely detailed instruction prompt for OpenHands to implement the course. It must include: file structure decision (with EXPLICIT requirement for INLINE CSS/JS - no external files), UI spec, module-by-module requirements for EVERY topic in the notes (create a section/module for EACH distinct topic - do not combine them), exact interactive elements to build for EACH module, math rendering requirement, YouTube embedding rules, and responsive requirements. CRITICAL: (1) ALL CSS must be in <style> tags and ALL JavaScript must be in <script> tags within the HTML file(s). NO external CSS or JS files are allowed. (2) You MUST implement ALL modules/sections listed in course_overview - do not stop after implementing just one module. Create navigation (tabs/sections) to access all modules."
 }
 
 PLANNING GUIDELINES (IMPORTANT):
+- **CRITICAL: You MUST create a module/section for EVERY distinct topic in the notes.**
+  * If notes mention "Circles", "Coordinate Geometry", and "Practice Problems" → create 3 modules/sections
+  * If notes have multiple topics → create a module for EACH topic
+  * DO NOT create only one module covering everything - break it into separate, focused modules
+  * Each topic from the notes MUST have its own dedicated section/module in the course
 - The plan must not be "basic." If the notes are geometry, do interactive dragging diagrams; if probability, do simulations; if biology, do labeled interactive diagrams, etc.
 - Each module must have at least:
   1 interactive experience,
@@ -121,6 +126,7 @@ PLANNING GUIDELINES (IMPORTANT):
 - YouTube is supportive: embed AFTER the learner has tried the interactive element, unless it's an overview video.
 - Ensure the OpenHands build prompt is actionable: include component names, behaviors, validation logic, and what to store in localStorage if needed.
 - Include a brief justification in openhands_build_prompt for why you chose single-page vs multi-page.
+- **In the openhands_build_prompt, explicitly list ALL modules/sections that must be created and ensure OpenHands implements ALL of them, not just one.**
 
 NOW DO THE TASK USING:
 USER REQUIREMENTS:
