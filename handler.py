@@ -13,7 +13,7 @@ import logging
 import traceback
 import base64
 from pathlib import Path
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 
 # Import runpod first (required for serverless)
 try:
@@ -38,6 +38,24 @@ def _encode_image_base64(image_path: Path) -> str:
             return f"data:image/png;base64,{base64_data}"
     except Exception as e:
         logger.error(f"Failed to encode image {image_path}: {e}")
+        return None
+
+def _encode_video_base64(video_path: Path, max_size_mb: int = 50) -> Optional[str]:
+    """Encode video to base64 data URI (with size limit to avoid huge responses)"""
+    try:
+        # Check file size
+        file_size_mb = video_path.stat().st_size / (1024 * 1024)
+        if file_size_mb > max_size_mb:
+            logger.warning(f"Video {video_path} is too large ({file_size_mb:.1f}MB > {max_size_mb}MB), skipping encoding")
+            return None
+        
+        with open(video_path, 'rb') as f:
+            video_data = f.read()
+            base64_data = base64.b64encode(video_data).decode('utf-8')
+            logger.info(f"✅ Encoded video: {video_path.name} ({file_size_mb:.1f}MB)")
+            return f"data:video/webm;base64,{base64_data}"
+    except Exception as e:
+        logger.warning(f"Failed to encode video {video_path}: {e}")
         return None
 
 
@@ -209,13 +227,27 @@ async def handler(job: Dict[str, Any]) -> Dict[str, Any]:
             screenshot_files = list(screenshots_dir.rglob("*.png"))
             response["screenshots"] = [str(f.relative_to("/runpod-volume/runs")) for f in screenshot_files]
         
-        # Get video paths
+        # Get video paths and encode videos
         videos_dir = Path(f"/runpod-volume/runs/{state.result.run_id}/artifacts/screenshots")
         if videos_dir.exists():
             video_files = list(videos_dir.rglob("*.webm"))
             if video_files:
                 response["videos"] = [str(f.relative_to("/runpod-volume/runs")) for f in video_files]
                 response["artifacts"]["videos"] = [str(f.relative_to("/runpod-volume/runs")) for f in video_files]
+                
+                # Encode videos as base64 for download
+                response["videos_data"] = {}
+                for video_file in video_files:
+                    try:
+                        relative_path = str(video_file.relative_to("/runpod-volume/runs"))
+                        encoded_video = _encode_video_base64(video_file)
+                        if encoded_video:
+                            response["videos_data"][relative_path] = encoded_video
+                            logger.info(f"✅ Encoded video: {relative_path} ({video_file.stat().st_size / (1024*1024):.1f}MB)")
+                        else:
+                            logger.warning(f"⚠️  Video too large or failed to encode: {relative_path}")
+                    except Exception as e:
+                        logger.warning(f"⚠️  Error encoding video {video_file}: {e}")
         
         # Add generated file contents
         response["generated_files"] = {}
