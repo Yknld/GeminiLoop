@@ -272,6 +272,7 @@ class LocalSubprocessOpenHandsClient(OpenHandsClient):
         # Run OpenHands via Python SDK
         try:
             from openhands.sdk import LLM, Agent, Conversation, Workspace
+            from openhands.tools import Tool
             from openhands.tools.file_editor import FileEditorTool
             from openhands.tools.terminal import TerminalTool
             from openhands.tools.preset.default import get_default_agent
@@ -291,11 +292,35 @@ class LocalSubprocessOpenHandsClient(OpenHandsClient):
             )
             
             # Use OpenHands' default agent which includes planning capabilities
-            # This agent has built-in planning tools and will create its own plan
-            agent = get_default_agent(
-                llm=llm,
-                cli_mode=True,  # Disable browser tools for code generation
-            )
+            # According to OpenHands docs, get_default_agent() should include FileEditorTool by default
+            # The agent automatically sees built-in tools when properly configured
+            
+            try:
+                # Try using get_default_agent - it should include FileEditorTool automatically
+                agent = get_default_agent(
+                    llm=llm,
+                    cli_mode=True,  # Disable browser tools for code generation
+                )
+                # Log available tools for debugging
+                if hasattr(agent, 'tools'):
+                    tool_names = [getattr(t, 'name', str(t)) for t in agent.tools] if agent.tools else []
+                    logger.info(f"   ✅ Default agent created with {len(tool_names)} tools")
+                    logger.info(f"   Available tools: {', '.join(tool_names[:5])}{'...' if len(tool_names) > 5 else ''}")
+                else:
+                    logger.info("   ✅ Default agent created (tools not inspectable)")
+            except Exception as agent_error:
+                logger.warning(f"⚠️  Failed to create default agent: {agent_error}")
+                logger.info("   Creating agent with explicit Tool references (using Tool.name pattern)...")
+                # Fallback: create agent with explicit tool references using Tool(name=...) pattern
+                # This matches the OpenHands documentation pattern
+                agent = Agent(
+                    llm=llm,
+                    tools=[
+                        Tool(name=FileEditorTool.name),
+                        Tool(name=TerminalTool.name),
+                    ],
+                )
+                logger.info("   ✅ Fallback agent created with explicit Tool(name=...) references")
             
             # Use remote agent server pattern if enabled (better observability, future VSCode support)
             if self.use_remote_server:
@@ -394,10 +419,24 @@ class LocalSubprocessOpenHandsClient(OpenHandsClient):
             }
             
         except Exception as e:
-            logger.error(f"❌ Todo execution failed: {e}")
+            error_msg = str(e)
+            error_traceback = traceback.format_exc()
+            
+            # Check if this is a FileEditorTool validation error
+            if "FileEditorTool" in error_msg and ("validation error" in error_msg.lower() or "Field required" in error_msg):
+                logger.error(f"❌ Todo execution failed: FileEditorTool validation error")
+                logger.error(f"   This usually means the agent called file_editor with missing or empty parameters")
+                logger.error(f"   Error details: {error_msg}")
+                logger.error(f"   Full traceback:\n{error_traceback}")
+                logger.error(f"   💡 Suggestion: The agent may need clearer instructions on how to use file_editor tool")
+            else:
+                logger.error(f"❌ Todo execution failed: {error_msg}")
+                logger.error(f"   Full traceback:\n{error_traceback}")
+            
             return {
                 "success": False,
-                "error": str(e),
+                "error": error_msg,
+                "error_type": "FileEditorTool_validation" if "FileEditorTool" in error_msg and "Field required" in error_msg else "unknown",
                 "todo_id": todo['id'],
                 "todo_title": todo['title']
             }
@@ -534,8 +573,8 @@ class LocalSubprocessOpenHandsClient(OpenHandsClient):
         prompt += "- The interactiveElement must be a FULL HTML string with embedded JavaScript\n"
         prompt += "- Include: inputs, buttons, calculations, visual feedback\n"
         prompt += "- Make it FUN and engaging, NOT test-like\n"
-        prompt += "- Example: Circle Calculator with radius input → shows diameter, circumference, area\n"
-        prompt += "- Example: Coordinate Tool with x1,y1,x2,y2 inputs → shows distance, midpoint, slope\n\n"
+        prompt += "- Example: Calculator with inputs → shows calculated results\n"
+        prompt += "- Example: Interactive tool with user inputs → displays computed outputs\n\n"
         
         prompt += "**HOW TO EXECUTE THIS TASK (ONE OPERATION ONLY):**\n"
         prompt += "1. Read the current index.html file to find the `modules` array\n"
@@ -603,6 +642,8 @@ class LocalSubprocessOpenHandsClient(OpenHandsClient):
             # Import OpenHands SDK
             from openhands.sdk import LLM, Agent, Conversation, Workspace, Tool
             from openhands.tools.browser_use import BrowserToolSet
+            from openhands.sdk import LLM, Agent, Conversation, Workspace
+            from openhands.tools import Tool
             from openhands.tools.file_editor import FileEditorTool
             from openhands.tools.terminal import TerminalTool
             from openhands.tools.preset.default import get_default_agent
@@ -623,11 +664,26 @@ class LocalSubprocessOpenHandsClient(OpenHandsClient):
             )
             
             # Use OpenHands' default agent which includes planning capabilities
-            # This agent has built-in planning tools and will create its own plan
-            agent = get_default_agent(
-                llm=llm,
-                cli_mode=True,  # Disable browser tools for code generation
-            )
+            # According to OpenHands docs, get_default_agent() should include FileEditorTool by default
+            try:
+                agent = get_default_agent(
+                    llm=llm,
+                    cli_mode=True,  # Disable browser tools for code generation
+                )
+                if hasattr(agent, 'tools'):
+                    tool_names = [getattr(t, 'name', str(t)) for t in agent.tools] if agent.tools else []
+                    logger.info(f"   ✅ Default agent created with {len(tool_names)} tools")
+            except Exception as agent_error:
+                logger.warning(f"⚠️  Failed to create default agent: {agent_error}")
+                logger.info("   Creating agent with explicit Tool references...")
+                agent = Agent(
+                    llm=llm,
+                    tools=[
+                        Tool(name=FileEditorTool.name),
+                        Tool(name=TerminalTool.name),
+                    ],
+                )
+                logger.info("   ✅ Fallback agent created with explicit Tool(name=...) references")
             
             # Ensure workspace path is absolute and valid
             workspace_path_abs = workspace_path.resolve()
@@ -809,7 +865,8 @@ class LocalSubprocessOpenHandsClient(OpenHandsClient):
         # Run OpenHands via Python SDK
         try:
             # Import OpenHands SDK
-            from openhands.sdk import LLM, Agent, Conversation, Workspace, Tool
+            from openhands.sdk import LLM, Agent, Conversation, Workspace
+            from openhands.tools import Tool
             from openhands.tools.browser_use import BrowserToolSet
             from openhands.tools.file_editor import FileEditorTool
             from openhands.tools.terminal import TerminalTool
@@ -830,11 +887,26 @@ class LocalSubprocessOpenHandsClient(OpenHandsClient):
             )
             
             # Use OpenHands' default agent which includes planning capabilities
-            # This agent has built-in planning tools and will create its own plan
-            agent = get_default_agent(
-                llm=llm,
-                cli_mode=True,  # Disable browser tools for code generation
-            )
+            # According to OpenHands docs, get_default_agent() should include FileEditorTool by default
+            try:
+                agent = get_default_agent(
+                    llm=llm,
+                    cli_mode=True,  # Disable browser tools for code generation
+                )
+                if hasattr(agent, 'tools'):
+                    tool_names = [getattr(t, 'name', str(t)) for t in agent.tools] if agent.tools else []
+                    logger.info(f"   ✅ Default agent created with {len(tool_names)} tools")
+            except Exception as agent_error:
+                logger.warning(f"⚠️  Failed to create default agent: {agent_error}")
+                logger.info("   Creating agent with explicit Tool references...")
+                agent = Agent(
+                    llm=llm,
+                    tools=[
+                        Tool(name=FileEditorTool.name),
+                        Tool(name=TerminalTool.name),
+                    ],
+                )
+                logger.info("   ✅ Fallback agent created with explicit Tool(name=...) references")
             
             # Ensure workspace path is absolute and valid
             workspace_path_abs = workspace_path.resolve()
@@ -1120,8 +1192,16 @@ class LocalSubprocessOpenHandsClient(OpenHandsClient):
         return diffs
     
     def _build_generation_prompt(self, task: str, requirements: Dict[str, Any] = None, template_file: str = None, workspace_path: str = None) -> str:
-        """Build task prompt for OpenHands, optionally including template instructions"""
+        """
+        Build task prompt for OpenHands, optionally including template instructions.
         
+        Note: The `task` parameter contains the planner's openhands_build_prompt instructions,
+        which are detailed instructions generated by the planner based on notes.
+        We add template-specific instructions on top of these planner instructions.
+        """
+        
+        # The task parameter already contains the planner's detailed instructions
+        # (openhands_build_prompt from the planner output)
         prompt = f"{task}"
         
         # Check if index.html already exists in workspace (template was pre-loaded)
@@ -1131,7 +1211,7 @@ class LocalSubprocessOpenHandsClient(OpenHandsClient):
             index_path = workspace_path_obj / "index.html"
             if index_path.exists():
                 index_exists = True
-                prompt += f"\n\n**CRITICAL: REPLACE THE ENTIRE MODULES ARRAY WITH GEOMETRY CONTENT**"
+                prompt += f"\n\n**CRITICAL: FOLLOW THE INSTRUCTIONS PROVIDED ABOVE**"
                 prompt += f"\n- There is already an index.html file in your workspace (this is the template)"
                 prompt += f"\n- **FILE OPERATION RULES:**"
                 prompt += f"\n  * The file path is: index.html (relative to workspace)"
@@ -1144,21 +1224,20 @@ class LocalSubprocessOpenHandsClient(OpenHandsClient):
                 prompt += f"\n\n**MANDATORY: REPLACE THE MODULES ARRAY**"
                 prompt += f"\n- Find the line: `let modules = [`"
                 prompt += f"\n- The current modules array has PLACEHOLDER content (Module 1: Introduction, Module 2: Advanced Concepts)"
-                prompt += f"\n- You MUST REPLACE the ENTIRE modules array content with geometry content from the notes"
-                prompt += f"\n- Delete ALL placeholder modules and create NEW modules based on the geometry notes"
-                prompt += f"\n- Example: Create modules for 'Circles', 'Coordinate Geometry', etc. based on the notes provided"
+                prompt += f"\n- You MUST REPLACE the ENTIRE modules array content following the instructions provided above"
+                prompt += f"\n- Delete ALL placeholder modules and create NEW modules as specified in the instructions above"
+                prompt += f"\n- Follow the module specifications and content described in the instructions above"
                 prompt += f"\n\n**EDITING STRATEGY:**"
                 prompt += f"\n1. Read the file to see the exact format of the modules array"
                 prompt += f"\n2. Use file_editor with `edit` operation (NOT `create`) to replace the ENTIRE modules array content"
                 prompt += f"\n3. Remember: index.html already exists, so use `edit` or `write` command, never `create`"
                 prompt += f"\n4. The old_str should be: `let modules = [` followed by all the placeholder module objects until the closing `];`"
-                prompt += f"\n5. The new_str should be: `let modules = [` followed by your NEW geometry modules, then `];`"
+                prompt += f"\n5. The new_str should be: `let modules = [` followed by your NEW modules, then `];`"
                 prompt += f"\n6. If str_replace fails, try replacing just the content inside the array brackets"
-                prompt += f"\n\n**MODULE STRUCTURE (from notes):**"
-                prompt += f"\n- Create modules for: Circles (radius, diameter, circumference, area formulas)"
-                prompt += f"\n- Create modules for: Coordinate Geometry (distance formula, midpoint, slope, parallel/perpendicular)"
-                prompt += f"\n- Each module needs: title (e.g., 'Circles'), explanation (from notes), keyPoints (from notes), etc."
-                prompt += f"\n- DO NOT use placeholder titles like 'Module 1: Introduction' - use actual geometry topic names"
+                prompt += f"\n\n**MODULE STRUCTURE (from instructions above):**"
+                prompt += f"\n- Create modules based on the topics and structure specified in the instructions above"
+                prompt += f"\n- Each module needs: title, explanation, keyPoints, etc. as specified in the instructions above"
+                prompt += f"\n- DO NOT use placeholder titles like 'Module 1: Introduction' - use actual topic names as specified in the instructions above"
                 prompt += f"\n\n**CRITICAL: INTERACTIVE ELEMENTS (REQUIRED - FUN ACTIVITIES, NOT QUIZZES):**"
                 prompt += f"\n- **NEVER CREATE QUIZZES, TESTS, OR MULTIPLE-CHOICE QUESTIONS**"
                 prompt += f"\n- **INTERACTIVE ACTIVITIES MUST BE FUN, ENGAGING, AND GAME-LIKE**"
@@ -1174,13 +1253,12 @@ class LocalSubprocessOpenHandsClient(OpenHandsClient):
                 prompt += f"\n  * REPLACE it with code that checks `if (module.interactiveElement)`"
                 prompt += f"\n  * Set `interactiveElement.innerHTML = module.interactiveElement` (the HTML string from the field)"
                 prompt += f"\n- **CREATE FUN INTERACTIVE ACTIVITIES** based on the planner's instructions:"
-                prompt += f"\n  * Interactive CALCULATORS: Users input values and see instant calculations (Circle Calculator, Sector Solver, Coordinate Tool)"
+                prompt += f"\n  * Interactive CALCULATORS: Users input values and see instant calculations"
                 prompt += f"\n  * Interactive SIMULATIONS: Visual, hands-on experiences where users manipulate values and see results"
                 prompt += f"\n  * Interactive GAMES: Engaging, playful activities that teach concepts through interaction"
                 prompt += f"\n  * Interactive MANIPULATIVES: Drag-and-drop, sliders, visual tools that let users explore concepts"
                 prompt += f"\n  * Follow the EXACT interactiveElement specifications from the planner prompt above"
-                prompt += f"\n  * For Circles: Circle Calculator with radius input, calculate button, instant results display (diameter, circumference, area)"
-                prompt += f"\n  * For Coordinate Geometry: Coordinate Power Tool with x1,y1,x2,y2 inputs and buttons for Distance/Midpoint/Slope calculations"
+                prompt += f"\n  * Create interactive tools relevant to the subject matter in the notes"
                 prompt += f"\n- The interactiveElement should be FULL HTML with working JavaScript (buttons, inputs, calculations, visual feedback)"
                 prompt += f"\n- The interactive content MUST be functional and FUN - users should enjoy interacting with it, not feel like they're taking a test"
                 prompt += f"\n- Replace the placeholder `<div class=\"interactive-element\" id=\"interactive-element\">` content with your actual interactive HTML"
@@ -1207,7 +1285,7 @@ class LocalSubprocessOpenHandsClient(OpenHandsClient):
             prompt += f"\n- The template file is already in your workspace as index.html"
             prompt += f"\n- You MUST edit the existing index.html file - DO NOT create from scratch"
             prompt += f"\n- First, read the index.html file to understand its structure"
-            prompt += f"\n- Then, edit it directly and populate the `modules` array with content from the notes"
+            prompt += f"\n- Then, edit it directly and populate the `modules` array following the instructions provided above"
             prompt += f"\n- Create as many module objects as appropriate based on the content structure"
             prompt += f"\n- Preserve the template structure: navigation system, module loading functions, audio controls, notes panel, chatbot"
             prompt += f"\n- You can modify colors and remove specific cards, but the skeleton structure must remain"
@@ -1217,7 +1295,7 @@ class LocalSubprocessOpenHandsClient(OpenHandsClient):
             prompt += f"\n- READ the youtube_videos.json file to get the video IDs"
             prompt += f"\n- For each module, assign the MOST RELEVANT YouTube video ID to the videoId field"
             prompt += f"\n- DO NOT set videoId to null - you MUST use the actual YouTube video IDs from the JSON file"
-            prompt += f"\n- Match videos to modules by topic (e.g., 'Circles' video for Circles module, 'Coordinate Geometry' video for Coordinate Geometry module)"
+            prompt += f"\n- Match videos to modules by topic - assign the most relevant video to each module based on content"
             prompt += f"\n- The template will automatically embed the video using the videoId - you just need to set the field"
             prompt += f"\n\n**CRITICAL: interactiveElement MUST contain ACTUAL working HTML/JavaScript, NOT placeholder text**"
             prompt += f"\n- **NEVER CREATE QUIZZES, TESTS, OR MULTIPLE-CHOICE QUESTIONS - ONLY FUN INTERACTIVE ACTIVITIES**"
@@ -1227,9 +1305,8 @@ class LocalSubprocessOpenHandsClient(OpenHandsClient):
             prompt += f"\n- Create FUN interactive content: interactive calculators, visual simulations, engaging games, drag-and-drop manipulatives"
             prompt += f"\n- **FORBIDDEN**: Multiple-choice questions, true/false questions, fill-in-the-blank tests, any quiz-like content"
             prompt += f"\n- **REQUIRED**: Interactive calculators, visual tools, simulations, games that let users explore and discover concepts"
-            prompt += f"\n- Follow the EXACT interactiveElement specifications from the planner prompt (Circle Calculator, Sector Solver, Coordinate Power Tool)"
-            prompt += f"\n- For Circles module: Create Circle Calculator with radius input, calculate button, and display results (diameter, circumference, area) - FUN and interactive, NOT a quiz"
-            prompt += f"\n- For Coordinate Geometry module: Create Coordinate Power Tool with x1,y1,x2,y2 inputs and buttons for Distance/Midpoint/Slope calculations - FUN and interactive, NOT a quiz"
+            prompt += f"\n- Follow the EXACT interactiveElement specifications from the planner prompt"
+            prompt += f"\n- Create interactive tools that are relevant to the subject matter - FUN and interactive, NOT a quiz"
             prompt += f"\n- The interactiveElement must be FULL HTML with working JavaScript - buttons that respond, inputs that calculate, feedback messages"
             prompt += f"\n- DO NOT leave placeholder text - create functional, interactive content that users can actually interact with"
             prompt += f"\n- The template already has all CSS and JavaScript inline - do NOT add external files"
