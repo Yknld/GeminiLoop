@@ -315,6 +315,13 @@ class AgenticEvaluator(GeminiEvaluator):
             elif file_compliance.get('compliant') is True:
                 logger.info("✅ Single-file compliance verified")
             
+            # Check template structure compliance
+            logger.info("\n🔍 Checking template structure compliance...")
+            template_compliance = await self._check_template_structure_compliance(mcp_client)
+            logger.info(f"   Template compliance: {template_compliance.get('template_compliant', 'unknown')}")
+            if template_compliance.get('is_simple_quiz'):
+                logger.warning("   ⚠️  Page appears to be a simple quiz, not using template structure!")
+            
             # Phase 3: Final vision evaluation
             logger.info("\n👁️  Phase 3b: Final Vision Evaluation")
             final_eval = await self._run_vision_evaluation(
