@@ -424,6 +424,24 @@ async def run_loop(task: str, max_iterations: int = 5, base_dir: Path = None, cu
             preview_url = preview_server.get_file_url("index.html")
             print(f"   Preview URL: {preview_url}")
             
+            # Verify index.html exists in project_root (where preview server serves from)
+            index_in_project = path_config.project_root / "index.html"
+            if not index_in_project.exists():
+                print(f"   ⚠️  WARNING: index.html not found in preview server directory!")
+                print(f"   Expected: {index_in_project}")
+                print(f"   Preview server serves from: {path_config.project_root}")
+                # Check if it exists in workspace
+                index_in_workspace = state.workspace_dir / "index.html"
+                if index_in_workspace.exists():
+                    print(f"   ✅ Found in workspace, copying to project_root...")
+                    index_in_project.parent.mkdir(parents=True, exist_ok=True)
+                    index_in_project.write_text(index_in_workspace.read_text())
+                    print(f"   ✅ Copied to preview server directory")
+                else:
+                    print(f"   ❌ index.html not found in workspace either: {index_in_workspace}")
+            else:
+                print(f"   ✅ index.html found in preview server directory")
+            
             trace.testing_start(preview_url)
             
             # Create screenshots directory for this iteration
