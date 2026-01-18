@@ -293,7 +293,7 @@ class Planner:
                 'course_overview': course_overview,
                 'global_ui_spec': global_ui_spec,
                 'metadata': {
-                    'model': 'gemini-3-pro-preview',
+                    'model': 'gemini-2.0-pro-exp',
                     'user_requirements': user_requirements,
                     'used_custom_notes': custom_notes is not None,
                     'custom_notes_length': len(custom_notes) if custom_notes else 0,
@@ -312,7 +312,7 @@ class Planner:
                     'prompt': response_text,
                     'thinking': thinking,
                     'metadata': {
-                        'model': 'gemini-3-pro-preview',
+                        'model': 'gemini-2.0-pro-exp',
                         'user_requirements': user_requirements,
                         'used_custom_notes': custom_notes is not None,
                         'custom_notes_length': len(custom_notes) if custom_notes else 0,

@@ -154,7 +154,7 @@ class LocalSubprocessOpenHandsClient(OpenHandsClient):
             
             # Configure LLM (using Gemini AI Studio, not Vertex AI)
             # Use "gemini/" prefix to force LiteLLM to use AI Studio instead of Vertex
-            model = os.getenv("GEMINI_MODEL", "gemini-3-flash-preview")
+            model = os.getenv("GEMINI_MODEL", "gemini-2.0-flash-exp")
             if not model.startswith("gemini/"):
                 model = f"gemini/{model}"
             
@@ -301,7 +301,7 @@ class LocalSubprocessOpenHandsClient(OpenHandsClient):
             before_files = self._capture_workspace_state(workspace_path)
             
             # Configure LLM (using Gemini AI Studio, not Vertex AI)
-            model = os.getenv("GEMINI_MODEL", "gemini-3-flash-preview")
+            model = os.getenv("GEMINI_MODEL", "gemini-2.0-flash-exp")
             if not model.startswith("gemini/"):
                 model = f"gemini/{model}"
             
@@ -540,6 +540,12 @@ class LocalSubprocessOpenHandsClient(OpenHandsClient):
                 index_exists = True
                 prompt += f"\n\n**CRITICAL: REPLACE THE ENTIRE MODULES ARRAY WITH GEOMETRY CONTENT**"
                 prompt += f"\n- There is already an index.html file in your workspace (this is the template)"
+                prompt += f"\n- **FILE OPERATION RULES:**"
+                prompt += f"\n  * The file path is: index.html (relative to workspace)"
+                prompt += f"\n  * ALWAYS check if a file exists before modifying it"
+                prompt += f"\n  * If index.html already exists (which it does), you MUST use `edit` or `write` command, NEVER use `create`"
+                prompt += f"\n  * The `create` command will FAIL with error: \"File already exists. Cannot overwrite files using command create\""
+                prompt += f"\n  * To edit an existing file, use: `file_editor` tool with `edit` operation, or use `write` tool"
                 prompt += f"\n- You MUST edit this existing file - DO NOT create a new file from scratch"
                 prompt += f"\n- Read the index.html file completely to understand its structure"
                 prompt += f"\n\n**MANDATORY: REPLACE THE MODULES ARRAY**"
@@ -550,10 +556,11 @@ class LocalSubprocessOpenHandsClient(OpenHandsClient):
                 prompt += f"\n- Example: Create modules for 'Circles', 'Coordinate Geometry', etc. based on the notes provided"
                 prompt += f"\n\n**EDITING STRATEGY:**"
                 prompt += f"\n1. Read the file to see the exact format of the modules array"
-                prompt += f"\n2. Use file_editor to replace the ENTIRE modules array content"
-                prompt += f"\n3. The old_str should be: `let modules = [` followed by all the placeholder module objects until the closing `];`"
-                prompt += f"\n4. The new_str should be: `let modules = [` followed by your NEW geometry modules, then `];`"
-                prompt += f"\n5. If str_replace fails, try replacing just the content inside the array brackets"
+                prompt += f"\n2. Use file_editor with `edit` operation (NOT `create`) to replace the ENTIRE modules array content"
+                prompt += f"\n3. Remember: index.html already exists, so use `edit` or `write` command, never `create`"
+                prompt += f"\n4. The old_str should be: `let modules = [` followed by all the placeholder module objects until the closing `];`"
+                prompt += f"\n5. The new_str should be: `let modules = [` followed by your NEW geometry modules, then `];`"
+                prompt += f"\n6. If str_replace fails, try replacing just the content inside the array brackets"
                 prompt += f"\n\n**MODULE STRUCTURE (from notes):**"
                 prompt += f"\n- Create modules for: Circles (radius, diameter, circumference, area formulas)"
                 prompt += f"\n- Create modules for: Coordinate Geometry (distance formula, midpoint, slope, parallel/perpendicular)"

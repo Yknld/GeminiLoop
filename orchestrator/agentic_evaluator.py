@@ -213,8 +213,8 @@ class AgenticEvaluator(GeminiEvaluator):
         self.step_artifacts = []  # Per-step artifact metadata
         
         # Configure Gemini with function calling
-        # Use EVALUATOR_MODEL env var, fallback to gemini-3-flash-preview for stability
-        agent_model_name = os.getenv("EVALUATOR_MODEL", "gemini-3-flash-preview")
+        # Use EVALUATOR_MODEL env var, fallback to gemini-2.0-flash-exp for stability
+        agent_model_name = os.getenv("EVALUATOR_MODEL", "gemini-2.0-flash-exp")
         logger.info(f"Using agent model: {agent_model_name}")
         
         # Wrap tools in function_declarations format required by google.generativeai
@@ -1218,7 +1218,7 @@ Begin systematic testing. You have vision - use it!"""
         
         # Call Gemini for final scoring WITH SCREENSHOTS
         model = genai.GenerativeModel(
-            model_name=os.getenv("EVALUATOR_MODEL", "gemini-3-flash-preview")
+            model_name=os.getenv("EVALUATOR_MODEL", "gemini-2.0-flash-exp")
         )
         
         # Include screenshots from exploration
