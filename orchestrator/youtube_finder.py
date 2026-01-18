@@ -496,10 +496,34 @@ Return ONLY the JSON, no other text."""
     
     def _extract_topic_simple(self, notes: str) -> str:
         """Simple topic extraction fallback"""
-        first_line = notes.split('\n')[0].strip()
+        if not notes:
+            return None
+        
+        # Remove file path markers like "=== geometry_mock_notes/circles.md ==="
+        notes = re.sub(r'^===.*?===\s*\n', '', notes, flags=re.MULTILINE)
+        
+        # Get first meaningful line (skip empty lines and file paths)
+        lines = [line.strip() for line in notes.split('\n') if line.strip() and not line.strip().startswith('===')]
+        if not lines:
+            return None
+        
+        first_line = lines[0]
+        
+        # Remove markdown headers
         topic = re.sub(r'^#+\s*', '', first_line)
+        
+        # Remove parenthetical notes like "(Mock)"
         topic = re.sub(r'\s*\([^)]*\)\s*', '', topic)
-        topic = re.sub(r'^(Module Notes|Notes|Content|Topic):\s*', '', topic, flags=re.IGNORECASE)
+        
+        # Remove common prefixes
+        topic = re.sub(r'^(Module Notes|Notes|Content|Topic|COORDINATE|Practice Problems):\s*', '', topic, flags=re.IGNORECASE)
+        
+        # Extract main topic from titles like "Module Notes — Circles" -> "Circles"
+        if '—' in topic or '-' in topic:
+            parts = re.split(r'[—\-]', topic)
+            if len(parts) > 1:
+                topic = parts[-1].strip()
+        
         topic = ' '.join(topic.split())
         return topic if len(topic) > 3 else None
 
