@@ -638,10 +638,11 @@ class LocalSubprocessOpenHandsClient(OpenHandsClient):
             # Use remote agent server pattern if enabled (better observability, future VSCode support)
             # DISABLED BY DEFAULT - remote server is crashing, use direct SDK instead
             if self.use_remote_server:
-                logger.warning("   ⚠️  Remote server enabled - this may crash!")
-                # Use ManagedAPIServer for remote workspace
-                server_port = int(os.getenv("OPENHANDS_SERVER_PORT", "8000"))
-                with ManagedAPIServer(port=server_port, artifacts_dir=self.artifacts_dir) as server:
+                logger.warning("   ⚠️  Remote server enabled - attempting to start...")
+                try:
+                    # Use ManagedAPIServer for remote workspace
+                    server_port = int(os.getenv("OPENHANDS_SERVER_PORT", "8000"))
+                    with ManagedAPIServer(port=server_port, artifacts_dir=self.artifacts_dir) as server:
                     # Create remote workspace
                     workspace = Workspace(host=server.base_url, path=str(workspace_path_abs))
                     
