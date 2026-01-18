@@ -327,20 +327,9 @@ async def run_loop(task: str, max_iterations: int = 5, base_dir: Path = None, cu
             'used_custom_notes': custom_notes is not None
         })
         
-        # Start MCP client
-        # Use new BrowserUseMCPClient (in-process mode, no server needed)
-        # Set USE_OLD_MCP=1 to use old PlaywrightMCPClient for backward compatibility
-        use_old_mcp = os.getenv("USE_OLD_MCP", "0").lower() in ("1", "true", "yes")
-        if use_old_mcp:
-            print(f"\n🌐 Starting Playwright MCP server (legacy)...")
-            mcp = PlaywrightMCPClient()
-            await mcp.connect()
-            print(f"✅ MCP server connected")
-        else:
-            print(f"\n🌐 Starting BrowserUse MCP client (in-process)...")
-            mcp = BrowserUseMCPClient(headless=True)  # In-process mode, no server needed
-            await mcp.connect()
-            print(f"✅ BrowserUse MCP client ready")
+        # MCP client will be initialized later, just before browser testing (Phase 2)
+        # This ensures code generation happens first, then browser testing
+        mcp = None
         
         # Main iteration loop
         for iteration in range(1, max_iterations + 1):
@@ -503,6 +492,22 @@ async def run_loop(task: str, max_iterations: int = 5, base_dir: Path = None, cu
             # Phase 2: Gemini-Controlled Browser QA
             print(f"\n🌐 Phase 2: Gemini-Controlled Browser QA")
             print("-" * 70)
+            
+            # Initialize MCP client NOW (just before browser testing, after code generation)
+            if mcp is None:
+                # Use new BrowserUseMCPClient (in-process mode, no server needed)
+                # Set USE_OLD_MCP=1 to use old PlaywrightMCPClient for backward compatibility
+                use_old_mcp = os.getenv("USE_OLD_MCP", "0").lower() in ("1", "true", "yes")
+                if use_old_mcp:
+                    print(f"🌐 Starting Playwright MCP server (legacy)...")
+                    mcp = PlaywrightMCPClient()
+                    await mcp.connect()
+                    print(f"✅ MCP server connected")
+                else:
+                    print(f"🌐 Starting BrowserUse MCP client (in-process)...")
+                    mcp = BrowserUseMCPClient(headless=True)  # In-process mode, no server needed
+                    await mcp.connect()
+                    print(f"✅ BrowserUse MCP client ready")
             
             test_start_time = time.time()
             
