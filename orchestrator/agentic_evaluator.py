@@ -322,7 +322,8 @@ class AgenticEvaluator(GeminiEvaluator):
                 exploration_result["final_observation"],
                 rubric,
                 exploration_result,
-                file_compliance
+                file_compliance,
+                template_compliance
             )
         finally:
             # Stop video recording
