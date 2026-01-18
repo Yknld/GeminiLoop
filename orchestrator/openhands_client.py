@@ -182,11 +182,29 @@ class LocalSubprocessOpenHandsClient(OpenHandsClient):
             # Send task and run
             logger.info("   Sending task to OpenHands agent...")
             logger.info(f"   Task length: {len(prompt)} characters")
+            logger.info(f"   Before state: {len(before_files)} files")
+            if before_files:
+                logger.info(f"   Before files: {list(before_files.keys())[:5]}")
+            
             conversation.send_message(prompt)
             conversation.run()
             
             # Capture after state
             after_files = self._capture_workspace_state(workspace_path)
+            logger.info(f"   After state: {len(after_files)} files")
+            if after_files:
+                logger.info(f"   After files: {list(after_files.keys())[:5]}")
+            else:
+                logger.warning(f"   ⚠️  No files found in workspace after OpenHands execution!")
+                logger.warning(f"   Workspace path: {workspace_path_abs}")
+                logger.warning(f"   Workspace exists: {workspace_path_abs.exists()}")
+                if workspace_path_abs.exists():
+                    # List what's actually in the workspace
+                    try:
+                        actual_files = list(workspace_path_abs.rglob("*"))
+                        logger.warning(f"   Actual files in workspace: {[str(f.relative_to(workspace_path_abs)) for f in actual_files if f.is_file()][:10]}")
+                    except Exception as e:
+                        logger.warning(f"   Could not list workspace files: {e}")
             
             # Generate diffs
             diffs = self._generate_diffs(before_files, after_files, "generation")
@@ -194,6 +212,8 @@ class LocalSubprocessOpenHandsClient(OpenHandsClient):
             duration = (datetime.now() - start_time).total_seconds()
             
             logger.info(f"✅ OpenHands SDK completed in {duration:.2f}s")
+            logger.info(f"   Files generated: {len(after_files)}")
+            logger.info(f"   Diffs: {len(diffs)}")
             
             return {
                 "success": True,
@@ -454,8 +474,26 @@ class LocalSubprocessOpenHandsClient(OpenHandsClient):
         
         prompt = f"{task}"
         
-        # If template file exists, add instructions to use it
-        if template_file and Path(template_file).exists():
+        # Check if index.html already exists in workspace (template was pre-loaded)
+        index_exists = False
+        if workspace_path:
+            workspace_path_obj = Path(workspace_path) if isinstance(workspace_path, str) else workspace_path
+            index_path = workspace_path_obj / "index.html"
+            if index_path.exists():
+                index_exists = True
+                prompt += f"\n\n**CRITICAL: EDIT THE EXISTING index.html FILE**"
+                prompt += f"\n- There is already an index.html file in your workspace (this is the template)"
+                prompt += f"\n- You MUST edit this existing file - DO NOT create a new file from scratch"
+                prompt += f"\n- Read the index.html file to understand its structure"
+                prompt += f"\n- Populate the `modules` array in the existing file with content from the notes"
+                prompt += f"\n- Create as many module objects as appropriate based on the content structure"
+                prompt += f"\n- Preserve the template structure: navigation system, module loading functions, audio controls, notes panel, chatbot"
+                prompt += f"\n- You can modify colors and remove specific cards, but the skeleton structure must remain"
+                prompt += f"\n- Each module should have: title, videoId, explanation, keyPoints, timeline, funFact, interactiveElement, audioSources"
+                prompt += f"\n- The template already has all CSS and JavaScript inline - do NOT add external files"
+        
+        # Legacy template_file parameter (for backwards compatibility)
+        if template_file and Path(template_file).exists() and not index_exists:
             template_path = Path(template_file)
             # Get relative path from workspace if possible
             if workspace_path:
