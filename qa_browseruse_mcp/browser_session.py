@@ -7,7 +7,7 @@ all browser automation capabilities needed for QA evaluation.
 
 import asyncio
 import logging
-from typing import Optional, List, Tuple
+from typing import Optional, List, Tuple, Union
 from pathlib import Path
 import base64
 
@@ -198,7 +198,7 @@ class BrowserSession:
             logger.error(f"Set viewport failed: {e}")
             return SimpleResponse(success=False, error=str(e))
     
-    async def screenshot(self, path: Optional[str] = None, return_base64: bool = False) -> SimpleResponse:
+    async def screenshot(self, path: Optional[str] = None, return_base64: bool = False, timeout: Optional[Union[int, float]] = None) -> SimpleResponse:
         """Take a screenshot"""
         try:
             if not self.page:
@@ -212,10 +212,12 @@ class BrowserSession:
             except:
                 pass  # Continue even if networkidle times out
             
+            # Use provided timeout or default to 90s for complex pages
+            screenshot_timeout = int(timeout * 1000) if timeout is not None else 90000
             screenshot_bytes = await self.page.screenshot(
                 path=path,
                 full_page=True,
-                timeout=30000,
+                timeout=screenshot_timeout,
                 animations="disabled"
             )
             
@@ -401,16 +403,32 @@ class BrowserSession:
             logger.error(f"Get URL failed: {e}")
             return SimpleResponse(success=False, error=str(e))
     
-    async def evaluate_js(self, expression: str) -> SimpleResponse:
-        """Evaluate JavaScript expression"""
+    async def evaluate_js(self, expression: str, timeout: Optional[Union[int, float]] = None) -> SimpleResponse:
+        """Evaluate JavaScript expression with configurable timeout"""
         try:
             if not self.page:
                 await self.start()
             
             logger.debug(f"Evaluating JS: {expression[:100]}...")
-            result = await self.page.evaluate(expression)
+            # Use 90s default timeout for complex expressions (DOM snapshots, etc.)
+            # timeout can be in seconds (float) or milliseconds (int)
+            if timeout is not None:
+                if timeout > 1000:  # Assume milliseconds if > 1000
+                    eval_timeout_seconds = timeout / 1000.0
+                else:  # Assume seconds if <= 1000
+                    eval_timeout_seconds = float(timeout)
+            else:
+                eval_timeout_seconds = 90.0  # Default 90 seconds
+            
+            result = await asyncio.wait_for(
+                self.page.evaluate(expression),
+                timeout=eval_timeout_seconds
+            )
             
             return SimpleResponse(success=True, result=result)
+        except asyncio.TimeoutError:
+            logger.warning(f"JS evaluation timed out after {eval_timeout_seconds}s")
+            return SimpleResponse(success=False, error=f"Evaluation timed out after {eval_timeout_seconds}s", result=None)
         except Exception as e:
             logger.warning(f"JS evaluation failed: {e}")
             return SimpleResponse(success=False, error=str(e), result=None)

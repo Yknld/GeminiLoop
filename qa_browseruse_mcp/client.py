@@ -93,7 +93,10 @@ class BrowserUseMCPClient:
             elif tool == "get_url":
                 result = await self._browser_session.get_url()
             elif tool == "evaluate_js":
-                result = await self._browser_session.evaluate_js(args.get("expression", ""))
+                result = await self._browser_session.evaluate_js(
+                    args.get("expression", ""),
+                    timeout=args.get("timeout")  # Pass timeout if provided
+                )
             elif tool == "get_console":
                 messages = await self._browser_session.get_console()
                 result = SimpleResponse(success=True, result=[msg.model_dump() for msg in messages])
@@ -164,7 +167,11 @@ class BrowserUseMCPClient:
             Path to saved screenshot
         """
         path_str = str(filepath)
-        result = await self._call_tool("screenshot", {"path": path_str, "return_base64": False})
+        # Convert timeout from seconds to milliseconds if provided
+        tool_args = {"path": path_str, "return_base64": False}
+        if timeout is not None:
+            tool_args["timeout"] = timeout  # Pass as seconds, browser_session will convert
+        result = await self._call_tool("screenshot", tool_args)
         if result.get("success"):
             return path_str
         else:
@@ -234,7 +241,11 @@ class BrowserUseMCPClient:
         Returns:
             Dictionary with "result" key containing the evaluation result
         """
-        result = await self._call_tool("evaluate_js", {"expression": expression})
+        # Convert timeout from seconds to milliseconds if provided
+        tool_args = {"expression": expression}
+        if timeout is not None:
+            tool_args["timeout"] = timeout  # Pass as seconds, browser_session will convert
+        result = await self._call_tool("evaluate_js", tool_args)
         
         if result.get("success"):
             return {"result": result.get("result")}
