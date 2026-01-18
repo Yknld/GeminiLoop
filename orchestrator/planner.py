@@ -202,10 +202,14 @@ class Planner:
             full_prompt += template_context
         
         print("🧠 Planner: Generating detailed prompt with Gemini 3.0 Pro Preview...")
+        print("   ⚠️  Reminder: Planner must output natural language only, NO code")
         
         try:
+            # Add explicit instruction to avoid code generation
+            system_instruction = "CRITICAL: You are a PLANNER, not a CODER. Your output must be 100% natural language text - no HTML, no JavaScript, no code snippets. Describe what should be built using plain English, not programming languages."
+            
             response = self.model.generate_content(
-                full_prompt,
+                f"{system_instruction}\n\n{full_prompt}",
                 generation_config={
                     'temperature': 0.7,
                     'top_p': 0.95,
