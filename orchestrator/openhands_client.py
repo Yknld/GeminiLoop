@@ -459,8 +459,8 @@ class LocalSubprocessOpenHandsClient(OpenHandsClient):
                 llm=llm,
                 tools=[
                     Tool(name=BrowserToolSet.name, params={"include_screenshot": False}),
-                    Tool(name=FileEditorTool.name),
-                    Tool(name=TerminalTool.name),
+                    FileEditorTool(),  # Use instance directly
+                    TerminalTool(),    # Use instance directly
                 ]
             )
             
@@ -606,8 +606,8 @@ class LocalSubprocessOpenHandsClient(OpenHandsClient):
                 llm=llm,
                 tools=[
                     Tool(name=BrowserToolSet.name, params={"include_screenshot": False}),
-                    Tool(name=FileEditorTool.name),
-                    Tool(name=TerminalTool.name),
+                    FileEditorTool(),  # Use instance directly
+                    TerminalTool(),    # Use instance directly
                 ]
             )
             
