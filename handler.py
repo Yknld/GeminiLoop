@@ -388,19 +388,7 @@ async def handler(job: Dict[str, Any]) -> Dict[str, Any]:
             response["live_view_url"] = live_view_url
             logger.info(f"🔴 Live view: {live_view_url}")
         
-        # CRITICAL: Log response before returning to ensure it's built
-        logger.info(f"📦 Returning response with {len(response)} keys")
-        logger.info(f"   Response includes: generated_files={len(response.get('generated_files', {}))}, iterations_data={len(response.get('iterations_data', []))}")
-        
-        # Ensure response is properly formatted as dict
-        final_response = dict(response)
-        logger.info(f"🚀 Handler returning response (type: {type(final_response)})")
-        
-        # CRITICAL: For async handlers with return_aggregate_stream=True, we can use return
-        # But RunPod may also accept yield for streaming. Let's use return first.
-        # If this doesn't work, we'll need to convert to yield-based streaming
-        logger.info(f"✅ About to return response with keys: {list(final_response.keys())}")
-        return final_response
+        return response
         
     except Exception as e:
         logger.error(f"❌ Handler error: {e}")
