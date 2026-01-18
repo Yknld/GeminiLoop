@@ -220,6 +220,7 @@ class LocalSubprocessOpenHandsClient(OpenHandsClient):
         if use_remote_server is None:
             use_remote_server = os.getenv("OPENHANDS_USE_REMOTE_SERVER", "false").lower() in ("true", "1", "yes")
         self.use_remote_server = use_remote_server
+        logger.info(f"   OpenHands client: use_remote_server={self.use_remote_server}")
         
         # Create diffs directory
         self.diffs_dir = self.artifacts_dir / "diffs"
