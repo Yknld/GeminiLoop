@@ -52,6 +52,9 @@ async def run_loop(task: str, max_iterations: int = 5, base_dir: Path = None, cu
     Returns:
         RunState with complete results
     """
+    # Ensure os module is accessible (workaround for potential scoping issues)
+    import os as _os_module
+    os = _os_module
     
     print("🚀 GeminiLoop Orchestrator")
     print("=" * 70)
