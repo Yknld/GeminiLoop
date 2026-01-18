@@ -249,14 +249,17 @@ class PlaywrightMCPClient:
             logger.error(f"Navigation failed: {e}")
             return False
     
-    async def screenshot(self, filepath: Path) -> str:
-        """Take screenshot"""
+    async def screenshot(self, filepath: Path, timeout: Optional[float] = None) -> str:
+        """Take screenshot with extended timeout for slow pages"""
         logger.info(f"Screenshot: {filepath}")
+        
+        # Screenshots can be slow, use longer timeout (90s default, or provided)
+        screenshot_timeout = timeout if timeout is not None else 90.0
         
         result = await self.call_tool("browser_take_screenshot", {
             "fullPage": True,
             "filename": str(filepath)
-        })
+        }, timeout=screenshot_timeout)
         
         logger.info("Screenshot saved")
         return str(filepath)
