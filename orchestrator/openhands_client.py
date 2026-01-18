@@ -94,8 +94,21 @@ class ManagedAPIServer:
     """
     Context manager for subprocess-managed OpenHands API server.
     
-    Based on OpenHands examples/02_remote_agent_server pattern.
-    Provides better isolation, observability, and future VSCode support.
+    NOTE: This approach is NOT recommended for RunPod serverless environments.
+    The official OpenHands containers use DockerWorkspace which runs the agent
+    server in a separate Docker container with proper isolation. Running it as
+    a subprocess in the same container (as we do here) can cause crashes.
+    
+    For RunPod serverless, use direct SDK mode (default) instead.
+    
+    Official OpenHands approach uses:
+    - DockerWorkspace with ghcr.io/openhands/agent-server:latest-python
+    - Requires Docker socket access (not available in RunPod serverless)
+    - Provides proper container isolation
+    
+    Our approach:
+    - Subprocess in same container (less isolation, can crash)
+    - Works but not as stable as DockerWorkspace
     """
     
     def __init__(self, port: int = 8000, host: str = "127.0.0.1", artifacts_dir: Optional[Path] = None):
@@ -206,10 +219,24 @@ class ManagedAPIServer:
 
 class LocalSubprocessOpenHandsClient(OpenHandsClient):
     """
-    OpenHands client that uses the remote agent server pattern.
+    OpenHands client that uses direct SDK mode (default) or optional remote server.
     
-    Runs OpenHands agent server as subprocess for better isolation and observability.
-    Can optionally enable VSCode access via DockerWorkspace in the future.
+    By default, uses direct SDK mode which is stable and works well in RunPod serverless.
+    
+    The remote server option (ManagedAPIServer) runs openhands.agent_server as a subprocess,
+    but this is less stable than the official DockerWorkspace approach which uses a separate
+    Docker container. We can't use DockerWorkspace in RunPod serverless because it requires
+    Docker socket access.
+    
+    Official OpenHands containers use DockerWorkspace:
+    - Runs agent server in separate Docker container (ghcr.io/openhands/agent-server:latest-python)
+    - Requires Docker socket access (/var/run/docker.sock)
+    - Provides proper isolation and stability
+    
+    Our environment (RunPod serverless):
+    - No Docker socket access
+    - Use direct SDK mode (default) - stable and works well
+    - Remote server option available but less stable than DockerWorkspace
     """
     
     def __init__(self, artifacts_dir: Optional[Path] = None, use_remote_server: bool = None):
