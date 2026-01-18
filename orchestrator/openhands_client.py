@@ -16,6 +16,9 @@ import re
 import traceback
 import threading
 import signal
+import sys
+import time
+import httpx
 from pathlib import Path
 from typing import Dict, Any, Optional, List
 from abc import ABC, abstractmethod
@@ -87,16 +90,132 @@ class OpenHandsClient(ABC):
         pass
 
 
-class LocalSubprocessOpenHandsClient(OpenHandsClient):
+class ManagedAPIServer:
     """
-    OpenHands client that runs openhands CLI as subprocess
+    Context manager for subprocess-managed OpenHands API server.
     
-    Runs in the same container, writes logs to artifacts
+    Based on OpenHands examples/02_remote_agent_server pattern.
+    Provides better isolation, observability, and future VSCode support.
     """
     
-    def __init__(self, artifacts_dir: Optional[Path] = None):
+    def __init__(self, port: int = 8000, host: str = "127.0.0.1", artifacts_dir: Optional[Path] = None):
+        self.port: int = port
+        self.host: str = host
+        self.process: Optional[subprocess.Popen] = None
+        self.base_url: str = f"http://{host}:{port}"
+        self.stdout_thread: Optional[threading.Thread] = None
+        self.stderr_thread: Optional[threading.Thread] = None
         self.artifacts_dir = Path(artifacts_dir) if artifacts_dir else Path.cwd() / "artifacts"
         self.artifacts_dir.mkdir(parents=True, exist_ok=True)
+        
+    def _stream_output(self, stream, prefix, target_stream):
+        """Stream output from subprocess to target stream with prefix."""
+        try:
+            log_file = self.artifacts_dir / f"openhands_server_{prefix.lower()}.log"
+            with open(log_file, "a", encoding="utf-8") as f:
+                for line in iter(stream.readline, ""):
+                    if line:
+                        line_str = f"[{prefix}] {line}"
+                        target_stream.write(line_str)
+                        target_stream.flush()
+                        f.write(line_str)
+                        f.flush()
+        except Exception as e:
+            logger.error(f"Error streaming {prefix}: {e}")
+        finally:
+            stream.close()
+    
+    def __enter__(self):
+        """Start the API server subprocess."""
+        logger.info(f"Starting OpenHands API server on {self.base_url}...")
+        
+        # Start the server process
+        self.process = subprocess.Popen(
+            [
+                sys.executable,
+                "-m",
+                "openhands.agent_server",
+                "--port",
+                str(self.port),
+                "--host",
+                self.host,
+            ],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            env={"LOG_JSON": "true", **os.environ},
+        )
+        
+        # Start threads to stream stdout and stderr
+        assert self.process is not None
+        assert self.process.stdout is not None
+        assert self.process.stderr is not None
+        self.stdout_thread = threading.Thread(
+            target=self._stream_output,
+            args=(self.process.stdout, "SERVER", sys.stdout),
+            daemon=True,
+        )
+        self.stderr_thread = threading.Thread(
+            target=self._stream_output,
+            args=(self.process.stderr, "SERVER", sys.stderr),
+            daemon=True,
+        )
+        
+        self.stdout_thread.start()
+        self.stderr_thread.start()
+        
+        # Wait for server to be ready
+        max_retries = 30
+        for i in range(max_retries):
+            try:
+                response = httpx.get(f"{self.base_url}/health", timeout=1.0)
+                if response.status_code == 200:
+                    logger.info(f"✅ API server is ready at {self.base_url}")
+                    return self
+            except Exception:
+                pass
+            
+            assert self.process is not None
+            if self.process.poll() is not None:
+                # Process has terminated
+                raise RuntimeError(
+                    "Server process terminated unexpectedly. "
+                    "Check the server logs above for details."
+                )
+            
+            time.sleep(1)
+        
+        raise RuntimeError(f"Server failed to start after {max_retries} seconds")
+    
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        """Stop the API server subprocess."""
+        if self.process:
+            logger.info("Stopping OpenHands API server...")
+            self.process.terminate()
+            try:
+                self.process.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                logger.warning("Force killing API server...")
+                self.process.kill()
+                self.process.wait()
+            
+            # Wait for streaming threads to finish
+            time.sleep(0.5)
+            logger.info("API server stopped.")
+
+
+class LocalSubprocessOpenHandsClient(OpenHandsClient):
+    """
+    OpenHands client that uses the remote agent server pattern.
+    
+    Runs OpenHands agent server as subprocess for better isolation and observability.
+    Can optionally enable VSCode access via DockerWorkspace in the future.
+    """
+    
+    def __init__(self, artifacts_dir: Optional[Path] = None, use_remote_server: bool = True):
+        self.artifacts_dir = Path(artifacts_dir) if artifacts_dir else Path.cwd() / "artifacts"
+        self.artifacts_dir.mkdir(parents=True, exist_ok=True)
+        self.use_remote_server = use_remote_server
         
         # Create diffs directory
         self.diffs_dir = self.artifacts_dir / "diffs"
@@ -143,8 +262,7 @@ class LocalSubprocessOpenHandsClient(OpenHandsClient):
         
         # Run OpenHands via Python SDK
         try:
-            from openhands.sdk import LLM, Agent, Conversation, Tool
-            from openhands.tools.browser_use import BrowserToolSet
+            from openhands.sdk import LLM, Agent, Conversation, Workspace
             from openhands.tools.file_editor import FileEditorTool
             from openhands.tools.terminal import TerminalTool
             from pydantic import SecretStr
@@ -171,36 +289,78 @@ class LocalSubprocessOpenHandsClient(OpenHandsClient):
                 ]
             )
             
-            # Create conversation
-            conversation = Conversation(agent=agent)
-            
-            logger.info(f"   Before state: {len(before_files)} files")
-            
-            # Send task prompt
-            conversation.send_message(task_prompt)
-            
-            # Run with timeout
-            timeout_seconds = float(os.getenv('OPENHANDS_TIMEOUT_SECONDS', '600'))
-            run_complete = threading.Event()
-            run_exception = [None]
-            
-            def run_conversation():
-                try:
-                    conversation.run()
-                    run_complete.set()
-                except Exception as e:
-                    run_exception[0] = e
-                    run_complete.set()
-            
-            run_thread = threading.Thread(target=run_conversation, daemon=True)
-            run_thread.start()
-            
-            if not run_complete.wait(timeout=timeout_seconds):
-                logger.error(f"OpenHands execution timed out after {timeout_seconds}s")
-                raise RuntimeError(f"OpenHands execution timed out after {timeout_seconds}s")
-            
-            if run_exception[0]:
-                raise run_exception[0]
+            # Use remote agent server pattern if enabled (better observability, future VSCode support)
+            if self.use_remote_server:
+                # Use ManagedAPIServer for remote workspace
+                server_port = int(os.getenv("OPENHANDS_SERVER_PORT", "8000"))
+                with ManagedAPIServer(port=server_port, artifacts_dir=self.artifacts_dir) as server:
+                    # Create remote workspace
+                    workspace = Workspace(host=server.base_url, path=str(workspace_path.resolve()))
+                    
+                    # Create conversation (automatically becomes RemoteConversation)
+                    conversation = Conversation(agent=agent, workspace=workspace)
+                    
+                    logger.info(f"   Using remote agent server at {server.base_url}")
+                    logger.info(f"   Before state: {len(before_files)} files")
+                    
+                    # Send task prompt
+                    conversation.send_message(task_prompt)
+                    
+                    # Run with timeout
+                    timeout_seconds = float(os.getenv('OPENHANDS_TIMEOUT_SECONDS', '600'))
+                    run_complete = threading.Event()
+                    run_exception = [None]
+                    
+                    def run_conversation():
+                        try:
+                            conversation.run()
+                            run_complete.set()
+                        except Exception as e:
+                            run_exception[0] = e
+                            run_complete.set()
+                    
+                    run_thread = threading.Thread(target=run_conversation, daemon=True)
+                    run_thread.start()
+                    
+                    if not run_complete.wait(timeout=timeout_seconds):
+                        logger.error(f"OpenHands execution timed out after {timeout_seconds}s")
+                        raise RuntimeError(f"OpenHands execution timed out after {timeout_seconds}s")
+                    
+                    if run_exception[0]:
+                        raise run_exception[0]
+            else:
+                # Direct SDK usage (original pattern)
+                workspace = Workspace(path=str(workspace_path.resolve()))
+                conversation = Conversation(agent=agent, workspace=workspace)
+                
+                logger.info(f"   Using direct SDK (local workspace)")
+                logger.info(f"   Before state: {len(before_files)} files")
+                
+                # Send task prompt
+                conversation.send_message(task_prompt)
+                
+                # Run with timeout
+                timeout_seconds = float(os.getenv('OPENHANDS_TIMEOUT_SECONDS', '600'))
+                run_complete = threading.Event()
+                run_exception = [None]
+                
+                def run_conversation():
+                    try:
+                        conversation.run()
+                        run_complete.set()
+                    except Exception as e:
+                        run_exception[0] = e
+                        run_complete.set()
+                
+                run_thread = threading.Thread(target=run_conversation, daemon=True)
+                run_thread.start()
+                
+                if not run_complete.wait(timeout=timeout_seconds):
+                    logger.error(f"OpenHands execution timed out after {timeout_seconds}s")
+                    raise RuntimeError(f"OpenHands execution timed out after {timeout_seconds}s")
+                
+                if run_exception[0]:
+                    raise run_exception[0]
             
             # Capture after state
             after_files = self._capture_workspace_state(workspace_path)
@@ -433,7 +593,7 @@ class LocalSubprocessOpenHandsClient(OpenHandsClient):
         # Run OpenHands via Python SDK
         try:
             # Import OpenHands SDK
-            from openhands.sdk import LLM, Agent, Conversation, Workspace
+            from openhands.sdk import LLM, Agent, Conversation, Workspace, Tool
             from openhands.tools.browser_use import BrowserToolSet
             from openhands.tools.file_editor import FileEditorTool
             from openhands.tools.terminal import TerminalTool
@@ -468,49 +628,183 @@ class LocalSubprocessOpenHandsClient(OpenHandsClient):
             workspace_path_abs = workspace_path.resolve()
             logger.info(f"   OpenHands workspace: {workspace_path_abs}")
             
-            # Create Workspace object (not string path) - this is the correct way per docs
-            workspace = Workspace(path=str(workspace_path_abs))
+            # Use remote agent server pattern if enabled (better observability, future VSCode support)
+            if self.use_remote_server:
+                # Use ManagedAPIServer for remote workspace
+                server_port = int(os.getenv("OPENHANDS_SERVER_PORT", "8000"))
+                with ManagedAPIServer(port=server_port, artifacts_dir=self.artifacts_dir) as server:
+                    # Create remote workspace
+                    workspace = Workspace(host=server.base_url, path=str(workspace_path_abs))
+                    
+                    # Create conversation (automatically becomes RemoteConversation)
+                    conversation = Conversation(agent=agent, workspace=workspace)
+                    
+                    logger.info(f"   Using remote agent server at {server.base_url}")
+                    logger.info("   Sending task to OpenHands agent...")
+                    logger.info(f"   Task length: {len(prompt)} characters")
+                    logger.info(f"   Before state: {len(before_files)} files")
+                    if before_files:
+                        logger.info(f"   Before files: {list(before_files.keys())[:5]}")
+                    
+                    conversation.send_message(prompt)
+                    
+                    # Run with timeout (default 10 minutes, configurable via env var)
+                    timeout_seconds = float(os.getenv('OPENHANDS_TIMEOUT_SECONDS', '600'))  # 10 minutes default
+                    
+                    # Use threading to implement timeout for blocking call
+                    run_complete = threading.Event()
+                    run_exception = [None]
+                    
+                    def run_conversation():
+                        try:
+                            conversation.run()
+                            run_complete.set()
+                        except Exception as e:
+                            run_exception[0] = e
+                            run_complete.set()
+                    
+                    # Start conversation in separate thread
+                    run_thread = threading.Thread(target=run_conversation, daemon=True)
+                    run_thread.start()
+                    
+                    # Wait for completion or timeout
+                    if not run_complete.wait(timeout=timeout_seconds):
+                        logger.error(f"OpenHands execution timed out after {timeout_seconds}s")
+                        raise RuntimeError(f"OpenHands execution timed out after {timeout_seconds}s. The operation may still be running in the background.")
+                    
+                    # Check if exception occurred
+                    if run_exception[0]:
+                        raise run_exception[0]
+            else:
+                # Direct SDK usage (original pattern)
+                workspace = Workspace(path=str(workspace_path_abs))
+                conversation = Conversation(agent=agent, workspace=workspace)
+                
+                logger.info(f"   Using direct SDK (local workspace)")
+                logger.info("   Sending task to OpenHands agent...")
+                logger.info(f"   Task length: {len(prompt)} characters")
+                logger.info(f"   Before state: {len(before_files)} files")
+                if before_files:
+                    logger.info(f"   Before files: {list(before_files.keys())[:5]}")
+                
+                conversation.send_message(prompt)
+                
+                # Run with timeout (default 10 minutes, configurable via env var)
+                timeout_seconds = float(os.getenv('OPENHANDS_TIMEOUT_SECONDS', '600'))  # 10 minutes default
+                
+                # Use threading to implement timeout for blocking call
+                run_complete = threading.Event()
+                run_exception = [None]
+                
+                def run_conversation():
+                    try:
+                        conversation.run()
+                        run_complete.set()
+                    except Exception as e:
+                        run_exception[0] = e
+                        run_complete.set()
+                
+                # Start conversation in separate thread
+                run_thread = threading.Thread(target=run_conversation, daemon=True)
+                run_thread.start()
+                
+                # Wait for completion or timeout
+                if not run_complete.wait(timeout=timeout_seconds):
+                    logger.error(f"OpenHands execution timed out after {timeout_seconds}s")
+                    raise RuntimeError(f"OpenHands execution timed out after {timeout_seconds}s. The operation may still be running in the background.")
+                
+                # Check if exception occurred
+                if run_exception[0]:
+                    raise run_exception[0]
             
-            # Create conversation with Workspace object
-            conversation = Conversation(agent=agent, workspace=workspace)
-            
-            # Send task and run
-            logger.info("   Sending task to OpenHands agent...")
-            logger.info(f"   Task length: {len(prompt)} characters")
-            logger.info(f"   Before state: {len(before_files)} files")
-            if before_files:
-                logger.info(f"   Before files: {list(before_files.keys())[:5]}")
-            
-            conversation.send_message(prompt)
-            
-            # Run with timeout (default 10 minutes, configurable via env var)
-            timeout_seconds = float(os.getenv('OPENHANDS_TIMEOUT_SECONDS', '600'))  # 10 minutes default
-            
-            # Use threading to implement timeout for blocking call
-            run_complete = threading.Event()
-            run_exception = [None]
-            
-            def run_conversation():
-                try:
-                    conversation.run()
-                    run_complete.set()
-                except Exception as e:
-                    run_exception[0] = e
-                    run_complete.set()
-            
-            # Start conversation in separate thread
-            run_thread = threading.Thread(target=run_conversation, daemon=True)
-            run_thread.start()
-            
-            # Wait for completion or timeout
-            if not run_complete.wait(timeout=timeout_seconds):
-                logger.error(f"OpenHands execution timed out after {timeout_seconds}s")
-                # Note: We can't easily kill the thread, but we'll raise the error
-                raise RuntimeError(f"OpenHands execution timed out after {timeout_seconds}s. The operation may still be running in the background.")
-            
-            # Check if exception occurred
-            if run_exception[0]:
-                raise run_exception[0]
+            # Use remote agent server pattern if enabled (better observability, future VSCode support)
+            if self.use_remote_server:
+                # Use ManagedAPIServer for remote workspace
+                server_port = int(os.getenv("OPENHANDS_SERVER_PORT", "8000"))
+                with ManagedAPIServer(port=server_port, artifacts_dir=self.artifacts_dir) as server:
+                    # Create remote workspace
+                    workspace = Workspace(host=server.base_url, path=str(workspace_path_abs))
+                    
+                    # Create conversation (automatically becomes RemoteConversation)
+                    conversation = Conversation(agent=agent, workspace=workspace)
+                    
+                    logger.info(f"   Using remote agent server at {server.base_url}")
+                    logger.info("   Sending task to OpenHands agent...")
+                    logger.info(f"   Task length: {len(prompt)} characters")
+                    logger.info(f"   Before state: {len(before_files)} files")
+                    if before_files:
+                        logger.info(f"   Before files: {list(before_files.keys())[:5]}")
+                    
+                    conversation.send_message(prompt)
+                    
+                    # Run with timeout (default 10 minutes, configurable via env var)
+                    timeout_seconds = float(os.getenv('OPENHANDS_TIMEOUT_SECONDS', '600'))  # 10 minutes default
+                    
+                    # Use threading to implement timeout for blocking call
+                    run_complete = threading.Event()
+                    run_exception = [None]
+                    
+                    def run_conversation():
+                        try:
+                            conversation.run()
+                            run_complete.set()
+                        except Exception as e:
+                            run_exception[0] = e
+                            run_complete.set()
+                    
+                    # Start conversation in separate thread
+                    run_thread = threading.Thread(target=run_conversation, daemon=True)
+                    run_thread.start()
+                    
+                    # Wait for completion or timeout
+                    if not run_complete.wait(timeout=timeout_seconds):
+                        logger.error(f"OpenHands execution timed out after {timeout_seconds}s")
+                        raise RuntimeError(f"OpenHands execution timed out after {timeout_seconds}s. The operation may still be running in the background.")
+                    
+                    # Check if exception occurred
+                    if run_exception[0]:
+                        raise run_exception[0]
+            else:
+                # Direct SDK usage (original pattern)
+                workspace = Workspace(path=str(workspace_path_abs))
+                conversation = Conversation(agent=agent, workspace=workspace)
+                
+                logger.info(f"   Using direct SDK (local workspace)")
+                logger.info("   Sending task to OpenHands agent...")
+                logger.info(f"   Task length: {len(prompt)} characters")
+                logger.info(f"   Before state: {len(before_files)} files")
+                if before_files:
+                    logger.info(f"   Before files: {list(before_files.keys())[:5]}")
+                
+                conversation.send_message(prompt)
+                
+                # Run with timeout (default 10 minutes, configurable via env var)
+                timeout_seconds = float(os.getenv('OPENHANDS_TIMEOUT_SECONDS', '600'))  # 10 minutes default
+                
+                # Use threading to implement timeout for blocking call
+                run_complete = threading.Event()
+                run_exception = [None]
+                
+                def run_conversation():
+                    try:
+                        conversation.run()
+                        run_complete.set()
+                    except Exception as e:
+                        run_exception[0] = e
+                        run_complete.set()
+                
+                # Start conversation in separate thread
+                run_thread = threading.Thread(target=run_conversation, daemon=True)
+                run_thread.start()
+                
+                # Wait for completion or timeout
+                if not run_complete.wait(timeout=timeout_seconds):
+                    logger.error(f"OpenHands execution timed out after {timeout_seconds}s")
+                    raise RuntimeError(f"OpenHands execution timed out after {timeout_seconds}s. The operation may still be running in the background.")
+                
+                # Check if exception occurred
+                if run_exception[0]:
+                    raise run_exception[0]
             
             # Capture after state
             after_files = self._capture_workspace_state(workspace_path)
@@ -584,7 +878,7 @@ class LocalSubprocessOpenHandsClient(OpenHandsClient):
         # Run OpenHands via Python SDK
         try:
             # Import OpenHands SDK
-            from openhands.sdk import LLM, Agent, Conversation, Tool
+            from openhands.sdk import LLM, Agent, Conversation, Workspace, Tool
             from openhands.tools.browser_use import BrowserToolSet
             from openhands.tools.file_editor import FileEditorTool
             from openhands.tools.terminal import TerminalTool
@@ -618,10 +912,86 @@ class LocalSubprocessOpenHandsClient(OpenHandsClient):
             workspace_path_abs = workspace_path.resolve()
             logger.info(f"   OpenHands workspace: {workspace_path_abs}")
             
-            # Create conversation with absolute workspace path
-            # Create Workspace object (not string path) - this is the correct way per docs
-            workspace = Workspace(path=str(workspace_path_abs))
-            conversation = Conversation(agent=agent, workspace=workspace)
+            # Use remote agent server pattern if enabled (better observability, future VSCode support)
+            if self.use_remote_server:
+                # Use ManagedAPIServer for remote workspace
+                server_port = int(os.getenv("OPENHANDS_SERVER_PORT", "8000"))
+                with ManagedAPIServer(port=server_port, artifacts_dir=self.artifacts_dir) as server:
+                    # Create remote workspace
+                    workspace = Workspace(host=server.base_url, path=str(workspace_path_abs))
+                    
+                    # Create conversation (automatically becomes RemoteConversation)
+                    conversation = Conversation(agent=agent, workspace=workspace)
+                    
+                    logger.info(f"   Using remote agent server at {server.base_url}")
+                    logger.info("   Sending patch instructions to OpenHands agent...")
+                    logger.info(f"   Instructions length: {len(instructions)} characters")
+                    conversation.send_message(instructions)
+                    
+                    # Run with timeout (default 10 minutes, configurable via env var)
+                    timeout_seconds = float(os.getenv('OPENHANDS_TIMEOUT_SECONDS', '600'))  # 10 minutes default
+                    
+                    # Use threading to implement timeout for blocking call
+                    run_complete = threading.Event()
+                    run_exception = [None]
+                    
+                    def run_conversation():
+                        try:
+                            conversation.run()
+                            run_complete.set()
+                        except Exception as e:
+                            run_exception[0] = e
+                            run_complete.set()
+                    
+                    # Start conversation in separate thread
+                    run_thread = threading.Thread(target=run_conversation, daemon=True)
+                    run_thread.start()
+                    
+                    # Wait for completion or timeout
+                    if not run_complete.wait(timeout=timeout_seconds):
+                        logger.error(f"OpenHands execution timed out after {timeout_seconds}s")
+                        raise RuntimeError(f"OpenHands execution timed out after {timeout_seconds}s. The operation may still be running in the background.")
+                    
+                    # Check if exception occurred
+                    if run_exception[0]:
+                        raise run_exception[0]
+            else:
+                # Direct SDK usage (original pattern)
+                workspace = Workspace(path=str(workspace_path_abs))
+                conversation = Conversation(agent=agent, workspace=workspace)
+                
+                logger.info(f"   Using direct SDK (local workspace)")
+                logger.info("   Sending patch instructions to OpenHands agent...")
+                logger.info(f"   Instructions length: {len(instructions)} characters")
+                conversation.send_message(instructions)
+                
+                # Run with timeout (default 10 minutes, configurable via env var)
+                timeout_seconds = float(os.getenv('OPENHANDS_TIMEOUT_SECONDS', '600'))  # 10 minutes default
+                
+                # Use threading to implement timeout for blocking call
+                run_complete = threading.Event()
+                run_exception = [None]
+                
+                def run_conversation():
+                    try:
+                        conversation.run()
+                        run_complete.set()
+                    except Exception as e:
+                        run_exception[0] = e
+                        run_complete.set()
+                
+                # Start conversation in separate thread
+                run_thread = threading.Thread(target=run_conversation, daemon=True)
+                run_thread.start()
+                
+                # Wait for completion or timeout
+                if not run_complete.wait(timeout=timeout_seconds):
+                    logger.error(f"OpenHands execution timed out after {timeout_seconds}s")
+                    raise RuntimeError(f"OpenHands execution timed out after {timeout_seconds}s. The operation may still be running in the background.")
+                
+                # Check if exception occurred
+                if run_exception[0]:
+                    raise run_exception[0]
             
             # Send patch instructions and run
             logger.info("   Sending patch instructions to OpenHands agent...")
