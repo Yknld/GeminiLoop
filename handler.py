@@ -27,6 +27,8 @@ except Exception as e:
 
 # Import VNC tunnel for live browser viewing
 from orchestrator.vnc_tunnel import VNCTunnel
+from orchestrator.github_client import get_github_client
+import subprocess
 
 
 def _encode_image_base64(image_path: Path) -> str:
@@ -349,6 +351,97 @@ async def handler(job: Dict[str, Any]) -> Dict[str, Any]:
         logger.info(f"   Score: {state.result.final_score}/100")
         logger.info(f"   Status: {state.result.status}")
         logger.info(f"   Generated files: {list(response['generated_files'].keys())}")
+        
+        # Push artifacts to GitHub to avoid response size limits
+        github = get_github_client()
+        if github.is_enabled():
+            logger.info("🐙 Pushing artifacts to GitHub...")
+            
+            import shutil
+            import tempfile
+            
+            # Get artifacts directory
+            if state.result.artifacts_dir:
+                artifacts_base = Path(state.result.artifacts_dir)
+            else:
+                artifacts_base = Path(f"/runpod-volume/runs/runs/{state.result.run_id}/artifacts")
+            
+            # Create branch for artifacts
+            branch_name = f"artifacts/{state.result.run_id}"
+            branch_result = github.create_branch(branch_name)
+            
+            if branch_result.get("success"):
+                # Clone the branch to a temp directory
+                with tempfile.TemporaryDirectory() as temp_dir:
+                    temp_path = Path(temp_dir)
+                    clone_result = github.clone_branch_to_workspace(
+                        branch=branch_name,
+                        workspace_path=temp_path / "repo"
+                    )
+                    
+                    if clone_result.get("success"):
+                        repo_dir = temp_path / "repo"
+                        
+                        # Copy all artifacts to repo
+                        artifacts_dest = repo_dir / "artifacts"
+                        artifacts_dest.mkdir(exist_ok=True)
+                        
+                        # Copy generated HTML files
+                        if state.site_dir.exists():
+                            html_dest = artifacts_dest / "generated"
+                            html_dest.mkdir(exist_ok=True)
+                            for file in state.site_dir.rglob("*"):
+                                if file.is_file():
+                                    rel_path = file.relative_to(state.site_dir)
+                                    dest = html_dest / rel_path
+                                    dest.parent.mkdir(parents=True, exist_ok=True)
+                                    shutil.copy2(file, dest)
+                                    logger.info(f"   Copied: {rel_path}")
+                        
+                        # Copy screenshots
+                        screenshots_dir = artifacts_base / "screenshots"
+                        if screenshots_dir.exists():
+                            dest_screenshots = artifacts_dest / "screenshots"
+                            shutil.copytree(screenshots_dir, dest_screenshots, dirs_exist_ok=True)
+                            logger.info(f"   Copied screenshots")
+                        
+                        # Copy videos
+                        video_files = list(artifacts_base.rglob("*.webm"))
+                        if video_files:
+                            videos_dir = artifacts_dest / "videos"
+                            videos_dir.mkdir(exist_ok=True)
+                            for video_file in video_files:
+                                shutil.copy2(video_file, videos_dir / video_file.name)
+                            logger.info(f"   Copied {len(video_files)} videos")
+                        
+                        # Copy planner output
+                        planner_files = ["openhands_prompt.txt", "planner_output.json", "course_plan.json", "planner_thinking.txt"]
+                        for filename in planner_files:
+                            planner_file = artifacts_base / filename
+                            if planner_file.exists():
+                                shutil.copy2(planner_file, artifacts_dest / filename)
+                                logger.info(f"   Copied: {filename}")
+                        
+                        # Commit and push
+                        commit_result = github.commit_and_push(
+                            workspace_path=repo_dir,
+                            message=f"Artifacts for run {state.result.run_id} (score: {state.result.final_score}/100)",
+                            branch=branch_name
+                        )
+                        
+                        if commit_result.get("success"):
+                            github_url = commit_result.get("branch_url", f"https://github.com/{github.repo_name}/tree/{branch_name}")
+                            response["github_artifacts_url"] = github_url
+                            response["github_artifacts_branch"] = branch_name
+                            logger.info(f"✅ Artifacts pushed to: {github_url}")
+                        else:
+                            logger.warning(f"⚠️  Failed to push artifacts: {commit_result.get('message')}")
+                    else:
+                        logger.warning(f"⚠️  Failed to clone branch: {clone_result.get('message')}")
+            else:
+                logger.warning(f"⚠️  Failed to create branch: {branch_result.get('message')}")
+        else:
+            logger.info("ℹ️  GitHub not enabled, skipping artifacts push")
         
         # Add live view URL if enabled
         if live_view_url:
