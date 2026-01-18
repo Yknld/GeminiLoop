@@ -115,6 +115,237 @@ class LocalSubprocessOpenHandsClient(OpenHandsClient):
             logger.error(f"   Import error: {e}")
             logger.error("   Install with: pip install openhands-sdk openhands-tools openhands-workspace")
     
+    def execute_todo_task(self, todo: Dict[str, Any], workspace_path: str, all_modules_info: List[Dict[str, Any]] = None) -> Dict[str, Any]:
+        """
+        Execute a single todo task. This is called for each module one at a time.
+        
+        Args:
+            todo: Todo item with type, title, description, module_data, etc.
+            workspace_path: Path to workspace
+            all_modules_info: List of all module information from planner (for context)
+        
+        Returns:
+            Dict with success, files_generated, etc.
+        """
+        start_time = datetime.now()
+        workspace_path = Path(workspace_path)
+        
+        if not self.openhands_available:
+            raise RuntimeError("OpenHands not available. Cannot generate code without OpenHands.")
+        
+        # Build task-specific prompt
+        task_prompt = self._build_todo_prompt(todo, all_modules_info, workspace_path)
+        
+        # Save prompt for debugging
+        prompt_file = self.artifacts_dir / f"todo_{todo['id']}_{start_time.strftime('%Y%m%d_%H%M%S')}.txt"
+        prompt_file.write_text(task_prompt)
+        logger.info(f"   Todo prompt saved: {prompt_file}")
+        
+        # Run OpenHands via Python SDK
+        try:
+            from openhands.sdk import LLM, Agent, Conversation, Tool
+            from openhands.tools.browser_use import BrowserToolSet
+            from openhands.tools.file_editor import FileEditorTool
+            from openhands.tools.terminal import TerminalTool
+            from pydantic import SecretStr
+            
+            # Capture before state
+            before_files = self._capture_workspace_state(workspace_path)
+            
+            # Configure LLM
+            model = os.getenv("GEMINI_MODEL", "gemini-2.0-flash-exp")
+            if not model.startswith("gemini/"):
+                model = f"gemini/{model}"
+            
+            llm = LLM(
+                model=model,
+                api_key=SecretStr(os.getenv("GOOGLE_AI_STUDIO_API_KEY")),
+            )
+            
+            # Create agent with tools
+            agent = Agent(
+                llm=llm,
+                tools=[
+                    FileEditorTool(),
+                    TerminalTool(),
+                ]
+            )
+            
+            # Create conversation
+            conversation = Conversation(agent=agent)
+            
+            logger.info(f"   Before state: {len(before_files)} files")
+            
+            # Send task prompt
+            conversation.send_message(task_prompt)
+            
+            # Run with timeout
+            timeout_seconds = float(os.getenv('OPENHANDS_TIMEOUT_SECONDS', '600'))
+            run_complete = threading.Event()
+            run_exception = [None]
+            
+            def run_conversation():
+                try:
+                    conversation.run()
+                    run_complete.set()
+                except Exception as e:
+                    run_exception[0] = e
+                    run_complete.set()
+            
+            run_thread = threading.Thread(target=run_conversation, daemon=True)
+            run_thread.start()
+            
+            if not run_complete.wait(timeout=timeout_seconds):
+                logger.error(f"OpenHands execution timed out after {timeout_seconds}s")
+                raise RuntimeError(f"OpenHands execution timed out after {timeout_seconds}s")
+            
+            if run_exception[0]:
+                raise run_exception[0]
+            
+            # Capture after state
+            after_files = self._capture_workspace_state(workspace_path)
+            logger.info(f"   After state: {len(after_files)} files")
+            
+            # Determine what changed
+            files_generated = []
+            for filepath in after_files:
+                if filepath not in before_files or after_files[filepath] != before_files[filepath]:
+                    files_generated.append(filepath)
+            
+            duration = (datetime.now() - start_time).total_seconds()
+            
+            logger.info(f"✅ Todo '{todo['title']}' completed in {duration:.2f}s")
+            logger.info(f"   Files modified: {len(files_generated)}")
+            
+            return {
+                "success": True,
+                "files_generated": files_generated,
+                "duration_seconds": duration,
+                "todo_id": todo['id'],
+                "todo_title": todo['title']
+            }
+            
+        except Exception as e:
+            logger.error(f"❌ Todo execution failed: {e}")
+            return {
+                "success": False,
+                "error": str(e),
+                "todo_id": todo['id'],
+                "todo_title": todo['title']
+            }
+    
+    def _build_todo_prompt(self, todo: Dict[str, Any], all_modules_info: List[Dict[str, Any]], workspace_path: Path) -> str:
+        """Build a focused prompt for a single todo task"""
+        
+        todo_type = todo.get('type')
+        workspace_path_obj = Path(workspace_path) if isinstance(workspace_path, str) else workspace_path
+        
+        # Check if index.html exists
+        index_exists = (workspace_path_obj / "index.html").exists()
+        
+        prompt = f"**TASK: {todo['title']}**\n\n"
+        prompt += f"{todo['description']}\n\n"
+        
+        if todo_type == 'setup':
+            prompt += self._build_setup_prompt(workspace_path_obj, index_exists)
+        elif todo_type == 'module':
+            prompt += self._build_module_prompt(todo, all_modules_info, workspace_path_obj, index_exists)
+        elif todo_type == 'validation':
+            prompt += self._build_validation_prompt(workspace_path_obj, index_exists)
+        
+        return prompt
+    
+    def _build_setup_prompt(self, workspace_path: Path, index_exists: bool) -> str:
+        """Build prompt for setup todo"""
+        prompt = "**SETUP TASK:**\n"
+        prompt += "1. Read the existing index.html file completely to understand its structure\n"
+        prompt += "2. Identify the `modules` array in the JavaScript section\n"
+        prompt += "3. Understand the template structure: navigation, audio controls, notes panel, chatbot\n"
+        prompt += "4. DO NOT modify anything yet - just read and understand\n"
+        if not index_exists:
+            prompt += "⚠️  WARNING: index.html does not exist. This is unexpected. Report this issue.\n"
+        return prompt
+    
+    def _build_module_prompt(self, todo: Dict[str, Any], all_modules_info: List[Dict[str, Any]], workspace_path: Path, index_exists: bool) -> str:
+        """Build prompt for a single module todo"""
+        module_data = todo.get('module_data', {})
+        module_index = todo.get('module_index')
+        requirements = todo.get('requirements', {})
+        interactive_experiences = todo.get('interactive_experiences', [])
+        
+        prompt = f"**MODULE {module_index + 1} CREATION TASK:**\n\n"
+        
+        if not index_exists:
+            prompt += "⚠️  ERROR: index.html does not exist. Setup task should have been completed first.\n\n"
+        
+        prompt += "**CRITICAL FILE OPERATION RULES:**\n"
+        prompt += "- The file path is: index.html (relative to workspace)\n"
+        prompt += "- ALWAYS check if index.html exists before modifying it\n"
+        prompt += "- If index.html exists, you MUST use `edit` or `write` command, NEVER use `create`\n"
+        prompt += "- The `create` command will FAIL with error: \"File already exists. Cannot overwrite files using command create\"\n\n"
+        
+        prompt += f"**YOUR TASK:** Add Module {module_index + 1} to the `modules` array in index.html\n\n"
+        
+        prompt += "**MODULE SPECIFICATIONS:**\n"
+        prompt += f"- title: {module_data.get('title', 'TBD from notes')}\n"
+        
+        if requirements.get('explanation'):
+            prompt += f"- explanation: {requirements['explanation']}\n"
+        if requirements.get('keyPoints'):
+            prompt += f"- keyPoints: {requirements['keyPoints']} (array of strings)\n"
+        if requirements.get('timeline'):
+            prompt += f"- timeline: {requirements['timeline']} (array of objects with date, title, description, person)\n"
+        if requirements.get('funFact'):
+            prompt += f"- funFact: {requirements['funFact']}\n"
+        if requirements.get('videoId'):
+            prompt += f"- videoId: {requirements['videoId']} (from YouTube videos provided)\n"
+        
+        prompt += "\n**CRITICAL: interactiveElement (REQUIRED - FUN ACTIVITY, NOT QUIZ):**\n"
+        prompt += "- **NEVER CREATE QUIZZES, TESTS, OR MULTIPLE-CHOICE QUESTIONS**\n"
+        prompt += "- **MUST CREATE FUN INTERACTIVE ACTIVITY**: calculator, simulation, game, manipulative\n"
+        
+        if interactive_experiences:
+            for exp in interactive_experiences:
+                exp_name = exp.get('name', 'Interactive Activity')
+                exp_type = exp.get('type', 'calculator')
+                prompt += f"- Create: {exp_name} (type: {exp_type})\n"
+                if exp.get('what_user_does'):
+                    prompt += f"  * User actions: {', '.join(exp['what_user_does'])}\n"
+                if exp.get('what_user_sees'):
+                    prompt += f"  * User sees: {', '.join(exp['what_user_sees'])}\n"
+        
+        prompt += "- The interactiveElement must be a FULL HTML string with embedded JavaScript\n"
+        prompt += "- Include: inputs, buttons, calculations, visual feedback\n"
+        prompt += "- Make it FUN and engaging, NOT test-like\n"
+        prompt += "- Example: Circle Calculator with radius input → shows diameter, circumference, area\n"
+        prompt += "- Example: Coordinate Tool with x1,y1,x2,y2 inputs → shows distance, midpoint, slope\n\n"
+        
+        prompt += "**IMPLEMENTATION STEPS:**\n"
+        prompt += "1. Read the current modules array in index.html\n"
+        prompt += f"2. Add a new module object at index {module_index} with all required fields\n"
+        prompt += "3. Populate all fields from the notes/content provided\n"
+        prompt += "4. Create the interactiveElement HTML string with working JavaScript\n"
+        prompt += "5. Ensure the module has the correct structure matching the template\n\n"
+        
+        prompt += "**VERIFICATION:**\n"
+        prompt += "- After adding, verify the module appears in the modules array\n"
+        prompt += "- Verify interactiveElement contains actual HTML/JS, not placeholder text\n"
+        prompt += "- Verify all required fields are present\n"
+        
+        return prompt
+    
+    def _build_validation_prompt(self, workspace_path: Path, index_exists: bool) -> str:
+        """Build prompt for validation todo"""
+        prompt = "**FINAL VALIDATION TASK:**\n\n"
+        prompt += "1. Verify all modules are present in the modules array\n"
+        prompt += "2. Check that NO placeholder text remains (especially in interactiveElement)\n"
+        prompt += "3. Verify all interactive elements are FUN activities (calculators/simulations), NOT quizzes\n"
+        prompt += "4. Verify JavaScript code uses `module.interactiveElement` not `module.quiz`\n"
+        prompt += "5. Test that navigation works between all modules\n"
+        prompt += "6. Ensure no console errors\n"
+        prompt += "7. Fix any issues found\n"
+        return prompt
+    
     def generate_code(self, task: str, workspace_path: str, detailed_requirements: Dict[str, Any] = None, template_file: str = None) -> Dict[str, Any]:
         """Generate initial code using OpenHands Python SDK, optionally starting from template"""
         

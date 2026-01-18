@@ -286,12 +286,16 @@ class Planner:
             if thinking:
                 print(f"💭 Planner: Thinking process captured ({len(thinking)} chars)")
             
+            # Generate todo list from modules
+            todo_list = self._generate_todo_list(course_overview, plan_json)
+            
             return {
                 'prompt': generated_prompt,
                 'thinking': thinking,
                 'plan_json': plan_json,  # Full JSON structure
                 'course_overview': course_overview,
                 'global_ui_spec': global_ui_spec,
+                'todo_list': todo_list,  # Structured todo list for step-by-step execution
                 'metadata': {
                     'model': 'gemini-2.0-pro-exp',
                     'user_requirements': user_requirements,
@@ -300,7 +304,8 @@ class Planner:
                     'prompt_length': len(generated_prompt),
                     'has_thinking': thinking is not None,
                     'youtube_videos_count': len(youtube_videos) if youtube_videos else 0,
-                    'modules_count': len(course_overview.get('modules', []))
+                    'modules_count': len(course_overview.get('modules', [])),
+                    'todo_count': len(todo_list)
                 }
             }
         except (json.JSONDecodeError, KeyError) as e:
@@ -326,6 +331,111 @@ class Planner:
         except Exception as e:
             print(f"❌ Planner error: {e}")
             raise
+    
+    def _generate_todo_list(self, course_overview: Dict[str, Any], plan_json: Dict[str, Any]) -> List[Dict[str, Any]]:
+        """
+        Generate a structured todo list from the course overview.
+        Each todo item represents one module to be created.
+        """
+        todos = []
+        modules = course_overview.get('modules', [])
+        
+        # Extract module specifications from openhands_build_prompt if available
+        openhands_prompt = plan_json.get('openhands_build_prompt', '')
+        
+        # Initial setup todo
+        todos.append({
+            'id': 'setup',
+            'type': 'setup',
+            'title': 'Initialize template and understand structure',
+            'description': 'Read index.html, understand template structure (modules array, navigation, etc.)',
+            'module_index': None,
+            'priority': 1
+        })
+        
+        # One todo per module
+        for idx, module in enumerate(modules):
+            module_id = module.get('module_id', f'm{idx+1}')
+            module_title = module.get('module_title', f'Module {idx+1}')
+            
+            # Extract module-specific details from the prompt if available
+            # Look for "MODULE X:" sections in the prompt
+            module_spec = self._extract_module_spec_from_prompt(openhands_prompt, idx + 1, module_title)
+            
+            todos.append({
+                'id': f'module_{idx}',
+                'type': 'module',
+                'title': f'Create Module {idx+1}: {module_title}',
+                'description': f'Add Module {idx+1} ({module_title}) to the modules array with all required fields',
+                'module_index': idx,
+                'module_id': module_id,
+                'module_title': module_title,
+                'module_spec': module_spec,  # Detailed specifications from prompt
+                'module_data': {
+                    'title': module_title,
+                    'videoId': module_spec.get('videoId'),
+                    'explanation': module_spec.get('explanation'),
+                    'keyPoints': module_spec.get('keyPoints', []),
+                    'timeline': module_spec.get('timeline', []),
+                    'funFact': module_spec.get('funFact'),
+                    'interactiveElement': None,  # Will be generated
+                    'audioSources': {}
+                },
+                'requirements': {
+                    'explanation': module_spec.get('explanation_desc', 'Main explanation text from notes'),
+                    'keyPoints': module_spec.get('keyPoints_desc', 'Important concepts as array'),
+                    'timeline': module_spec.get('timeline_desc', 'Historical events/chronology (if applicable)'),
+                    'funFact': module_spec.get('funFact_desc', 'Interesting fact'),
+                    'interactiveElement': 'FUN interactive activity (calculator/simulation/game - NEVER quiz/test)',
+                    'videoId': module_spec.get('videoId_desc', 'YouTube video ID (from provided videos)')
+                },
+                'interactive_experiences': module.get('interactive_experiences', []),
+                'priority': idx + 2  # After setup
+            })
+        
+        # Final validation todo
+        todos.append({
+            'id': 'validation',
+            'type': 'validation',
+            'title': 'Final validation and cleanup',
+            'description': 'Verify all modules are created, interactive elements work, no placeholders remain',
+            'module_index': None,
+            'priority': len(modules) + 2
+        })
+        
+        return todos
+    
+    def _extract_module_spec_from_prompt(self, prompt: str, module_num: int, module_title: str) -> Dict[str, Any]:
+        """Extract module-specific specifications from the openhands_build_prompt"""
+        spec = {}
+        
+        # Look for "MODULE X:" or module title in prompt
+        import re
+        next_module_num = module_num + 1
+        module_pattern = rf'\*\*MODULE\s+{module_num}[:\*]?\*\*.*?(?=\*\*MODULE\s+{next_module_num}|\*\*MODULE\s+\d+|\*\*AUDIO|\*\*FINAL|$)'
+        match = re.search(module_pattern, prompt, re.IGNORECASE | re.DOTALL)
+        
+        if match:
+            module_text = match.group(0)
+            
+            # Extract videoId
+            video_match = re.search(r'videoId[:\s]*["\']?([^"\'\s]+)["\']?', module_text, re.IGNORECASE)
+            if video_match:
+                spec['videoId'] = video_match.group(1)
+                spec['videoId_desc'] = f'Use video ID: {spec["videoId"]}'
+            
+            # Extract explanation
+            exp_match = re.search(r'explanation[:\s]*([^\n]+)', module_text, re.IGNORECASE)
+            if exp_match:
+                spec['explanation'] = exp_match.group(1).strip()
+                spec['explanation_desc'] = spec['explanation']
+            
+            # Extract interactiveElement description
+            interactive_match = re.search(r'interactiveElement[:\s]*\*\*.*?\*\*[:\s]*(.*?)(?=\*\*|$)', module_text, re.IGNORECASE | re.DOTALL)
+            if interactive_match:
+                spec['interactiveElement_desc'] = interactive_match.group(1).strip()
+        
+        return spec
     
     def save_plan(self, plan: Dict[str, Any], output_path: Path):
         """Save the generated plan to a file for inspection."""
