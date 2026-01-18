@@ -1126,32 +1126,7 @@ Begin systematic testing. You have vision - use it!"""
                 else:
                     # No selector or text provided, just wait for timeout
                     await asyncio.sleep(timeout_ms / 1000)
-                    return {"success": True, "message": f"Waited {timeout_ms}ms (no condition specified)"} (polling)
-                    wait_text_js = f"""
-                    (function() {{
-                        return document.body.innerText.includes({json.dumps(text)});
-                    }})()
-                    """
-                    while True:
-                        elapsed = (asyncio.get_event_loop().time() * 1000) - start_time
-                        if elapsed >= timeout_ms:
-                            return {"success": False, "message": f"Text '{text}' not found after {timeout_ms}ms"}
-                        
-                        result = await mcp_client.evaluate(wait_text_js)
-                        if result.get("result"):
-                            return {"success": True, "message": f"Text '{text}' found after {elapsed:.0f}ms"}
-                        
-                        await asyncio.sleep(poll_interval / 1000)
-                    await asyncio.sleep(timeout / 1000)
-                    text_js = "document.body.innerText"
-                    result = await mcp_client.evaluate(text_js)
-                    body_text = result.get("result", "")
-                    found = text in body_text
-                    return {"success": found, "message": f"Text '{text}' {'found' if found else 'not found'}"}
-                else:
-                    # Just wait
-                    await asyncio.sleep(timeout / 1000)
-                    return {"success": True, "message": f"Waited {timeout}ms"}
+                    return {"success": True, "message": f"Waited {timeout_ms}ms (no condition specified)"}
             
             elif tool_name == "browser_hover":
                 selector = args["selector"]
