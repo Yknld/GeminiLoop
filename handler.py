@@ -388,7 +388,14 @@ async def handler(job: Dict[str, Any]) -> Dict[str, Any]:
             response["live_view_url"] = live_view_url
             logger.info(f"🔴 Live view: {live_view_url}")
         
-        return response
+        # CRITICAL: Log response before returning to ensure it's built
+        logger.info(f"📦 Returning response with {len(response)} keys")
+        logger.info(f"   Response includes: generated_files={len(response.get('generated_files', {}))}, iterations_data={len(response.get('iterations_data', []))}")
+        
+        # Ensure response is properly formatted as dict
+        final_response = dict(response)
+        logger.info(f"🚀 Handler returning response (type: {type(final_response)})")
+        return final_response
         
     except Exception as e:
         logger.error(f"❌ Handler error: {e}")
@@ -436,4 +443,8 @@ def test_handler_with_custom_notes():
 
 if __name__ == "__main__":
     # Start RunPod serverless handler
-    runpod.serverless.start({"handler": handler})
+    # Note: RunPod handles async handlers automatically, but we need to ensure proper return
+    runpod.serverless.start({
+        "handler": handler,
+        "return_aggregate_stream": False  # We return a single response, not a stream
+    })
