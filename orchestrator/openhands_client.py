@@ -337,13 +337,20 @@ class LocalSubprocessOpenHandsClient(OpenHandsClient):
     def _build_validation_prompt(self, workspace_path: Path, index_exists: bool) -> str:
         """Build prompt for validation todo"""
         prompt = "**FINAL VALIDATION TASK:**\n\n"
+        prompt += "**CRITICAL: DO NOT DELETE ANY FILES, ESPECIALLY SCREENSHOTS OR ARTIFACTS**\n"
+        prompt += "- Only modify index.html if needed to fix issues\n"
+        prompt += "- Do NOT delete any files in the workspace\n"
+        prompt += "- Do NOT delete screenshots, videos, or any artifacts\n"
+        prompt += "- Do NOT run cleanup commands that remove files\n\n"
+        prompt += "**VALIDATION STEPS:**\n"
         prompt += "1. Verify all modules are present in the modules array\n"
         prompt += "2. Check that NO placeholder text remains (especially in interactiveElement)\n"
         prompt += "3. Verify all interactive elements are FUN activities (calculators/simulations), NOT quizzes\n"
         prompt += "4. Verify JavaScript code uses `module.interactiveElement` not `module.quiz`\n"
         prompt += "5. Test that navigation works between all modules\n"
         prompt += "6. Ensure no console errors\n"
-        prompt += "7. Fix any issues found\n"
+        prompt += "7. Fix any issues found in index.html ONLY\n"
+        prompt += "8. DO NOT delete any files - only edit index.html to fix problems\n"
         return prompt
     
     def generate_code(self, task: str, workspace_path: str, detailed_requirements: Dict[str, Any] = None, template_file: str = None) -> Dict[str, Any]:
