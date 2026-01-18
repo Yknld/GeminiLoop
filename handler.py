@@ -196,25 +196,50 @@ async def handler(job: Dict[str, Any]) -> Dict[str, Any]:
                 
                 # Add screenshots for this iteration
                 screenshots_dir = Path(f"/runpod-volume/runs/{state.result.run_id}/artifacts/screenshots/iter_{iter_result.iteration}")
+                logger.info(f"Looking for screenshots in: {screenshots_dir}")
+                logger.info(f"Directory exists: {screenshots_dir.exists()}")
+                
                 if screenshots_dir.exists():
                     # Collect all screenshots (agentic evaluator saves step_X_phase.png files)
                     screenshot_files = list(screenshots_dir.rglob("*.png"))
-                    for screenshot_file in screenshot_files:
+                    logger.info(f"Found {len(screenshot_files)} PNG files in {screenshots_dir}")
+                    
+                    if screenshot_files:
+                        for screenshot_file in screenshot_files:
+                            try:
+                                # Use relative filename as key (e.g., "step_1_before.png")
+                                rel_name = screenshot_file.name
+                                encoded = _encode_image_base64(screenshot_file)
+                                if encoded:
+                                    iter_data["screenshots"][rel_name] = encoded
+                                    logger.info(f"✅ Encoded screenshot: {rel_name}")
+                                else:
+                                    logger.warning(f"⚠️  Failed to encode {screenshot_file}")
+                            except Exception as e:
+                                logger.warning(f"⚠️  Failed to encode screenshot {screenshot_file}: {e}")
+                    else:
+                        logger.warning(f"⚠️  No PNG files found in {screenshots_dir}")
+                        # List what's actually in the directory
                         try:
-                            # Use relative filename as key (e.g., "step_1_before.png")
-                            rel_name = screenshot_file.name
-                            iter_data["screenshots"][rel_name] = _encode_image_base64(screenshot_file)
+                            actual_files = list(screenshots_dir.iterdir())
+                            logger.warning(f"   Directory contains: {[f.name for f in actual_files]}")
                         except Exception as e:
-                            logger.warning(f"⚠️  Failed to encode screenshot {screenshot_file}: {e}")
+                            logger.warning(f"   Could not list directory: {e}")
                     
                     # Also check for legacy desktop/mobile screenshots
                     desktop_path = screenshots_dir / "desktop.png"
                     if desktop_path.exists() and "desktop" not in iter_data["screenshots"]:
                         iter_data["screenshots"]["desktop"] = _encode_image_base64(desktop_path)
+                        logger.info("✅ Added legacy desktop.png")
                     
                     mobile_path = screenshots_dir / "mobile.png"
                     if mobile_path.exists() and "mobile" not in iter_data["screenshots"]:
                         iter_data["screenshots"]["mobile"] = _encode_image_base64(mobile_path)
+                        logger.info("✅ Added legacy mobile.png")
+                else:
+                    logger.warning(f"⚠️  Screenshots directory does not exist: {screenshots_dir}")
+                
+                logger.info(f"Iteration {iter_result.iteration}: Collected {len(iter_data['screenshots'])} screenshots")
                 
                 response["iterations_data"].append(iter_data)
         
