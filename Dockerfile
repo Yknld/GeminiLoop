@@ -36,6 +36,7 @@ RUN npx playwright install chromium
 
 # Copy application
 COPY orchestrator ./orchestrator
+COPY qa_browseruse_mcp ./qa_browseruse_mcp
 COPY handler.py .
 
 # Copy template files if they exist
