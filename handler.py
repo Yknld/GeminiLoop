@@ -197,14 +197,23 @@ async def handler(job: Dict[str, Any]) -> Dict[str, Any]:
                 # Add screenshots for this iteration
                 screenshots_dir = Path(f"/runpod-volume/runs/{state.result.run_id}/artifacts/screenshots/iter_{iter_result.iteration}")
                 if screenshots_dir.exists():
-                    # Desktop screenshot
+                    # Collect all screenshots (agentic evaluator saves step_X_phase.png files)
+                    screenshot_files = list(screenshots_dir.rglob("*.png"))
+                    for screenshot_file in screenshot_files:
+                        try:
+                            # Use relative filename as key (e.g., "step_1_before.png")
+                            rel_name = screenshot_file.name
+                            iter_data["screenshots"][rel_name] = _encode_image_base64(screenshot_file)
+                        except Exception as e:
+                            logger.warning(f"⚠️  Failed to encode screenshot {screenshot_file}: {e}")
+                    
+                    # Also check for legacy desktop/mobile screenshots
                     desktop_path = screenshots_dir / "desktop.png"
-                    if desktop_path.exists():
+                    if desktop_path.exists() and "desktop" not in iter_data["screenshots"]:
                         iter_data["screenshots"]["desktop"] = _encode_image_base64(desktop_path)
                     
-                    # Mobile screenshot
                     mobile_path = screenshots_dir / "mobile.png"
-                    if mobile_path.exists():
+                    if mobile_path.exists() and "mobile" not in iter_data["screenshots"]:
                         iter_data["screenshots"]["mobile"] = _encode_image_base64(mobile_path)
                 
                 response["iterations_data"].append(iter_data)
@@ -228,26 +237,47 @@ async def handler(job: Dict[str, Any]) -> Dict[str, Any]:
             response["screenshots"] = [str(f.relative_to("/runpod-volume/runs")) for f in screenshot_files]
         
         # Get video paths and encode videos
-        videos_dir = Path(f"/runpod-volume/runs/{state.result.run_id}/artifacts/screenshots")
-        if videos_dir.exists():
-            video_files = list(videos_dir.rglob("*.webm"))
-            if video_files:
-                response["videos"] = [str(f.relative_to("/runpod-volume/runs")) for f in video_files]
-                response["artifacts"]["videos"] = [str(f.relative_to("/runpod-volume/runs")) for f in video_files]
-                
-                # Encode videos as base64 for download
-                response["videos_data"] = {}
-                for video_file in video_files:
-                    try:
-                        relative_path = str(video_file.relative_to("/runpod-volume/runs"))
-                        encoded_video = _encode_video_base64(video_file)
-                        if encoded_video:
-                            response["videos_data"][relative_path] = encoded_video
-                            logger.info(f"✅ Encoded video: {relative_path} ({video_file.stat().st_size / (1024*1024):.1f}MB)")
-                        else:
-                            logger.warning(f"⚠️  Video too large or failed to encode: {relative_path}")
-                    except Exception as e:
-                        logger.warning(f"⚠️  Error encoding video {video_file}: {e}")
+        # Check multiple possible locations for videos
+        artifacts_dir = Path(f"/runpod-volume/runs/{state.result.run_id}/artifacts")
+        video_files = []
+        
+        # Check screenshots directory (legacy location)
+        screenshots_videos = artifacts_dir / "screenshots"
+        if screenshots_videos.exists():
+            video_files.extend(list(screenshots_videos.rglob("*.webm")))
+        
+        # Check artifacts root directory
+        if artifacts_dir.exists():
+            video_files.extend(list(artifacts_dir.rglob("*.webm")))
+        
+        # Check iteration-specific directories
+        for iter_dir in artifacts_dir.glob("screenshots/iter_*"):
+            if iter_dir.exists():
+                video_files.extend(list(iter_dir.rglob("*.webm")))
+        
+        if video_files:
+            # Remove duplicates
+            video_files = list(set(video_files))
+            response["videos"] = [str(f.relative_to("/runpod-volume/runs")) for f in video_files]
+            response["artifacts"]["videos"] = [str(f.relative_to("/runpod-volume/runs")) for f in video_files]
+            
+            logger.info(f"📹 Found {len(video_files)} video file(s)")
+            
+            # Encode videos as base64 for download
+            response["videos_data"] = {}
+            for video_file in video_files:
+                try:
+                    relative_path = str(video_file.relative_to("/runpod-volume/runs"))
+                    encoded_video = _encode_video_base64(video_file)
+                    if encoded_video:
+                        response["videos_data"][relative_path] = encoded_video
+                        logger.info(f"✅ Encoded video: {relative_path} ({video_file.stat().st_size / (1024*1024):.1f}MB)")
+                    else:
+                        logger.warning(f"⚠️  Video too large or failed to encode: {relative_path}")
+                except Exception as e:
+                    logger.warning(f"⚠️  Error encoding video {video_file}: {e}")
+        else:
+            logger.info("📹 No video files found")
         
         # Add generated file contents
         response["generated_files"] = {}
