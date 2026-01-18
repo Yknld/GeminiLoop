@@ -594,13 +594,24 @@ class AgenticEvaluator(GeminiEvaluator):
                     }, indent=2))
                     
                     # Send tool result back to Gemini with verification info
-                    # Keep response simple and JSON-serializable
+                    # Include summary of what's been tested so far (memory context)
+                    steps_summary = f"Steps completed: {step + 1}/{self.max_exploration_steps}. "
+                    if self.exploration_log:
+                        tested_items = []
+                        for prev_step in self.exploration_log[-3:]:  # Last 3 steps
+                            tool_name = prev_step.get('tool', 'unknown')
+                            if tool_name not in ['browser_get_state', 'browser_dom_snapshot']:
+                                tested_items.append(tool_name)
+                        if tested_items:
+                            steps_summary += f"Recently tested: {', '.join(set(tested_items))}. "
+                    
                     response_data = {
                         "success": bool(tool_result.get("success", False)),
                         "message": str(tool_result.get("message", "")),
                         "dom_changed": bool(verification["dom_changed"]),
                         "text_changed": bool(verification["text_changed"]),
-                        "new_errors": int(len(verification["new_console_errors"]))
+                        "new_errors": int(len(verification["new_console_errors"])),
+                        "context": steps_summary + "Use finish_exploration when you've tested everything."
                     }
                     
                     # Create function response parts for ALL function calls
@@ -737,6 +748,12 @@ class AgenticEvaluator(GeminiEvaluator):
   - What works (with evidence)
   - What fails (with evidence)
   - What you couldn't test (with reasons)
+
+**Memory & Context:**
+- You maintain full conversation history - you can see all previous actions and their results
+- Use this memory to avoid repeating tests you've already done
+- Reference previous steps when deciding what to test next
+- If you've already tested something and it worked, you don't need to test it again
 
 Begin systematic testing. You have vision - use it!"""
     

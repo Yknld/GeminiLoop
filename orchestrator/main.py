@@ -112,9 +112,11 @@ async def run_loop(task: str, max_iterations: int = 5, base_dir: Path = None, cu
     # Choose evaluator: agentic (Gemini controls browser) or scripted (fixed tests)
     use_agentic = os.getenv("AGENTIC_EVAL", "true").lower() in ("true", "1", "yes")
     if use_agentic:
-        max_steps = int(os.getenv("AGENTIC_MAX_STEPS", "15"))
+        # Default to 50 steps (can finish early via finish_exploration tool)
+        max_steps = int(os.getenv("AGENTIC_MAX_STEPS", "50"))
         evaluator = AgenticEvaluator(max_exploration_steps=max_steps)
         print(f"🤖 Using Agentic Evaluator (Gemini controls browser, max {max_steps} steps)")
+        print(f"   Note: Evaluator maintains full conversation history and can finish early if done")
     else:
         evaluator = GeminiEvaluator()
         print(f"📋 Using Scripted Evaluator (fixed test checklist)")
