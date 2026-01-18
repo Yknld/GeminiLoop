@@ -428,38 +428,63 @@ Return ONLY the JSON array, no other text."""
         if custom_notes:
             print("📖 Analyzing notes with Gemini to understand context...")
             
-            analysis_prompt = f"""Analyze the following educational notes and extract:
-1. The main subject/topic (e.g., "geometry", "circles", "coordinate geometry")
-2. Key concepts covered
-3. Educational level (e.g., "high school", "undergraduate", "general")
+            # Pass full notes to Gemini (not truncated)
+            analysis_prompt = f"""Analyze the following educational notes and extract the main topics for YouTube video search.
 
 NOTES:
-{custom_notes[:3000]}
+{custom_notes}
+
+Extract:
+1. The main subject/topic(s) - this should be a clear, searchable topic name for YouTube (e.g., "geometry circles", "coordinate geometry", "geometry practice problems")
+2. Key concepts covered
+3. Educational level
 
 Return a JSON object with:
 {{
-  "main_topic": "clear topic name for YouTube search",
-  "key_concepts": ["concept1", "concept2"],
+  "main_topic": "primary topic for YouTube search (can be multiple topics if notes cover different subjects)",
+  "key_concepts": ["concept1", "concept2", "concept3"],
   "educational_level": "level"
 }}
 
-Return ONLY the JSON, no other text."""
+IMPORTANT: 
+- The main_topic should be suitable for YouTube search queries
+- If notes cover multiple distinct topics, list them (e.g., "circles, coordinate geometry, practice problems")
+- Return ONLY valid JSON, no markdown, no explanation."""
             
             try:
                 analysis_response = self.model.generate_content(
                     analysis_prompt,
                     generation_config={
                         'temperature': 0.3,
-                        'max_output_tokens': 512,
+                        'max_output_tokens': 1024,
+                        'response_mime_type': 'application/json',  # Request JSON directly
                     }
                 )
                 
+                # Handle response - check for safety blocks
+                if not analysis_response.candidates:
+                    raise ValueError("Response blocked by safety filters")
+                
+                candidate = analysis_response.candidates[0]
+                if candidate.finish_reason == 2:  # SAFETY
+                    raise ValueError("Response blocked by safety filters (finish_reason: 2)")
+                
                 # Extract JSON from response
-                analysis_text = analysis_response.text.strip()
+                try:
+                    analysis_text = analysis_response.text.strip()
+                except ValueError:
+                    # Response might not have text, try to get from parts
+                    if candidate.content and candidate.content.parts:
+                        analysis_text = ''.join(part.text for part in candidate.content.parts if hasattr(part, 'text'))
+                    else:
+                        raise ValueError("No text content in response")
+                
+                # Try to extract JSON if wrapped in markdown
                 json_match = re.search(r'```(?:json)?\s*(\{.*?\})\s*```', analysis_text, re.DOTALL)
                 if json_match:
                     analysis_text = json_match.group(1)
                 else:
+                    # Try to find JSON object directly
                     json_match = re.search(r'(\{.*?\})', analysis_text, re.DOTALL)
                     if json_match:
                         analysis_text = json_match.group(1)
@@ -476,10 +501,10 @@ Return ONLY the JSON, no other text."""
                 context = f"Educational notes covering: {topic}"
                 if key_concepts:
                     context += f". Key concepts: {', '.join(key_concepts[:5])}"
-                context += f"\n\nNotes excerpt:\n{custom_notes[:1500]}"
+                context += f"\n\nNotes excerpt:\n{custom_notes[:2000]}"
                 
             except Exception as e:
-                print(f"⚠️  Error analyzing notes: {e}")
+                print(f"⚠️  Error analyzing notes with Gemini: {e}")
                 print("   Falling back to simple topic extraction...")
                 # Fallback to simple extraction
                 topic = self._extract_topic_simple(custom_notes) or user_requirements
