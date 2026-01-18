@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Job Artifacts Viewer</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+            background: #f5f5f5;
+            line-height: 1.6;
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 2rem;
+        }
+        .section {
+            background: white;
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .section h2 {
+            margin-bottom: 1rem;
+            color: #667eea;
+        }
+        .file-list {
+            list-style: none;
+        }
+        .file-list li {
+            padding: 0.5rem;
+            border-bottom: 1px solid #eee;
+        }
+        .file-list li:last-child {
+            border-bottom: none;
+        }
+        .file-list a {
+            color: #667eea;
+            text-decoration: none;
+        }
+        .file-list a:hover {
+            text-decoration: underline;
+        }
+        .screenshots {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1rem;
+        }
+        .screenshot {
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        .screenshot img {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+        .screenshot-label {
+            padding: 0.5rem;
+            background: #f8f8f8;
+            font-size: 0.875rem;
+            color: #666;
+        }
+        .video-list {
+            list-style: none;
+        }
+        .video-list li {
+            padding: 0.5rem;
+            border-bottom: 1px solid #eee;
+        }
+        .video-list video {
+            max-width: 100%;
+            margin-top: 0.5rem;
+        }
+    </style>
+</head>
+<body>
+    <h1>📦 Job Artifacts Viewer</h1>
+
+    <div class="section">
+        <h2>📋 Planner Output</h2>
+        <ul class="file-list">
+            <li><a href="planner_output/planner_prompt.txt" target="_blank">planner_prompt.txt</a></li>
+            <li><a href="planner_output/planner_output.json" target="_blank">planner_output.json</a></li>
+            <li><a href="planner_output/course_plan.json" target="_blank">course_plan.json</a></li>
+            <li><a href="planner_output/planner_thinking.txt" target="_blank">planner_thinking.txt</a></li>
+        </ul>
+    </div>
+
+</body>
+</html>

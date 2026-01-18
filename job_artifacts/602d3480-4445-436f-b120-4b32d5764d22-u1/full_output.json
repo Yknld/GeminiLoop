@@ -1,0 +1,12 @@
+{
+  "delayTime": 5075,
+  "error": "'StreamReader' object has no attribute 'close'",
+  "executionTime": 669217,
+  "id": "602d3480-4445-436f-b120-4b32d5764d22-u1",
+  "output": {
+    "status": "error",
+    "traceback": "Traceback (most recent call last):\n  File \"/app/handler.py\", line 161, in handler\n    state = await run_loop(\n            ^^^^^^^^^^^^^^^\n  File \"/app/orchestrator/main.py\", line 809, in run_loop\n    await mcp.disconnect()\n  File \"/app/orchestrator/mcp_real_client.py\", line 134, in disconnect\n    self.stdout.close()\n    ^^^^^^^^^^^^^^^^^\nAttributeError: 'StreamReader' object has no attribute 'close'\n"
+  },
+  "status": "FAILED",
+  "workerId": "nvdw7658trg6qf"
+}
