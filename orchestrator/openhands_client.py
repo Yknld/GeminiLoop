@@ -685,7 +685,17 @@ class LocalSubprocessOpenHandsClient(OpenHandsClient):
                         # Check if exception occurred
                         if run_exception[0]:
                             raise run_exception[0]
-            else:
+                except RuntimeError as e:
+                    if "Server process terminated" in str(e) or "Server failed to start" in str(e):
+                        logger.error(f"   ❌ Remote server failed: {e}")
+                        logger.warning("   🔄 Falling back to direct SDK mode...")
+                        # Fall through to direct SDK mode below
+                        self.use_remote_server = False
+                    else:
+                        raise
+            
+            # Direct SDK usage (fallback if remote server fails or disabled)
+            if not self.use_remote_server:
                 # Direct SDK usage (original pattern)
                 workspace = Workspace(path=str(workspace_path_abs))
                 conversation = Conversation(agent=agent, workspace=workspace)
