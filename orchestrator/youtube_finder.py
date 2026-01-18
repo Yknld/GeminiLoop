@@ -246,13 +246,53 @@ Return JSON array matching the video order:
   ...
 ]"""
             
-            response = self.model.generate_content(prompt)
-            refinement = json.loads(response.text)
+            response = self.model.generate_content(
+                prompt,
+                generation_config={
+                    'response_mime_type': 'application/json',  # Request JSON directly
+                }
+            )
             
-            for i, video in enumerate(videos):
-                if i < len(refinement):
-                    video['topic_section'] = refinement[i].get('topic_section', topic)
-                    video['reason'] = refinement[i].get('reason', video.get('reason', ''))
+            # Check for safety blocks
+            if not response.candidates:
+                print("   ⚠️  Refinement response was blocked or filtered")
+                return videos
+            
+            candidate = response.candidates[0]
+            if candidate.finish_reason == 2:  # SAFETY
+                print("   ⚠️  Refinement response blocked by safety filters")
+                return videos
+            
+            # Extract text from response
+            try:
+                response_text = response.text.strip()
+            except (ValueError, AttributeError):
+                print("   ⚠️  Could not extract text from refinement response")
+                return videos
+            
+            # Try to extract JSON if wrapped in markdown
+            json_match = re.search(r'```(?:json)?\s*(\[.*?\])\s*```', response_text, re.DOTALL)
+            if json_match:
+                response_text = json_match.group(1)
+            else:
+                # Try to find JSON array directly
+                json_match = re.search(r'(\[.*?\])', response_text, re.DOTALL)
+                if json_match:
+                    response_text = json_match.group(1)
+            
+            # Parse JSON
+            try:
+                refinement = json.loads(response_text)
+            except json.JSONDecodeError as e:
+                print(f"   ⚠️  Could not parse refinement JSON: {e}")
+                return videos
+            
+            # Apply refinements
+            if isinstance(refinement, list):
+                for i, video in enumerate(videos):
+                    if i < len(refinement) and isinstance(refinement[i], dict):
+                        video['topic_section'] = refinement[i].get('topic_section', topic)
+                        video['reason'] = refinement[i].get('reason', video.get('reason', ''))
         except Exception as e:
             print(f"   ⚠️  Could not refine videos with Gemini: {e}")
         
