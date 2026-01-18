@@ -131,7 +131,7 @@ class LocalSubprocessOpenHandsClient(OpenHandsClient):
             raise RuntimeError("OpenHands not available. Cannot generate code without OpenHands.")
         
         # Build detailed prompt for OpenHands
-        prompt = self._build_generation_prompt(task, detailed_requirements, template_file)
+        prompt = self._build_generation_prompt(task, detailed_requirements, template_file, workspace_path)
         
         # Save prompt for debugging
         prompt_file = self.artifacts_dir / f"generation_prompt_{start_time.strftime('%Y%m%d_%H%M%S')}.txt"
@@ -449,7 +449,7 @@ class LocalSubprocessOpenHandsClient(OpenHandsClient):
         
         return diffs
     
-    def _build_generation_prompt(self, task: str, requirements: Dict[str, Any] = None, template_file: str = None) -> str:
+    def _build_generation_prompt(self, task: str, requirements: Dict[str, Any] = None, template_file: str = None, workspace_path: str = None) -> str:
         """Build task prompt for OpenHands, optionally including template instructions"""
         
         prompt = f"{task}"
@@ -457,10 +457,23 @@ class LocalSubprocessOpenHandsClient(OpenHandsClient):
         # If template file exists, add instructions to use it
         if template_file and Path(template_file).exists():
             template_path = Path(template_file)
+            # Get relative path from workspace if possible
+            if workspace_path:
+                workspace_path_obj = Path(workspace_path) if isinstance(workspace_path, str) else workspace_path
+                try:
+                    relative_template = template_path.relative_to(workspace_path_obj)
+                    template_location = str(relative_template)
+                except ValueError:
+                    # Template is not relative to workspace, use filename
+                    template_location = template_path.name
+            else:
+                template_location = template_path.name
+            
             prompt += f"\n\n**CRITICAL: START WITH THE TEMPLATE FILE**"
-            prompt += f"\n- The template file is located at: {template_path.name} (already in workspace)"
-            prompt += f"\n- You MUST use this template as your starting point"
-            prompt += f"\n- Read the template.html file and populate the `modules` array with content from the notes"
+            prompt += f"\n- The template file is located at: {template_location} (in your workspace)"
+            prompt += f"\n- You MUST use this template as your starting point - DO NOT create from scratch"
+            prompt += f"\n- First, read the {template_location} file to understand its structure"
+            prompt += f"\n- Then, copy it to index.html and populate the `modules` array with content from the notes"
             prompt += f"\n- Create as many module objects as appropriate based on the content structure"
             prompt += f"\n- Preserve the template structure: navigation system, module loading functions, audio controls, notes panel, chatbot"
             prompt += f"\n- You can modify colors and remove specific cards, but the skeleton structure must remain"
