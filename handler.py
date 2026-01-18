@@ -30,13 +30,15 @@ if parent_dir_str not in sys.path:
 
 # Verify qa_browseruse_mcp can be imported before importing orchestrator
 # This must happen BEFORE importing orchestrator.main since it imports qa_browseruse_mcp
+# Initialize basic logging first for error messages
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
+
 try:
     import qa_browseruse_mcp
     from qa_browseruse_mcp.client import BrowserUseMCPClient
-    logger = logging.getLogger(__name__)
     logger.info(f"✅ qa_browseruse_mcp verified before importing orchestrator")
 except ImportError as e:
-    logger = logging.getLogger(__name__)
     logger.error(f"❌ qa_browseruse_mcp import failed: {e}")
     logger.error(f"   sys.path: {sys.path[:5]}")
     logger.error(f"   parent_dir: {parent_dir_str}")
@@ -49,11 +51,9 @@ except ImportError as e:
 # Import runpod first (required for serverless)
 try:
     import runpod
-    logger = logging.getLogger(__name__)
-    logging.basicConfig(level=logging.INFO)
     logger.info("✅ RunPod handler starting...")
 except Exception as e:
-    print(f"❌ Failed to import runpod: {e}")
+    logger.error(f"❌ Failed to import runpod: {e}")
     raise
 
 # Import VNC tunnel for live browser viewing
