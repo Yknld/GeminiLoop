@@ -596,6 +596,7 @@ class LocalSubprocessOpenHandsClient(OpenHandsClient):
             from openhands.tools.browser_use import BrowserToolSet
             from openhands.tools.file_editor import FileEditorTool
             from openhands.tools.terminal import TerminalTool
+            from openhands.tools.preset.default import get_default_agent
             from pydantic import SecretStr
             
             # Capture before state
