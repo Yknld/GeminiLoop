@@ -176,7 +176,7 @@ Return a JSON object with EXACT keys below. No extra keys. No markdown.
       "reduced motion support"
     ]
   },
-  "openhands_build_prompt": "A single, extremely detailed instruction prompt for OpenHands to populate the template. It must include: (1) EXPLICIT instruction to START WITH THE PROVIDED TEMPLATE.HTML FILE, (2) instruction to populate the `modules` array with content from notes, creating as many module objects as appropriate based on the content structure, (3) for each module, specify: title, videoId (from YouTube links if provided), explanation text, keyPoints array, timeline array (if applicable), funFact, interactiveElement HTML (quizzes/games/simulations), (4) instruction to preserve template structure (navigation, functions, layout skeleton), (5) instruction that colors and minor styling changes are OK but core structure must remain, (6) math rendering requirement (KaTeX/MathJax), (7) responsive requirements. CRITICAL: (1) OpenHands must use template.html as starting point, NOT create from scratch. (2) OpenHands must create ALL modules listed in course_overview - do not stop after one module. (3) Template navigation system and functions must be preserved."
+  "openhands_build_prompt": "A single, extremely detailed instruction prompt for OpenHands to populate the template. It must include: (1) EXPLICIT instruction to START WITH THE PROVIDED TEMPLATE.HTML FILE, (2) instruction to populate the `modules` array with content from notes, creating as many module objects as appropriate based on the content structure, (3) for each module, specify: title, videoId (from YouTube links if provided), explanation text, keyPoints array, timeline array (if applicable), funFact, interactiveElement HTML (quizzes/games/simulations), (4) instruction to preserve template structure (navigation, functions, layout skeleton), (5) instruction that colors and minor styling changes are OK but core structure must remain, (6) math rendering requirement (KaTeX/MathJax), (7) responsive requirements, (8) TTS AUDIO GENERATION: Use Google Cloud Text-to-Speech API (API key: AIzaSyDVoAIPakAXm0wYkmuTM-AlFiufWzo93BI) via terminal/curl to generate MP3 audio files for all text content (explanation, keyPoints, timeline events, funFact), save files with naming pattern `audio-{module-id}-{section}-{index}.mp3`, populate audioSources object in each module, if audio generation fails for any section remove/hide the audio button for that section, ensure polished UI/UX for audio controls. CRITICAL: (1) OpenHands must use template.html as starting point, NOT create from scratch. (2) OpenHands must create ALL modules listed in course_overview - do not stop after one module. (3) Template navigation system and functions must be preserved. (4) Generate audio files using terminal access and Google TTS API, update audioSources accordingly."
 }
 
 PLANNING GUIDELINES (IMPORTANT):
@@ -194,6 +194,15 @@ PLANNING GUIDELINES (IMPORTANT):
   * Interesting facts → `funFact` field
   * Interactive activities (quizzes, games, simulations) → `interactiveElement` HTML string
   * YouTube videos → `videoId` field (extract ID from URL)
+- **CRITICAL: Text-to-Speech (TTS) Audio Generation:**
+  * Use Google Cloud Text-to-Speech API to generate audio files for all text content
+  * API Key: AIzaSyDVoAIPakAXm0wYkmuTM-AlFiufWzo93BI
+  * Generate audio for: explanation, each keyPoint, timeline events, funFact, interactive section intro
+  * Use terminal/curl to call the TTS API and save audio files (MP3 format)
+  * Audio file naming: `audio-{module-id}-{section}-{index}.mp3` (e.g., `audio-0-explanation.mp3`, `audio-0-keypoint-0.mp3`)
+  * Populate `audioSources` object in each module with the generated audio file paths
+  * If audio generation fails for a section, remove the audio button for that section (hide the microphone icon)
+  * Ensure UI/UX is polished - audio buttons should be visually consistent and properly positioned
 - The plan must not be "basic." If the notes are geometry, do interactive dragging diagrams; if probability, do simulations; if biology, do labeled interactive diagrams, etc.
 - Each module must have at least:
   1 interactive experience (in `interactiveElement`),
