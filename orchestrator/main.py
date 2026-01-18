@@ -454,7 +454,8 @@ async def run_loop(task: str, max_iterations: int = 5, base_dir: Path = None, cu
                 if index_in_workspace.exists():
                     print(f"   ✅ Found in workspace, copying to project_root...")
                     index_in_project.parent.mkdir(parents=True, exist_ok=True)
-                    index_in_project.write_text(index_in_workspace.read_text())
+                    import shutil
+                    shutil.copy2(index_in_workspace, index_in_project)
                     print(f"   ✅ Copied to preview server directory")
                 else:
                     print(f"   ❌ index.html not found in workspace either: {index_in_workspace}")
@@ -653,6 +654,7 @@ async def run_loop(task: str, max_iterations: int = 5, base_dir: Path = None, cu
                         
                         # Copy patched files to site and project_root
                         print(f"\n📋 Copying patched files...")
+                        import shutil
                         for filename in patch_result["files_modified"]:
                             src = state.workspace_dir / filename
                             
@@ -660,12 +662,13 @@ async def run_loop(task: str, max_iterations: int = 5, base_dir: Path = None, cu
                             dst_site = state.site_dir / filename
                             if src.exists():
                                 dst_site.parent.mkdir(parents=True, exist_ok=True)
-                                dst_site.write_text(src.read_text())
+                                # Use shutil.copy2 to handle both text and binary files
+                                shutil.copy2(src, dst_site)
                                 
                                 # Copy to project_root (for HTTP preview)
                                 dst_project = path_config.safe_path_join(filename)
                                 dst_project.parent.mkdir(parents=True, exist_ok=True)
-                                dst_project.write_text(src.read_text())
+                                shutil.copy2(src, dst_project)
                                 print(f"   ✅ Copied {filename} to preview server")
                         
                         # Commit and push to GitHub if enabled
