@@ -792,10 +792,15 @@ class AgenticEvaluator(GeminiEvaluator):
 **CRITICAL: Test Interactive Elements Thoroughly (USE THE PROVIDED LIST):**
 - The observation already includes an "Interactive Elements" list - USE IT, don't query for it again!
 - For each element in the list: CLICK buttons, TYPE in inputs, interact with selects
-- If you see quiz questions, CLICK the answer buttons and verify feedback appears
-- If you see input fields, TYPE into them and verify they accept input
+- **VERIFY MODULE COUNT**: Use browser_evaluate to check `modules.length` - ensure it matches the required number of modules from the task
+- **VERIFY INTERACTIVE ACTIVITY TYPES**: 
+  * If the task specifies calculators, simulations, or games, VERIFY these exist (NOT quizzes/tests)
+  * If you see multiple-choice quiz questions when calculators were required, this is a CRITICAL FAILURE
+  * Interactive activities should be FUN and engaging (calculators, visual tools, simulations), NOT test-like quizzes
+- If you see quiz questions when calculators were required, this is WRONG - report as critical failure
+- If you see input fields, TYPE into them and verify they accept input and perform calculations
 - If you see "Check Answer" or "Submit" buttons, CLICK them and verify results appear
-- If you see calculators, TYPE numbers and verify calculations work
+- If you see calculators, TYPE numbers and verify calculations work (e.g., enter radius, see circumference/area calculated)
 - If you see placeholder text like "Interactive content will be placed here", this is a CRITICAL FAILURE - report it
 - **After testing all elements in the current list, call finish_exploration - don't keep exploring!**
 
@@ -807,10 +812,12 @@ class AgenticEvaluator(GeminiEvaluator):
 - Console errors: Count as robustness failures
 
 **When to Finish (CALL finish_exploration IMMEDIATELY WHEN DONE):**
+- You've verified the module count matches requirements (use browser_evaluate to check `modules.length`)
+- You've verified interactive activity types match requirements (calculators/simulations, NOT quizzes if specified)
 - You've tested all interactive elements from the provided list
 - You've scrolled through the entire page
-- You've tested navigation (Next/Previous buttons if present)
-- You've tested any quiz/input elements if present
+- You've tested navigation (Next/Previous buttons if present) - navigate through ALL modules to verify count
+- You've tested any interactive calculators/input elements if present
 - **THEN IMMEDIATELY call finish_exploration** - don't keep exploring!
 - **Typical course page: 5-15 steps is enough. If you've tested everything visible, FINISH.**
 

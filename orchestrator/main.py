@@ -486,10 +486,26 @@ async def run_loop(task: str, max_iterations: int = 5, base_dir: Path = None, cu
             trace.evaluation_start(str(screenshots_dir))
             
             # Use new evaluator with interactive testing
+            # Pass planner's detailed prompt to evaluator so it knows what to verify
+            evaluation_task = task
+            if iteration == 1 and 'openhands_prompt' in locals():
+                # Include planner's detailed specifications in evaluation task
+                evaluation_task = f"""{task}
+
+**PLANNER SPECIFICATIONS (VERIFY THESE):**
+{openhands_prompt}
+
+**CRITICAL VERIFICATION REQUIREMENTS:**
+- Verify the exact number of modules specified by the planner (check modules.length)
+- Verify interactive activities match planner specifications (calculators/simulations, NOT quizzes if specified)
+- Verify all modules from planner are present with correct titles and content
+- If planner specified interactiveElement with calculators, verify calculators exist (NOT quizzes)
+- If only 2 modules exist but planner specified 3, this is a CRITICAL FAILURE"""
+            
             evaluation_result = await evaluator.evaluate(
                 url=preview_url,
                 mcp_client=mcp,
-                task=task,
+                task=evaluation_task,
                 screenshots_dir=screenshots_dir
             )
             
