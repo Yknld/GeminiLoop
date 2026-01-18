@@ -40,7 +40,7 @@ def _encode_image_base64(image_path: Path) -> str:
         logger.error(f"Failed to encode image {image_path}: {e}")
         return None
 
-def _encode_video_base64(video_path: Path, max_size_mb: int = 50) -> Optional[str]:
+def _encode_video_base64(video_path: Path, max_size_mb: int = 5) -> Optional[str]:
     """Encode video to base64 data URI (with size limit to avoid huge responses)"""
     try:
         # Check file size
@@ -182,7 +182,9 @@ async def handler(job: Dict[str, Any]) -> Dict[str, Any]:
             response["github_branch"] = state.result.github_branch
             response["github_branch_url"] = state.result.github_branch_url
         
-        # Include report data with screenshots
+        # Include report data with screenshots (limit to avoid response size issues)
+        # NOTE: Base64-encoded screenshots/videos can make response too large (>10MB limit)
+        # We'll include paths instead of full base64 data to keep response size manageable
         if state.result.iterations:
             response["iterations_data"] = []
             for iter_result in state.result.iterations:
@@ -191,10 +193,10 @@ async def handler(job: Dict[str, Any]) -> Dict[str, Any]:
                     "score": iter_result.score,
                     "passed": iter_result.passed,
                     "feedback": iter_result.feedback[:200] if iter_result.feedback else "",
-                    "screenshots": {}
+                    "screenshots": []  # Store paths, not base64 data
                 }
                 
-                # Add screenshots for this iteration
+                # Add screenshot paths (not base64) to keep response size down
                 # Use state.result.artifacts_dir if available, otherwise construct path (note: double "runs" in path)
                 if state.result.artifacts_dir:
                     artifacts_base = Path(state.result.artifacts_dir)
@@ -204,50 +206,25 @@ async def handler(job: Dict[str, Any]) -> Dict[str, Any]:
                 
                 screenshots_dir = artifacts_base / f"screenshots/iter_{iter_result.iteration}"
                 logger.info(f"Looking for screenshots in: {screenshots_dir}")
-                logger.info(f"Directory exists: {screenshots_dir.exists()}")
                 
                 if screenshots_dir.exists():
-                    # Collect all screenshots (agentic evaluator saves step_X_phase.png files)
+                    # Collect screenshot file paths (relative to /runpod-volume/runs)
                     screenshot_files = list(screenshots_dir.rglob("*.png"))
-                    logger.info(f"Found {len(screenshot_files)} PNG files in {screenshots_dir}")
+                    logger.info(f"Found {len(screenshot_files)} PNG files")
                     
                     if screenshot_files:
-                        for screenshot_file in screenshot_files:
-                            try:
-                                # Use relative filename as key (e.g., "step_1_before.png")
-                                rel_name = screenshot_file.name
-                                encoded = _encode_image_base64(screenshot_file)
-                                if encoded:
-                                    iter_data["screenshots"][rel_name] = encoded
-                                    logger.info(f"✅ Encoded screenshot: {rel_name}")
-                                else:
-                                    logger.warning(f"⚠️  Failed to encode {screenshot_file}")
-                            except Exception as e:
-                                logger.warning(f"⚠️  Failed to encode screenshot {screenshot_file}: {e}")
-                    else:
-                        logger.warning(f"⚠️  No PNG files found in {screenshots_dir}")
-                        # List what's actually in the directory
                         try:
-                            actual_files = list(screenshots_dir.iterdir())
-                            logger.warning(f"   Directory contains: {[f.name for f in actual_files]}")
+                            base_path = Path("/runpod-volume/runs")
+                            for screenshot_file in screenshot_files:
+                                try:
+                                    rel_path = str(screenshot_file.relative_to(base_path))
+                                    iter_data["screenshots"].append(rel_path)
+                                except ValueError:
+                                    iter_data["screenshots"].append(screenshot_file.name)
                         except Exception as e:
-                            logger.warning(f"   Could not list directory: {e}")
-                    
-                    # Also check for legacy desktop/mobile screenshots
-                    desktop_path = screenshots_dir / "desktop.png"
-                    if desktop_path.exists() and "desktop" not in iter_data["screenshots"]:
-                        iter_data["screenshots"]["desktop"] = _encode_image_base64(desktop_path)
-                        logger.info("✅ Added legacy desktop.png")
-                    
-                    mobile_path = screenshots_dir / "mobile.png"
-                    if mobile_path.exists() and "mobile" not in iter_data["screenshots"]:
-                        iter_data["screenshots"]["mobile"] = _encode_image_base64(mobile_path)
-                        logger.info("✅ Added legacy mobile.png")
-                else:
-                    logger.warning(f"⚠️  Screenshots directory does not exist: {screenshots_dir}")
+                            logger.warning(f"⚠️  Error processing screenshot paths: {e}")
                 
-                logger.info(f"Iteration {iter_result.iteration}: Collected {len(iter_data['screenshots'])} screenshots")
-                
+                logger.info(f"Iteration {iter_result.iteration}: Found {len(iter_data['screenshots'])} screenshots")
                 response["iterations_data"].append(iter_data)
         
         # Add manifest if available
@@ -322,20 +299,10 @@ async def handler(job: Dict[str, Any]) -> Dict[str, Any]:
             
             logger.info(f"📹 Found {len(video_files)} video file(s)")
             
-            # Encode videos as base64 for download
-            response["videos_data"] = {}
-            for video_file in video_files:
-                try:
-                    # Use filename as key for videos_data (simpler and more reliable)
-                    video_filename = video_file.name
-                    encoded_video = _encode_video_base64(video_file)
-                    if encoded_video:
-                        response["videos_data"][video_filename] = encoded_video
-                        logger.info(f"✅ Encoded video: {video_filename} ({video_file.stat().st_size / (1024*1024):.1f}MB)")
-                    else:
-                        logger.warning(f"⚠️  Video too large or failed to encode: {video_filename}")
-                except Exception as e:
-                    logger.warning(f"⚠️  Error encoding video {video_file}: {e}")
+            # Don't encode videos as base64 - response size limit is 10MB
+            # Just store paths, videos can be downloaded separately if needed
+            logger.info(f"📹 Found {len(video_files)} video file(s) - storing paths only (not base64)")
+            # Videos are already in response["videos"] as paths
         else:
             logger.info("📹 No video files found")
         
