@@ -211,6 +211,10 @@ class TraceLogger:
         """Log info message"""
         self.log(TraceEventType.INFO, data=data, message=message, level="info")
     
+    def warning(self, message: str, data: Optional[Dict[str, Any]] = None):
+        """Log warning message"""
+        self.log(TraceEventType.INFO, data=data, message=message, level="warning")
+    
     def debug(self, message: str, data: Optional[Dict[str, Any]] = None):
         """Log debug message"""
         self.log(TraceEventType.DEBUG, data=data, message=message, level="debug")
