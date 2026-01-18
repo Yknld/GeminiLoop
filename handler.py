@@ -18,9 +18,15 @@ from typing import Dict, Any, Optional
 
 # Add parent directory to Python path so qa_browseruse_mcp can be imported
 # This is needed because qa_browseruse_mcp is a sibling package to orchestrator
-parent_dir = Path(__file__).parent
-if str(parent_dir) not in sys.path:
-    sys.path.insert(0, str(parent_dir))
+# Use absolute path to ensure it works in all environments
+parent_dir = Path(__file__).parent.absolute()
+parent_dir_str = str(parent_dir)
+if parent_dir_str not in sys.path:
+    sys.path.insert(0, parent_dir_str)
+    # Also add to PYTHONPATH env var for subprocesses
+    pythonpath = os.environ.get('PYTHONPATH', '')
+    if parent_dir_str not in pythonpath:
+        os.environ['PYTHONPATH'] = f"{parent_dir_str}:{pythonpath}" if pythonpath else parent_dir_str
 
 # Import runpod first (required for serverless)
 try:
