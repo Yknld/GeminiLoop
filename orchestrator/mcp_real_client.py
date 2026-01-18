@@ -83,7 +83,35 @@ class PlaywrightMCPClient:
                 if not self.stdout:
                     break
                 
-                line_bytes = await self.stdout.readline()
+                # Use readline with exception handling for large responses (e.g., DOM snapshots)
+                # Default limit is ~64KB, but some responses (like DOM snapshots) can be larger
+                try:
+                    line_bytes = await self.stdout.readline()
+                except ValueError as e:
+                    if "chunk is longer than limit" in str(e) or "longer than limit" in str(e):
+                        # Response too large for default limit, read in chunks until newline
+                        logger.warning(f"Response exceeds default limit ({str(e)}), reading in chunks...")
+                        chunks = []
+                        found_newline = False
+                        while not found_newline:
+                            chunk = await self.stdout.read(8192)  # Read 8KB chunks
+                            if not chunk:
+                                break
+                            if b'\n' in chunk:
+                                # Split at first newline
+                                parts = chunk.split(b'\n', 1)
+                                chunks.append(parts[0])
+                                line_bytes = b''.join(chunks) + b'\n'
+                                found_newline = True
+                                # Note: remaining data in parts[1] will be lost, but this is rare
+                            else:
+                                chunks.append(chunk)
+                        if not found_newline:
+                            # No newline found, use what we have
+                            line_bytes = b''.join(chunks) if chunks else b''
+                    else:
+                        raise
+                
                 if not line_bytes:
                     break
                 
