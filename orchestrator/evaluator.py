@@ -285,34 +285,12 @@ class GeminiEvaluator:
         # Mobile responsive test
         logger.info("   Testing mobile responsiveness (375px)...")
         try:
-            # Use proper viewport resize - try browser_resize or set_viewport_size
-            # window.resizeTo doesn't work in headless browsers
-            viewport_set = False
-            for tool_name in ["browser_resize", "browser_set_viewport", "set_viewport_size"]:
-                try:
-                    await mcp_client.call_tool(tool_name, {"width": 375, "height": 667})
-                    viewport_set = True
-                    break
-                except:
-                    continue
-            
-            # If no viewport tool available, try Playwright's evaluate to set viewport
-            if not viewport_set:
-                try:
-                    # Try to access page.setViewportSize via evaluate
-                    await mcp_client.call_tool("browser_evaluate", {
-                        "expression": """
-                        (async () => {
-                            if (window.__playwright_page) {
-                                await window.__playwright_page.setViewportSize({width: 375, height: 667});
-                                return true;
-                            }
-                            return false;
-                        })()
-                        """
-                    })
-                except:
-                    logger.warning("   Could not set mobile viewport - mobile screenshot may be desktop size")
+            # Use set_viewport method (replaces window.resizeTo which doesn't work in headless)
+            if hasattr(mcp_client, 'set_viewport'):
+                await mcp_client.set_viewport(375, 667)
+            else:
+                # Fallback to call_tool for compatibility
+                await mcp_client.call_tool("set_viewport", {"width": 375, "height": 667})
             
             # Wait for resize
             try:

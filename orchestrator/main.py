@@ -21,6 +21,7 @@ from .artifacts import ArtifactsManager, create_template_html
 from .evaluator import GeminiEvaluator, EVALUATOR_MODEL_VERSION, RUBRIC_VERSION
 from .agentic_evaluator import AgenticEvaluator
 from .mcp_real_client import PlaywrightMCPClient
+from qa_browseruse_mcp.client import BrowserUseMCPClient
 from .openhands_client import get_openhands_client
 from .patch_generator import generate_patch_plan
 from .github_client import get_github_client
@@ -301,10 +302,19 @@ async def run_loop(task: str, max_iterations: int = 5, base_dir: Path = None, cu
         })
         
         # Start MCP client
-        print(f"\n🌐 Starting Playwright MCP server...")
-        mcp = PlaywrightMCPClient()
-        await mcp.connect()
-        print(f"✅ MCP server connected")
+        # Use new BrowserUseMCPClient (in-process mode, no server needed)
+        # Set USE_OLD_MCP=1 to use old PlaywrightMCPClient for backward compatibility
+        use_old_mcp = os.getenv("USE_OLD_MCP", "0").lower() in ("1", "true", "yes")
+        if use_old_mcp:
+            print(f"\n🌐 Starting Playwright MCP server (legacy)...")
+            mcp = PlaywrightMCPClient()
+            await mcp.connect()
+            print(f"✅ MCP server connected")
+        else:
+            print(f"\n🌐 Starting BrowserUse MCP client (in-process)...")
+            mcp = BrowserUseMCPClient(headless=True)  # In-process mode, no server needed
+            await mcp.connect()
+            print(f"✅ BrowserUse MCP client ready")
         
         # Main iteration loop
         for iteration in range(1, max_iterations + 1):
@@ -749,6 +759,35 @@ async def run_loop(task: str, max_iterations: int = 5, base_dir: Path = None, cu
                             else:
                                 print(f"   ⚠️  Push failed: {push_result['message']}")
                                 trace.warning("GitHub push failed", data=push_result)
+                            
+                            # Push screenshots and videos to artifacts directory
+                            # Videos are saved in artifacts_dir (agentic evaluator) or screenshots_dir
+                            print(f"\n📸 Pushing screenshots and videos to GitHub...")
+                            # Search for videos in artifacts_dir (agentic evaluator saves there)
+                            # push_screenshots_and_videos will search both directories if videos_dir is None
+                            artifacts_result = github.push_screenshots_and_videos(
+                                workspace_path=state.workspace_dir,
+                                screenshots_dir=screenshots_dir,
+                                videos_dir=state.artifacts_dir,  # Agentic evaluator saves videos here
+                                branch=run_branch,
+                                iteration=iteration,
+                                score=iter_result.score
+                            )
+                            
+                            if artifacts_result["success"]:
+                                files_count = len(artifacts_result.get("files_pushed", []))
+                                if files_count > 0:
+                                    print(f"   ✅ Pushed {files_count} artifact(s) to {run_branch}")
+                                    print(f"   Files: {', '.join(artifacts_result['files_pushed'][:5])}")
+                                    if files_count > 5:
+                                        print(f"   ... and {files_count - 5} more")
+                                    if artifacts_result.get("commit_url"):
+                                        print(f"   Commit: {artifacts_result['commit_url']}")
+                                else:
+                                    print(f"   ℹ️  No artifacts to push")
+                            else:
+                                print(f"   ⚠️  Artifacts push failed: {artifacts_result.get('message')}")
+                                trace.warning("GitHub artifacts push failed", data=artifacts_result)
                         
                         print(f"\n🔄 Preparing re-evaluation (iteration {iteration + 1})...")
                     else:

@@ -257,13 +257,19 @@ class LocalSubprocessOpenHandsClient(OpenHandsClient):
     
     def _build_setup_prompt(self, workspace_path: Path, index_exists: bool) -> str:
         """Build prompt for setup todo"""
-        prompt = "**SETUP TASK:**\n"
-        prompt += "1. Read the existing index.html file completely to understand its structure\n"
+        prompt = "**SETUP TASK - READ ONLY, NO MODIFICATIONS:**\n\n"
+        prompt += "**THIS IS A READ-ONLY TASK - DO NOT CREATE OR MODIFY ANYTHING**\n"
+        prompt += "- Use file_editor tool with action_type='read' to read index.html\n"
+        prompt += "- DO NOT use action_type='edit' or 'create' in this task\n"
+        prompt += "- DO NOT initialize anything, set up anything, or create any structure\n"
+        prompt += "- This task is ONLY for reading and understanding the existing structure\n\n"
+        prompt += "**STEPS (READ ONLY):**\n"
+        prompt += "1. Read the existing index.html file completely using file_editor with action_type='read'\n"
         prompt += "2. Identify the `modules` array in the JavaScript section\n"
         prompt += "3. Understand the template structure: navigation, audio controls, notes panel, chatbot\n"
-        prompt += "4. DO NOT modify anything yet - just read and understand\n"
+        prompt += "4. DO NOT modify anything - just read and understand the structure\n"
         if not index_exists:
-            prompt += "⚠️  WARNING: index.html does not exist. This is unexpected. Report this issue.\n"
+            prompt += "\n⚠️  WARNING: index.html does not exist. This is unexpected. Report this issue.\n"
         return prompt
     
     def _build_module_prompt(self, todo: Dict[str, Any], all_modules_info: List[Dict[str, Any]], workspace_path: Path, index_exists: bool) -> str:
@@ -273,7 +279,13 @@ class LocalSubprocessOpenHandsClient(OpenHandsClient):
         requirements = todo.get('requirements', {})
         interactive_experiences = todo.get('interactive_experiences', [])
         
-        prompt = f"**MODULE {module_index + 1} CREATION TASK:**\n\n"
+        prompt = f"**MODULE {module_index + 1} CREATION TASK - CREATE COMPLETE MODULE IN ONE OPERATION:**\n\n"
+        
+        prompt += "**CRITICAL: THIS IS A SINGLE, ATOMIC TASK - DO NOT BREAK IT DOWN INTO STEPS**\n"
+        prompt += "- You MUST create the COMPLETE module object with ALL fields in ONE file edit operation\n"
+        prompt += "- DO NOT create separate tasks for 'initializing', 'setting up', 'adding fields', etc.\n"
+        prompt += "- DO NOT break this into multiple file_editor calls\n"
+        prompt += "- Create the ENTIRE module object with ALL required fields in a SINGLE edit operation\n\n"
         
         if not index_exists:
             prompt += "⚠️  ERROR: index.html does not exist. Setup task should have been completed first.\n\n"
@@ -282,25 +294,56 @@ class LocalSubprocessOpenHandsClient(OpenHandsClient):
         prompt += "- The file path is: index.html (relative to workspace)\n"
         prompt += "- ALWAYS check if index.html exists before modifying it\n"
         prompt += "- If index.html exists, you MUST use `edit` or `write` command, NEVER use `create`\n"
-        prompt += "- The `create` command will FAIL with error: \"File already exists. Cannot overwrite files using command create\"\n\n"
+        prompt += "- The `create` command will FAIL with error: \"File already exists. Cannot overwrite files using command create\"\n"
+        prompt += "- Use file_editor tool with action_type='edit' and provide a clear description\n\n"
         
-        prompt += f"**YOUR TASK:** Add Module {module_index + 1} to the `modules` array in index.html\n\n"
+        prompt += f"**YOUR SINGLE TASK:** Add the COMPLETE Module {module_index + 1} object to the `modules` array in index.html\n\n"
         
-        prompt += "**MODULE SPECIFICATIONS:**\n"
-        prompt += f"- title: {module_data.get('title', 'TBD from notes')}\n"
+        # Build complete module object structure
+        module_title = module_data.get('title', 'TBD from notes')
+        prompt += "**COMPLETE MODULE OBJECT STRUCTURE (CREATE ALL OF THIS IN ONE OPERATION):**\n\n"
+        prompt += "```javascript\n"
+        prompt += f"{{\n"
+        prompt += f"  title: \"{module_title}\",\n"
+        
+        if requirements.get('videoId'):
+            prompt += f"  videoId: \"{requirements['videoId']}\",\n"
+        else:
+            prompt += f"  videoId: null,  // Extract from YouTube links if provided\n"
         
         if requirements.get('explanation'):
-            prompt += f"- explanation: {requirements['explanation']}\n"
-        if requirements.get('keyPoints'):
-            prompt += f"- keyPoints: {requirements['keyPoints']} (array of strings)\n"
-        if requirements.get('timeline'):
-            prompt += f"- timeline: {requirements['timeline']} (array of objects with date, title, description, person)\n"
-        if requirements.get('funFact'):
-            prompt += f"- funFact: {requirements['funFact']}\n"
-        if requirements.get('videoId'):
-            prompt += f"- videoId: {requirements['videoId']} (from YouTube videos provided)\n"
+            explanation = requirements['explanation'].replace('"', '\\"')
+            prompt += f"  explanation: \"{explanation}\",\n"
+        else:
+            prompt += f"  explanation: \"\",  // Add explanation text from notes\n"
         
-        prompt += "\n**CRITICAL: interactiveElement (REQUIRED - FUN ACTIVITY, NOT QUIZ):**\n"
+        if requirements.get('keyPoints'):
+            key_points = requirements['keyPoints']
+            if isinstance(key_points, list):
+                points_str = ', '.join([f'"{kp.replace(\'"\', \'\\\\"\')}"' for kp in key_points])
+                prompt += f"  keyPoints: [{points_str}],\n"
+            else:
+                prompt += f"  keyPoints: [],  // Add key points array from notes\n"
+        else:
+            prompt += f"  keyPoints: [],  // Add key points array from notes\n"
+        
+        if requirements.get('timeline'):
+            prompt += f"  timeline: {json.dumps(requirements['timeline'])},  // Timeline events if applicable\n"
+        else:
+            prompt += f"  timeline: [],  // Timeline events if applicable\n"
+        
+        if requirements.get('funFact'):
+            fun_fact = requirements['funFact'].replace('"', '\\"')
+            prompt += f"  funFact: \"{fun_fact}\",\n"
+        else:
+            prompt += f"  funFact: \"\",  // Add fun fact from notes\n"
+        
+        prompt += f"  interactiveElement: `...`,  // FULL HTML with JavaScript (see below)\n"
+        prompt += f"  audioSources: {{}}  // Will be populated if audio generation succeeds\n"
+        prompt += f"}}\n"
+        prompt += "```\n\n"
+        
+        prompt += "**CRITICAL: interactiveElement (REQUIRED - FUN ACTIVITY, NOT QUIZ):**\n"
         prompt += "- **NEVER CREATE QUIZZES, TESTS, OR MULTIPLE-CHOICE QUESTIONS**\n"
         prompt += "- **MUST CREATE FUN INTERACTIVE ACTIVITY**: calculator, simulation, game, manipulative\n"
         
@@ -320,17 +363,20 @@ class LocalSubprocessOpenHandsClient(OpenHandsClient):
         prompt += "- Example: Circle Calculator with radius input → shows diameter, circumference, area\n"
         prompt += "- Example: Coordinate Tool with x1,y1,x2,y2 inputs → shows distance, midpoint, slope\n\n"
         
-        prompt += "**IMPLEMENTATION STEPS:**\n"
-        prompt += "1. Read the current modules array in index.html\n"
-        prompt += f"2. Add a new module object at index {module_index} with all required fields\n"
-        prompt += "3. Populate all fields from the notes/content provided\n"
-        prompt += "4. Create the interactiveElement HTML string with working JavaScript\n"
-        prompt += "5. Ensure the module has the correct structure matching the template\n\n"
+        prompt += "**HOW TO EXECUTE THIS TASK (ONE OPERATION ONLY):**\n"
+        prompt += "1. Read the current index.html file to find the `modules` array\n"
+        prompt += f"2. Use file_editor tool ONCE with:\n"
+        prompt += f"   - action_type: 'edit'\n"
+        prompt += f"   - description: 'Add complete Module {module_index + 1} ({module_title}) to modules array'\n"
+        prompt += f"   - file_path: 'index.html'\n"
+        prompt += f"   - Edit the modules array to add the COMPLETE module object (all fields) at the correct position\n"
+        prompt += f"3. The module object MUST include ALL fields: title, videoId, explanation, keyPoints, timeline, funFact, interactiveElement, audioSources\n"
+        prompt += f"4. DO NOT make multiple edits - create the complete module in ONE edit operation\n\n"
         
         prompt += "**VERIFICATION:**\n"
-        prompt += "- After adding, verify the module appears in the modules array\n"
+        prompt += "- After the single edit, verify the complete module appears in the modules array\n"
         prompt += "- Verify interactiveElement contains actual HTML/JS, not placeholder text\n"
-        prompt += "- Verify all required fields are present\n"
+        prompt += "- Verify all required fields are present in the module object\n"
         
         return prompt
     

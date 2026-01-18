@@ -454,6 +454,260 @@ class GitHubClient:
     def get_commit_url(self, commit_sha: str) -> str:
         """Get GitHub URL for a commit."""
         return f"https://github.com/{self.repo_name}/commit/{commit_sha}"
+    
+    def push_artifacts(
+        self,
+        workspace_path: Path,
+        artifacts_dir: Path,
+        branch: str,
+        commit_message: Optional[str] = None,
+        artifacts_subdir: str = "artifacts"
+    ) -> Dict[str, Any]:
+        """
+        Push screenshots and videos to GitHub artifacts directory.
+        
+        Args:
+            workspace_path: Path to git workspace
+            artifacts_dir: Directory containing screenshots/videos to push
+            branch: Branch to push to
+            commit_message: Custom commit message (default: auto-generated)
+            artifacts_subdir: Subdirectory in repo for artifacts (default: "artifacts")
+        
+        Returns:
+            dict: {
+                "success": bool,
+                "branch": str,
+                "message": str,
+                "files_pushed": List[str],
+                "commit_sha": str (if successful)
+            }
+        """
+        if not self.enabled:
+            return {
+                "success": False,
+                "branch": branch,
+                "message": "GitHub operations disabled",
+                "files_pushed": []
+            }
+        
+        if not artifacts_dir.exists():
+            return {
+                "success": False,
+                "branch": branch,
+                "message": f"Artifacts directory does not exist: {artifacts_dir}",
+                "files_pushed": []
+            }
+        
+        try:
+            import shutil
+            
+            # Target directory in workspace
+            target_dir = workspace_path / artifacts_subdir
+            target_dir.mkdir(parents=True, exist_ok=True)
+            
+            # Find screenshots and videos
+            screenshot_extensions = {".png", ".jpg", ".jpeg", ".webp"}
+            video_extensions = {".webm", ".mp4", ".mov"}
+            
+            files_pushed = []
+            
+            # Copy screenshots
+            for ext in screenshot_extensions:
+                for screenshot_file in artifacts_dir.rglob(f"*{ext}"):
+                    if screenshot_file.is_file():
+                        rel_path = screenshot_file.relative_to(artifacts_dir)
+                        dest_file = target_dir / rel_path
+                        dest_file.parent.mkdir(parents=True, exist_ok=True)
+                        shutil.copy2(screenshot_file, dest_file)
+                        files_pushed.append(str(rel_path))
+                        logger.info(f"   Copied screenshot: {rel_path}")
+            
+            # Copy videos
+            for ext in video_extensions:
+                for video_file in artifacts_dir.rglob(f"*{ext}"):
+                    if video_file.is_file():
+                        rel_path = video_file.relative_to(artifacts_dir)
+                        dest_file = target_dir / rel_path
+                        dest_file.parent.mkdir(parents=True, exist_ok=True)
+                        shutil.copy2(video_file, dest_file)
+                        files_pushed.append(str(rel_path))
+                        logger.info(f"   Copied video: {rel_path}")
+            
+            if not files_pushed:
+                logger.info("No screenshots or videos found to push")
+                return {
+                    "success": True,
+                    "branch": branch,
+                    "message": "No artifacts to push",
+                    "files_pushed": [],
+                    "no_artifacts": True
+                }
+            
+            # Generate commit message if not provided
+            if not commit_message:
+                screenshot_count = sum(1 for f in files_pushed if any(f.endswith(ext) for ext in screenshot_extensions))
+                video_count = sum(1 for f in files_pushed if any(f.endswith(ext) for ext in video_extensions))
+                commit_message = f"Add artifacts: {screenshot_count} screenshot(s), {video_count} video(s)"
+            
+            # Commit and push
+            push_result = self.commit_and_push(
+                workspace_path=workspace_path,
+                message=commit_message,
+                branch=branch,
+                add_all=True
+            )
+            
+            if push_result["success"]:
+                logger.info(f"✅ Pushed {len(files_pushed)} artifacts to {branch}")
+                return {
+                    "success": True,
+                    "branch": branch,
+                    "message": f"Pushed {len(files_pushed)} artifacts",
+                    "files_pushed": files_pushed,
+                    "commit_sha": push_result.get("commit_sha"),
+                    "commit_url": push_result.get("commit_url"),
+                    "branch_url": push_result.get("branch_url")
+                }
+            else:
+                return {
+                    "success": False,
+                    "branch": branch,
+                    "message": push_result.get("message", "Failed to push artifacts"),
+                    "files_pushed": files_pushed
+                }
+        
+        except Exception as e:
+            logger.error(f"Failed to push artifacts: {e}")
+            return {
+                "success": False,
+                "branch": branch,
+                "message": f"Failed to push artifacts: {str(e)}",
+                "files_pushed": files_pushed if 'files_pushed' in locals() else []
+            }
+    
+    def push_screenshots_and_videos(
+        self,
+        workspace_path: Path,
+        screenshots_dir: Path,
+        videos_dir: Optional[Path] = None,
+        branch: str = None,
+        iteration: Optional[int] = None,
+        score: Optional[int] = None
+    ) -> Dict[str, Any]:
+        """
+        Convenience method to push screenshots and videos from evaluation.
+        
+        This method searches both screenshots_dir and videos_dir for artifacts
+        and pushes them to GitHub in the artifacts/ subdirectory.
+        
+        Args:
+            workspace_path: Path to git workspace
+            screenshots_dir: Directory containing screenshots
+            videos_dir: Optional directory containing videos (if None, searches screenshots_dir)
+            branch: Branch to push to (default: uses workspace branch)
+            iteration: Optional iteration number for commit message
+            score: Optional score for commit message
+        
+        Returns:
+            dict: Result from push_artifacts with files_pushed list
+        """
+        if not branch:
+            # Try to get branch from workspace
+            try:
+                result = subprocess.run(
+                    ["git", "rev-parse", "--abbrev-ref", "HEAD"],
+                    cwd=workspace_path,
+                    capture_output=True,
+                    text=True,
+                    timeout=5
+                )
+                if result.returncode == 0:
+                    branch = result.stdout.strip()
+                else:
+                    branch = self.base_branch
+            except:
+                branch = self.base_branch
+        
+        # Collect artifacts from both directories
+        import shutil
+        target_dir = workspace_path / "artifacts"
+        target_dir.mkdir(parents=True, exist_ok=True)
+        
+        screenshot_extensions = {".png", ".jpg", ".jpeg", ".webp"}
+        video_extensions = {".webm", ".mp4", ".mov"}
+        files_pushed = []
+        
+        # Copy screenshots from screenshots_dir
+        for ext in screenshot_extensions:
+            for screenshot_file in screenshots_dir.rglob(f"*{ext}"):
+                if screenshot_file.is_file():
+                    rel_path = screenshot_file.relative_to(screenshots_dir.parent if screenshots_dir.parent != screenshots_dir else screenshots_dir)
+                    dest_file = target_dir / rel_path
+                    dest_file.parent.mkdir(parents=True, exist_ok=True)
+                    shutil.copy2(screenshot_file, dest_file)
+                    files_pushed.append(str(rel_path))
+                    logger.info(f"   Copied screenshot: {rel_path}")
+        
+        # Copy videos from videos_dir (if specified) or screenshots_dir
+        search_dirs = [videos_dir] if videos_dir and videos_dir.exists() else [screenshots_dir]
+        for search_dir in search_dirs:
+            for ext in video_extensions:
+                for video_file in search_dir.rglob(f"*{ext}"):
+                    if video_file.is_file():
+                        # Use relative path from search_dir's parent to maintain structure
+                        rel_path = video_file.relative_to(search_dir.parent if search_dir.parent != search_dir else search_dir)
+                        dest_file = target_dir / rel_path
+                        dest_file.parent.mkdir(parents=True, exist_ok=True)
+                        shutil.copy2(video_file, dest_file)
+                        files_pushed.append(str(rel_path))
+                        logger.info(f"   Copied video: {rel_path}")
+        
+        if not files_pushed:
+            logger.info("No screenshots or videos found to push")
+            return {
+                "success": True,
+                "branch": branch,
+                "message": "No artifacts to push",
+                "files_pushed": [],
+                "no_artifacts": True
+            }
+        
+        # Generate commit message
+        commit_parts = []
+        if iteration is not None:
+            commit_parts.append(f"Iteration {iteration}")
+        if score is not None:
+            commit_parts.append(f"score: {score}/100")
+        commit_message = f"Add evaluation artifacts"
+        if commit_parts:
+            commit_message += f" ({', '.join(commit_parts)})"
+        
+        # Commit and push
+        push_result = self.commit_and_push(
+            workspace_path=workspace_path,
+            message=commit_message,
+            branch=branch,
+            add_all=True
+        )
+        
+        if push_result["success"]:
+            logger.info(f"✅ Pushed {len(files_pushed)} artifacts to {branch}")
+            return {
+                "success": True,
+                "branch": branch,
+                "message": f"Pushed {len(files_pushed)} artifacts",
+                "files_pushed": files_pushed,
+                "commit_sha": push_result.get("commit_sha"),
+                "commit_url": push_result.get("commit_url"),
+                "branch_url": push_result.get("branch_url")
+            }
+        else:
+            return {
+                "success": False,
+                "branch": branch,
+                "message": push_result.get("message", "Failed to push artifacts"),
+                "files_pushed": files_pushed
+            }
 
 
 def get_github_client() -> GitHubClient:
