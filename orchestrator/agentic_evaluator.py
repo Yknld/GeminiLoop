@@ -580,9 +580,12 @@ class AgenticEvaluator(GeminiEvaluator):
                         "step": step + 1,
                         "before_screenshot": before_state.get("screenshot_path"),
                         "after_screenshot": after_state.get("screenshot_path"),
-                        "observation_file": str(artifacts_dir / f"step_{step + 1}_observation.json")
+                        "observation_file": str(artifacts_dir / f"step_{step + 1}_observation.json"),
+                        "screenshot": after_state.get("screenshot_path")  # For vision evaluation
                     }
                     self.step_artifacts.append(step_artifact)
+                    # Also store in exploration_log for easy access
+                    step_log["screenshot"] = after_state.get("screenshot_path")
                     
                     # Save observation JSON
                     observation_file = Path(step_artifact["observation_file"])
@@ -835,9 +838,12 @@ Begin systematic testing. You have vision - use it!"""
         
         # Take screenshot
         screenshot_filename = f"step_{step + 1}_{phase}.png"
+        # Ensure artifacts_dir exists
+        artifacts_dir.mkdir(parents=True, exist_ok=True)
         screenshot_path = artifacts_dir / screenshot_filename
         await mcp_client.screenshot(str(screenshot_path))
         state["screenshot_path"] = str(screenshot_path)
+        logger.debug(f"   Screenshot saved: {screenshot_path}")
         
         # Get page visible text - ROBUST: handle non-string returns
         try:
@@ -1121,7 +1127,21 @@ Begin systematic testing. You have vision - use it!"""
             screenshot_steps.append(len(self.exploration_log) - 1)  # Last
         
         for idx in screenshot_steps:
-            screenshot_path = self.exploration_log[idx].get('screenshot')
+            # Try multiple ways to get screenshot path
+            screenshot_path = None
+            step_log = self.exploration_log[idx] if idx < len(self.exploration_log) else None
+            if step_log:
+                # Try after_state screenshot first (most recent)
+                after_state = step_log.get('after_state', {})
+                if isinstance(after_state, dict):
+                    screenshot_path = after_state.get('screenshot_path')
+                # Fallback to direct screenshot field
+                if not screenshot_path:
+                    screenshot_path = step_log.get('screenshot')
+                # Fallback to step_artifacts
+                if not screenshot_path and idx < len(self.step_artifacts):
+                    screenshot_path = self.step_artifacts[idx].get('after_screenshot')
+            
             if screenshot_path and Path(screenshot_path).exists():
                 try:
                     import PIL.Image
