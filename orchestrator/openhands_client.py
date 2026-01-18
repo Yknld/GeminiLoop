@@ -589,11 +589,11 @@ class LocalSubprocessOpenHandsClient(OpenHandsClient):
             else:
                 template_location = template_path.name
             
-            prompt += f"\n\n**CRITICAL: START WITH THE TEMPLATE FILE**"
-            prompt += f"\n- The template file is located at: {template_location} (in your workspace)"
-            prompt += f"\n- You MUST use this template as your starting point - DO NOT create from scratch"
-            prompt += f"\n- First, read the {template_location} file to understand its structure"
-            prompt += f"\n- Then, copy it to index.html and populate the `modules` array with content from the notes"
+            prompt += f"\n\n**CRITICAL: EDIT THE EXISTING TEMPLATE FILE**"
+            prompt += f"\n- The template file is already in your workspace as index.html"
+            prompt += f"\n- You MUST edit the existing index.html file - DO NOT create from scratch"
+            prompt += f"\n- First, read the index.html file to understand its structure"
+            prompt += f"\n- Then, edit it directly and populate the `modules` array with content from the notes"
             prompt += f"\n- Create as many module objects as appropriate based on the content structure"
             prompt += f"\n- Preserve the template structure: navigation system, module loading functions, audio controls, notes panel, chatbot"
             prompt += f"\n- You can modify colors and remove specific cards, but the skeleton structure must remain"
