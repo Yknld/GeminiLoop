@@ -396,9 +396,10 @@ async def handler(job: Dict[str, Any]) -> Dict[str, Any]:
         final_response = dict(response)
         logger.info(f"🚀 Handler returning response (type: {type(final_response)})")
         
-        # CRITICAL: For async handlers, RunPod expects yield or return_aggregate_stream=True
-        # Since we're returning a single response (not streaming), we'll use return
-        # but ensure RunPod captures it by making it explicit
+        # CRITICAL: For async handlers with return_aggregate_stream=True, we can use return
+        # But RunPod may also accept yield for streaming. Let's use return first.
+        # If this doesn't work, we'll need to convert to yield-based streaming
+        logger.info(f"✅ About to return response with keys: {list(final_response.keys())}")
         return final_response
         
     except Exception as e:
@@ -447,9 +448,4 @@ def test_handler_with_custom_notes():
 
 if __name__ == "__main__":
     # Start RunPod serverless handler
-    # CRITICAL: For async handlers that return a single value (not streaming),
-    # we need return_aggregate_stream=True to ensure the return value is captured
-    runpod.serverless.start({
-        "handler": handler,
-        "return_aggregate_stream": True  # Required for async handlers to return output via /run or /runsync
-    })
+    runpod.serverless.start({"handler": handler})
