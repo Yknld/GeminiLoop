@@ -49,7 +49,7 @@ except ImportError as e:
     else:
         raise ImportError(f"qa_browseruse_mcp.client not found at {qa_module_path}: {e}")
 from .openhands_client import get_openhands_client
-from .patch_generator import generate_patch_plan
+# Removed patch_generator - OpenHands fixes issues directly in next iteration
 from .github_client import get_github_client
 from .paths import get_path_config, PathConfig
 from .preview_server import get_preview_server, stop_preview_server
@@ -696,186 +696,12 @@ async def run_loop(task: str, max_iterations: int = 5, base_dir: Path = None, cu
             
             print(f"\n💬 Feedback: {iter_result.feedback[:200]}...")
             
-            # If failed and not last iteration, try to fix with OpenHands
-            if iteration < max_iterations and iter_result.score < 70:
-                print(f"\n{'=' * 70}")
-                print(f"🔧 Phase 4: OpenHands Patch Application")
-                print(f"{'=' * 70}")
-                
-                patch_start_time = time.time()
-                
-                # Generate patch plan from evaluation
-                print(f"\n📝 Generating patch plan from evaluation feedback...")
-                patch_plan = generate_patch_plan(
-                    evaluation=evaluation_dict,
-                    task=task,
-                    files_generated=iter_result.files_generated
-                )
-                
-                # Add fix suggestions from evaluation
-                if evaluation_result.fix_suggestions:
-                    patch_plan["fix_suggestions_from_evaluator"] = evaluation_result.fix_suggestions
-                
-                # Save patch plan
-                patch_plan_file = artifacts.save_file(
-                    content=json.dumps(patch_plan, indent=2),
-                    filename=f"patch_plan_iter_{iteration}.json",
-                    file_type="patch_plan"
-                )
-                
-                print(f"✅ Patch plan generated: {patch_plan_file.name}")
-                print(f"   Files to patch: {len(patch_plan['files'])}")
-                print(f"   Issues to fix: {patch_plan.get('issues_count', 0)}")
-                
-                trace.info(
-                    "Patch plan generated",
-                    data={
-                        "iteration": iteration,
-                        "files_count": len(patch_plan['files']),
-                        "issues_count": patch_plan.get('issues_count', 0)
-                    }
-                )
-                
-                # Apply patch with OpenHands
-                print(f"\n🔧 Applying patch via OpenHands...")
-                
-                try:
-                    patch_result = openhands.apply_patch_plan(
-                        workspace_path=str(state.workspace_dir),
-                        patch_plan=patch_plan
-                    )
-                    
-                    patch_duration = time.time() - patch_start_time
-                    
-                    # Log patch result
-                    trace.info(
-                        "Patch applied",
-                        data={
-                            "success": patch_result["success"],
-                            "files_modified": patch_result["files_modified"],
-                            "duration": patch_result["duration_seconds"]
-                        }
-                    )
-                    
-                    # Save patch result
-                    artifacts.save_file(
-                        content=json.dumps(patch_result, indent=2),
-                        filename=f"patch_result_iter_{iteration}.json",
-                        file_type="patch_result"
-                    )
-                    
-                    if patch_result["success"]:
-                        print(f"✅ Patch applied successfully")
-                        print(f"   Files modified: {len(patch_result['files_modified'])}")
-                        print(f"   Duration: {patch_duration:.2f}s")
-                        
-                        for file in patch_result["files_modified"]:
-                            print(f"   - {file}")
-                        
-                        # Emit patch applied event for live monitoring
-                        events.emit_patch_applied(patch_result["files_modified"])
-                        
-                        # Copy patched files to site and project_root
-                        print(f"\n📋 Copying patched files...")
-                        import shutil
-                        for filename in patch_result["files_modified"]:
-                            src = state.workspace_dir / filename
-                            
-                            # Copy to site (for compatibility)
-                            dst_site = state.site_dir / filename
-                            if src.exists():
-                                dst_site.parent.mkdir(parents=True, exist_ok=True)
-                                # Use shutil.copy2 to handle both text and binary files
-                                shutil.copy2(src, dst_site)
-                                
-                                # Copy to project_root (for HTTP preview)
-                                dst_project = path_config.safe_path_join(filename)
-                                dst_project.parent.mkdir(parents=True, exist_ok=True)
-                                shutil.copy2(src, dst_project)
-                                print(f"   ✅ Copied {filename} to preview server")
-                        
-                        # Commit and push to GitHub if enabled
-                        if github.is_enabled():
-                            print(f"\n🐙 Committing and pushing to GitHub...")
-                            
-                            commit_message = f"[Iteration {iteration}] Apply OpenHands patch (score: {iter_result.score}/100)"
-                            run_branch = f"run/{config.run_id}"
-                            
-                            push_result = github.commit_and_push(
-                                workspace_path=state.workspace_dir,
-                                message=commit_message,
-                                branch=run_branch
-                            )
-                            
-                            if push_result["success"]:
-                                if push_result.get("no_changes"):
-                                    print(f"   ℹ️  No changes to commit")
-                                else:
-                                    print(f"   ✅ Pushed to {run_branch}")
-                                    print(f"   Commit: {push_result['commit_sha'][:7]}")
-                                    print(f"   URL: {push_result['commit_url']}")
-                                    
-                                    # Store commit info in trace and manifest
-                                    trace.info("GitHub commit pushed", data=push_result)
-                                    state.manifest.add_commit(
-                                        iteration=iteration,
-                                        commit_sha=push_result['commit_sha'],
-                                        commit_url=push_result['commit_url']
-                                    )
-                            else:
-                                print(f"   ⚠️  Push failed: {push_result['message']}")
-                                trace.warning("GitHub push failed", data=push_result)
-                            
-                            # Push screenshots and videos to artifacts directory
-                            # Videos are saved in artifacts_dir (agentic evaluator) or screenshots_dir
-                            print(f"\n📸 Pushing screenshots and videos to GitHub...")
-                            # Search for videos in artifacts_dir (agentic evaluator saves there)
-                            # push_screenshots_and_videos will search both directories if videos_dir is None
-                            artifacts_result = github.push_screenshots_and_videos(
-                                workspace_path=state.workspace_dir,
-                                screenshots_dir=screenshots_dir,
-                                videos_dir=state.artifacts_dir,  # Agentic evaluator saves videos here
-                                branch=run_branch,
-                                iteration=iteration,
-                                score=iter_result.score
-                            )
-                            
-                            if artifacts_result["success"]:
-                                files_count = len(artifacts_result.get("files_pushed", []))
-                                if files_count > 0:
-                                    print(f"   ✅ Pushed {files_count} artifact(s) to {run_branch}")
-                                    print(f"   Files: {', '.join(artifacts_result['files_pushed'][:5])}")
-                                    if files_count > 5:
-                                        print(f"   ... and {files_count - 5} more")
-                                    if artifacts_result.get("commit_url"):
-                                        print(f"   Commit: {artifacts_result['commit_url']}")
-                                else:
-                                    print(f"   ℹ️  No artifacts to push")
-                            else:
-                                print(f"   ⚠️  Artifacts push failed: {artifacts_result.get('message')}")
-                                trace.warning("GitHub artifacts push failed", data=artifacts_result)
-                        
-                        print(f"\n🔄 Preparing re-evaluation (iteration {iteration + 1})...")
-                    else:
-                        print(f"❌ Patch application failed")
-                        print(f"   Error: {patch_result.get('stderr', 'Unknown error')}")
-                        
-                        # Continue to next iteration anyway
-                        if iteration < max_iterations:
-                            print(f"\n🔄 Continuing to iteration {iteration + 1}...")
-                
-                except Exception as e:
-                    logger.error(f"Error applying patch: {e}", exc_info=True)
-                    print(f"❌ Error applying patch: {e}")
-                    
-                    trace.error(
-                        message=f"Patch application failed: {e}",
-                        error_type=type(e).__name__,
-                        traceback=tb.format_exc()
-                    )
-            
-            elif iteration < max_iterations:
-                print(f"\n🔄 Preparing iteration {iteration + 1}...")
+            # Store feedback for next iteration - OpenHands will fix issues directly
+            if iteration < max_iterations:
+                print(f"\n🔄 Will fix issues in next iteration (iteration {iteration + 1})...")
+                # Store feedback and issues for next iteration's OpenHands call
+                iter_result.feedback = evaluation_result.feedback
+                iter_result.issues = evaluation_result.issues
         
         # Mark as completed if we exhausted iterations
         if state.result.status == "running":
