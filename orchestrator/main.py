@@ -21,16 +21,33 @@ from .artifacts import ArtifactsManager, create_template_html
 from .evaluator import GeminiEvaluator, EVALUATOR_MODEL_VERSION, RUBRIC_VERSION
 from .agentic_evaluator import AgenticEvaluator
 from .mcp_real_client import PlaywrightMCPClient
+
+# Import BrowserUseMCPClient with proper path handling
+import sys
+from pathlib import Path
+# Ensure parent directory (where qa_browseruse_mcp lives) is in path
+parent_dir = Path(__file__).parent.parent.absolute()
+parent_dir_str = str(parent_dir)
+if parent_dir_str not in sys.path:
+    sys.path.insert(0, parent_dir_str)
+
 try:
     from qa_browseruse_mcp.client import BrowserUseMCPClient
-except ImportError:
-    # Fallback: try relative import if qa_browseruse_mcp is in parent directory
-    import sys
-    from pathlib import Path
-    parent_dir = Path(__file__).parent.parent
-    if str(parent_dir) not in sys.path:
-        sys.path.insert(0, str(parent_dir))
-    from qa_browseruse_mcp.client import BrowserUseMCPClient
+except ImportError as e:
+    # If still failing, try one more time with explicit path
+    import importlib.util
+    qa_module_path = parent_dir / "qa_browseruse_mcp" / "client.py"
+    if qa_module_path.exists():
+        spec = importlib.util.spec_from_file_location("qa_browseruse_mcp.client", qa_module_path)
+        if spec and spec.loader:
+            qa_module = importlib.util.module_from_spec(spec)
+            sys.modules["qa_browseruse_mcp.client"] = qa_module
+            spec.loader.exec_module(qa_module)
+            BrowserUseMCPClient = qa_module.BrowserUseMCPClient
+        else:
+            raise ImportError(f"Could not load qa_browseruse_mcp.client from {qa_module_path}: {e}")
+    else:
+        raise ImportError(f"qa_browseruse_mcp.client not found at {qa_module_path}: {e}")
 from .openhands_client import get_openhands_client
 from .patch_generator import generate_patch_plan
 from .github_client import get_github_client
