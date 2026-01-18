@@ -71,6 +71,34 @@ class GitHubClient:
         """Check if GitHub operations are enabled."""
         return self.enabled
     
+    def _initialize_empty_repo(self) -> Optional[str]:
+        """
+        Initialize an empty repository with a README.md file.
+        
+        Returns:
+            str: SHA of the initial commit, or None if failed
+        """
+        try:
+            # Create README.md content
+            readme_content = "# GeminiLoop Artifacts\n\nThis repository contains generated course artifacts.\n"
+            
+            # Create file via API
+            self.repo.create_file(
+                path="README.md",
+                message="Initial commit: Initialize repository",
+                content=readme_content,
+                branch=self.base_branch
+            )
+            
+            # Get the commit SHA
+            commit = self.repo.get_commits(sha=self.base_branch)[0]
+            logger.info(f"✅ Initialized empty repository with README.md")
+            return commit.sha
+            
+        except GithubException as e:
+            logger.error(f"Failed to initialize empty repository: {e}")
+            return None
+    
     def create_branch(
         self,
         new_branch: str,
@@ -102,8 +130,22 @@ class GitHubClient:
         
         try:
             # Get base branch ref
-            base_ref = self.repo.get_git_ref(f"heads/{base}")
-            base_sha = base_ref.object.sha
+            try:
+                base_ref = self.repo.get_git_ref(f"heads/{base}")
+                base_sha = base_ref.object.sha
+            except GithubException as e:
+                # Check if repo is empty
+                if "Git Repository is empty" in str(e) or "404" in str(e):
+                    logger.info(f"Repository is empty, initializing with README.md...")
+                    init_sha = self._initialize_empty_repo()
+                    if init_sha:
+                        # Retry getting base branch ref
+                        base_ref = self.repo.get_git_ref(f"heads/{base}")
+                        base_sha = base_ref.object.sha
+                    else:
+                        raise GithubException(404, {"message": "Failed to initialize repository"})
+                else:
+                    raise
             
             # Check if branch already exists
             try:
