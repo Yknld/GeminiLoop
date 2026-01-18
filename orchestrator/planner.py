@@ -5,8 +5,10 @@ Planner module using Gemini 3.0 Pro Preview to generate detailed prompts for Ope
 import os
 import json
 import re
+import time
 from pathlib import Path
 import google.generativeai as genai
+from google.api_core import exceptions as google_exceptions
 from typing import Dict, Any, List, Optional, Tuple
 
 
@@ -204,74 +206,104 @@ class Planner:
         print("🧠 Planner: Generating detailed prompt with Gemini 3.0 Pro Preview...")
         print("   ⚠️  Reminder: Planner must output natural language only, NO code")
         
-        try:
-            # Add explicit instruction to avoid code generation
-            system_instruction = "CRITICAL: You are a PLANNER, not a CODER. Your output must be 100% natural language text - no HTML, no JavaScript, no code snippets. Describe what should be built using plain English, not programming languages."
-            
-            response = self.model.generate_content(
-                f"{system_instruction}\n\n{full_prompt}",
-                generation_config={
-                    'temperature': 0.7,
-                    'top_p': 0.95,
-                    'top_k': 40,
-                    'max_output_tokens': 8192,
-                    'response_mime_type': 'application/json',  # Request JSON response
-                }
-            )
-            
-            # Extract thinking and response
-            thinking_parts = []
-            response_parts = []
-            
-            for part in response.parts:
-                if hasattr(part, 'thought') and part.thought:
-                    thinking_parts.append(part.text)
-                else:
-                    response_parts.append(part.text)
-            
-            thinking = '\n'.join(thinking_parts) if thinking_parts else None
-            response_text = '\n'.join(response_parts)
-            
-            # Parse JSON response using robust extraction
+        # Add explicit instruction to avoid code generation
+        system_instruction = "CRITICAL: You are a PLANNER, not a CODER. Your output must be 100% natural language text - no HTML, no JavaScript, no code snippets. Describe what should be built using plain English, not programming languages."
+        
+        # Retry logic for quota errors
+        max_retries = 5
+        retry_delay = 15  # Default delay in seconds
+        
+        for attempt in range(max_retries):
             try:
-                # Use robust JSON extraction
-                extracted_json = self._extract_json_from_text(response_text)
-                
-                if not extracted_json:
-                    raise ValueError("Could not extract valid JSON from response")
-                
-                plan_json = json.loads(extracted_json)
-                
-                # Extract the OpenHands build prompt from the JSON
-                generated_prompt = plan_json.get('openhands_build_prompt', response_text)
-                
-                # Store the full JSON structure
-                course_overview = plan_json.get('course_overview', {})
-                global_ui_spec = plan_json.get('global_ui_spec', {})
-                
-                print(f"✅ Planner: Generated JSON plan with {len(course_overview.get('modules', []))} modules")
-                print(f"✅ Planner: Extracted {len(generated_prompt)} character OpenHands prompt")
-                if thinking:
-                    print(f"💭 Planner: Thinking process captured ({len(thinking)} chars)")
-                
-                return {
-                    'prompt': generated_prompt,
-                    'thinking': thinking,
-                    'plan_json': plan_json,  # Full JSON structure
-                    'course_overview': course_overview,
-                    'global_ui_spec': global_ui_spec,
-                    'metadata': {
-                        'model': 'gemini-3-pro-preview',
-                        'user_requirements': user_requirements,
-                        'used_custom_notes': custom_notes is not None,
-                        'custom_notes_length': len(custom_notes) if custom_notes else 0,
-                        'prompt_length': len(generated_prompt),
-                        'has_thinking': thinking is not None,
-                        'youtube_videos_count': len(youtube_videos) if youtube_videos else 0,
-                        'modules_count': len(course_overview.get('modules', []))
+                response = self.model.generate_content(
+                    f"{system_instruction}\n\n{full_prompt}",
+                    generation_config={
+                        'temperature': 0.7,
+                        'top_p': 0.95,
+                        'top_k': 40,
+                        'max_output_tokens': 8192,
+                        'response_mime_type': 'application/json',  # Request JSON response
                     }
+                )
+                break  # Success, exit retry loop
+                
+            except Exception as e:
+                error_str = str(e)
+                
+                # Check if it's a quota/resource exhausted error
+                if "RESOURCE_EXHAUSTED" in error_str or "quota" in error_str.lower():
+                    # Try to extract retry delay from error message
+                    retry_match = re.search(r'retry.*?(\d+\.?\d*)\s*s', error_str, re.IGNORECASE)
+                    if retry_match:
+                        retry_delay = float(retry_match.group(1)) + 2  # Add 2s buffer
+                    else:
+                        # Exponential backoff: 15s, 30s, 60s, 120s
+                        retry_delay = 15 * (2 ** attempt)
+                    
+                    if attempt < max_retries - 1:
+                        print(f"⚠️  Quota exceeded (attempt {attempt + 1}/{max_retries}), retrying in {retry_delay:.1f}s...")
+                        time.sleep(retry_delay)
+                        continue
+                    else:
+                        print(f"❌ Quota exceeded after {max_retries} attempts")
+                        raise
+                else:
+                    # Not a quota error, re-raise immediately
+                    raise
+        
+        # Extract thinking and response
+        thinking_parts = []
+        response_parts = []
+        
+        for part in response.parts:
+            if hasattr(part, 'thought') and part.thought:
+                thinking_parts.append(part.text)
+            else:
+                response_parts.append(part.text)
+        
+        thinking = '\n'.join(thinking_parts) if thinking_parts else None
+        response_text = '\n'.join(response_parts)
+        
+        # Parse JSON response using robust extraction
+        try:
+            # Use robust JSON extraction
+            extracted_json = self._extract_json_from_text(response_text)
+            
+            if not extracted_json:
+                raise ValueError("Could not extract valid JSON from response")
+            
+            plan_json = json.loads(extracted_json)
+            
+            # Extract the OpenHands build prompt from the JSON
+            generated_prompt = plan_json.get('openhands_build_prompt', response_text)
+            
+            # Store the full JSON structure
+            course_overview = plan_json.get('course_overview', {})
+            global_ui_spec = plan_json.get('global_ui_spec', {})
+            
+            print(f"✅ Planner: Generated JSON plan with {len(course_overview.get('modules', []))} modules")
+            print(f"✅ Planner: Extracted {len(generated_prompt)} character OpenHands prompt")
+            if thinking:
+                print(f"💭 Planner: Thinking process captured ({len(thinking)} chars)")
+            
+            return {
+                'prompt': generated_prompt,
+                'thinking': thinking,
+                'plan_json': plan_json,  # Full JSON structure
+                'course_overview': course_overview,
+                'global_ui_spec': global_ui_spec,
+                'metadata': {
+                    'model': 'gemini-3-pro-preview',
+                    'user_requirements': user_requirements,
+                    'used_custom_notes': custom_notes is not None,
+                    'custom_notes_length': len(custom_notes) if custom_notes else 0,
+                    'prompt_length': len(generated_prompt),
+                    'has_thinking': thinking is not None,
+                    'youtube_videos_count': len(youtube_videos) if youtube_videos else 0,
+                    'modules_count': len(course_overview.get('modules', []))
                 }
-            except (json.JSONDecodeError, KeyError) as e:
+            }
+        except (json.JSONDecodeError, KeyError) as e:
                 # Fallback: if JSON parsing fails, use the raw response as prompt
                 print(f"⚠️  Warning: Failed to parse JSON response, using raw response: {e}")
                 print(f"   Response preview: {response_text[:200]}...")
