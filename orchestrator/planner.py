@@ -30,11 +30,12 @@ class Planner:
         self.planner_prompt = self._load_planner_prompt()
         
         # Load template summary if available
-        # Try multiple possible locations
+        # Try multiple possible locations (in order of preference)
         possible_paths = [
-            Path(__file__).parent.parent.parent / "TEMPLATE_SUMMARY.md",  # Match-me root
-            Path("/app/TEMPLATE_SUMMARY.md"),  # Docker container root
-            Path(__file__).parent.parent / "TEMPLATE_SUMMARY.md",  # GeminiLoop root
+            Path("/app/TEMPLATE_SUMMARY.md"),  # Docker container root (primary location)
+            Path(__file__).parent.parent / "TEMPLATE_SUMMARY.md",  # GeminiLoop root (if running locally)
+            Path(__file__).parent.parent.parent / "TEMPLATE_SUMMARY.md",  # Match-me root (if running from parent)
+            Path.cwd() / "TEMPLATE_SUMMARY.md",  # Current working directory
         ]
         
         template_summary_file = None
@@ -44,11 +45,16 @@ class Planner:
                 break
         
         if template_summary_file:
-            self.template_summary = template_summary_file.read_text(encoding='utf-8')
-            print(f"✅ Template summary loaded from: {template_summary_file}")
+            try:
+                self.template_summary = template_summary_file.read_text(encoding='utf-8')
+                print(f"✅ Template summary loaded from: {template_summary_file}")
+            except Exception as e:
+                print(f"⚠️  Failed to read template summary from {template_summary_file}: {e}")
+                self.template_summary = None
         else:
             self.template_summary = None
             print("⚠️  Template summary not found, proceeding without template context")
+            print(f"   Searched paths: {[str(p) for p in possible_paths]}")
     
     def _load_planner_prompt(self) -> str:
         """Load the planner prompt from file."""
