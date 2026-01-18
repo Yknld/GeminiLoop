@@ -33,7 +33,7 @@ class YouTubeFinder:
         
         # Use Gemini 2.0 Flash for finding videos (fallback)
         # Note: gemini-2.0-pro-exp doesn't exist, using flash instead
-        self.model = genai.GenerativeModel('gemini-1.5-flash')
+        self.model = genai.GenerativeModel('gemini-2.0-flash-exp')
         
         # YouTube Data API v3 key (optional)
         self.youtube_api_key = youtube_api_key or os.getenv('YOUTUBE_API_KEY')

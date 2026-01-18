@@ -271,7 +271,7 @@ class LocalSubprocessOpenHandsClient(OpenHandsClient):
             before_files = self._capture_workspace_state(workspace_path)
             
             # Configure LLM
-            model = os.getenv("GEMINI_MODEL", "gemini-1.5-flash")
+            model = os.getenv("GEMINI_MODEL", "gemini-2.0-flash-exp")
             if not model.startswith("gemini/"):
                 model = f"gemini/{model}"
             
@@ -602,7 +602,7 @@ class LocalSubprocessOpenHandsClient(OpenHandsClient):
             
             # Configure LLM (using Gemini AI Studio, not Vertex AI)
             # Use "gemini/" prefix to force LiteLLM to use AI Studio instead of Vertex
-            model = os.getenv("GEMINI_MODEL", "gemini-1.5-flash")
+            model = os.getenv("GEMINI_MODEL", "gemini-2.0-flash-exp")
             if not model.startswith("gemini/"):
                 model = f"gemini/{model}"
             
@@ -794,7 +794,7 @@ class LocalSubprocessOpenHandsClient(OpenHandsClient):
             before_files = self._capture_workspace_state(workspace_path)
             
             # Configure LLM (using Gemini AI Studio, not Vertex AI)
-            model = os.getenv("GEMINI_MODEL", "gemini-1.5-flash")
+            model = os.getenv("GEMINI_MODEL", "gemini-2.0-flash-exp")
             if not model.startswith("gemini/"):
                 model = f"gemini/{model}"
             

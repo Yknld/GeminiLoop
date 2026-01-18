@@ -297,7 +297,7 @@ class Planner:
                 'global_ui_spec': global_ui_spec,
                 'todo_list': todo_list,  # Structured todo list for step-by-step execution
                 'metadata': {
-                    'model': 'gemini-1.5-flash',
+                    'model': 'gemini-2.0-flash-exp',
                     'user_requirements': user_requirements,
                     'used_custom_notes': custom_notes is not None,
                     'custom_notes_length': len(custom_notes) if custom_notes else 0,
