@@ -18,7 +18,6 @@ from datetime import datetime
 from .run_state import RunConfig, RunState, IterationResult
 from .trace import TraceLogger, TraceEventType
 from .artifacts import ArtifactsManager, create_template_html
-from .gemini_generator import GeminiCodeGenerator, GEMINI_MODEL_VERSION
 from .evaluator import GeminiEvaluator, EVALUATOR_MODEL_VERSION, RUBRIC_VERSION
 from .agentic_evaluator import AgenticEvaluator
 from .mcp_real_client import PlaywrightMCPClient
@@ -107,8 +106,6 @@ async def run_loop(task: str, max_iterations: int = 5, base_dir: Path = None, cu
     print(f"   Serving from: {path_config.project_root}")
     
     # Initialize clients
-    generator = GeminiCodeGenerator()
-    
     # Choose evaluator: agentic (Gemini controls browser) or scripted (fixed tests)
     use_agentic = os.getenv("AGENTIC_EVAL", "true").lower() in ("true", "1", "yes")
     if use_agentic:
