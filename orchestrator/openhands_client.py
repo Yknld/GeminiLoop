@@ -320,7 +320,13 @@ class LocalSubprocessOpenHandsClient(OpenHandsClient):
         if requirements.get('keyPoints'):
             key_points = requirements['keyPoints']
             if isinstance(key_points, list):
-                points_str = ', '.join([f'"{kp.replace(\'"\', \'\\\\"\')}"' for kp in key_points])
+                # Escape quotes properly for JavaScript string
+                escaped_points = []
+                for kp in key_points:
+                    # Replace double quotes with escaped quotes
+                    escaped_kp = str(kp).replace('"', '\\"')
+                    escaped_points.append(f'"{escaped_kp}"')
+                points_str = ', '.join(escaped_points)
                 prompt += f"  keyPoints: [{points_str}],\n"
             else:
                 prompt += f"  keyPoints: [],  // Add key points array from notes\n"
