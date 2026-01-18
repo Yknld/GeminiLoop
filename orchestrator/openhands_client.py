@@ -265,6 +265,7 @@ class LocalSubprocessOpenHandsClient(OpenHandsClient):
             from openhands.sdk import LLM, Agent, Conversation, Workspace
             from openhands.tools.file_editor import FileEditorTool
             from openhands.tools.terminal import TerminalTool
+            from openhands.tools.preset.default import get_default_agent
             from pydantic import SecretStr
             
             # Capture before state
@@ -788,6 +789,7 @@ class LocalSubprocessOpenHandsClient(OpenHandsClient):
             from openhands.tools.browser_use import BrowserToolSet
             from openhands.tools.file_editor import FileEditorTool
             from openhands.tools.terminal import TerminalTool
+            from openhands.tools.preset.default import get_default_agent
             from pydantic import SecretStr
             
             # Capture before state
@@ -803,15 +805,11 @@ class LocalSubprocessOpenHandsClient(OpenHandsClient):
                 api_key=SecretStr(os.getenv("GOOGLE_AI_STUDIO_API_KEY")),
             )
             
-            # Create agent with browser, file, and terminal tools
-            # Disable auto-screenshots to prevent context overflow
-            agent = Agent(
+            # Use OpenHands' default agent which includes planning capabilities
+            # This agent has built-in planning tools and will create its own plan
+            agent = get_default_agent(
                 llm=llm,
-                tools=[
-                    Tool(name=BrowserToolSet.name, params={"include_screenshot": False}),
-                    FileEditorTool(),  # Use instance directly
-                    TerminalTool(),    # Use instance directly
-                ]
+                cli_mode=True,  # Disable browser tools for code generation
             )
             
             # Ensure workspace path is absolute and valid
