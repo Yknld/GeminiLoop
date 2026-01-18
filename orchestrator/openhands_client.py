@@ -212,9 +212,13 @@ class LocalSubprocessOpenHandsClient(OpenHandsClient):
     Can optionally enable VSCode access via DockerWorkspace in the future.
     """
     
-    def __init__(self, artifacts_dir: Optional[Path] = None, use_remote_server: bool = True):
+    def __init__(self, artifacts_dir: Optional[Path] = None, use_remote_server: bool = None):
         self.artifacts_dir = Path(artifacts_dir) if artifacts_dir else Path.cwd() / "artifacts"
         self.artifacts_dir.mkdir(parents=True, exist_ok=True)
+        # Default to False (direct SDK) if not specified - remote server seems to be crashing
+        # Can be enabled via OPENHANDS_USE_REMOTE_SERVER env var
+        if use_remote_server is None:
+            use_remote_server = os.getenv("OPENHANDS_USE_REMOTE_SERVER", "false").lower() in ("true", "1", "yes")
         self.use_remote_server = use_remote_server
         
         # Create diffs directory
