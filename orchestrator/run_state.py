@@ -191,8 +191,8 @@ class RunManifest:
     duration_seconds: float = 0.0
     
     # System versions
-    gemini_model_version: str = "gemini-2.0-flash-exp"
-    evaluator_model_version: str = "gemini-2.0-flash-exp"
+    gemini_model_version: str = "gemini-2.5-flash-image"
+    evaluator_model_version: str = "gemini-2.5-flash-image"
     rubric_version: str = "1.0"
     openhands_mode: str = "mock"
     

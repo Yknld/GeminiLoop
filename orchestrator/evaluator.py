@@ -24,7 +24,7 @@ except ImportError:
 logger = logging.getLogger(__name__)
 
 # Model version constants
-EVALUATOR_MODEL_VERSION = "gemini-2.0-flash-exp"
+EVALUATOR_MODEL_VERSION = "gemini-2.5-flash-image"
 RUBRIC_VERSION = "1.0"
 
 # Rubric Schema
