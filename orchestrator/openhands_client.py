@@ -433,7 +433,7 @@ class LocalSubprocessOpenHandsClient(OpenHandsClient):
         # Run OpenHands via Python SDK
         try:
             # Import OpenHands SDK
-            from openhands.sdk import LLM, Agent, Conversation, Tool
+            from openhands.sdk import LLM, Agent, Conversation, Workspace
             from openhands.tools.browser_use import BrowserToolSet
             from openhands.tools.file_editor import FileEditorTool
             from openhands.tools.terminal import TerminalTool
@@ -468,8 +468,11 @@ class LocalSubprocessOpenHandsClient(OpenHandsClient):
             workspace_path_abs = workspace_path.resolve()
             logger.info(f"   OpenHands workspace: {workspace_path_abs}")
             
-            # Create conversation with absolute workspace path
-            conversation = Conversation(agent=agent, workspace=str(workspace_path_abs))
+            # Create Workspace object (not string path) - this is the correct way per docs
+            workspace = Workspace(path=str(workspace_path_abs))
+            
+            # Create conversation with Workspace object
+            conversation = Conversation(agent=agent, workspace=workspace)
             
             # Send task and run
             logger.info("   Sending task to OpenHands agent...")
@@ -616,7 +619,9 @@ class LocalSubprocessOpenHandsClient(OpenHandsClient):
             logger.info(f"   OpenHands workspace: {workspace_path_abs}")
             
             # Create conversation with absolute workspace path
-            conversation = Conversation(agent=agent, workspace=str(workspace_path_abs))
+            # Create Workspace object (not string path) - this is the correct way per docs
+            workspace = Workspace(path=str(workspace_path_abs))
+            conversation = Conversation(agent=agent, workspace=workspace)
             
             # Send patch instructions and run
             logger.info("   Sending patch instructions to OpenHands agent...")
