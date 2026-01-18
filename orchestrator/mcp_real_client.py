@@ -130,8 +130,7 @@ class PlaywrightMCPClient:
         if self.stdin:
             self.stdin.close()
             await self.stdin.wait_closed()
-        if self.stdout:
-            self.stdout.close()
+        # Note: StreamReader doesn't have close() method - process termination will handle it
         
         # Terminate process
         if self.process:
