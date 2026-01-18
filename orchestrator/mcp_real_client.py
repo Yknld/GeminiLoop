@@ -13,8 +13,9 @@ from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
-# Default timeout for MCP operations (30 seconds)
-DEFAULT_MCP_TIMEOUT = 30.0
+# Default timeout for MCP operations (60 seconds for general operations)
+# Some operations like screenshots may need longer
+DEFAULT_MCP_TIMEOUT = 60.0
 
 
 class PlaywrightMCPClient:
@@ -216,7 +217,7 @@ class PlaywrightMCPClient:
             
         except asyncio.TimeoutError:
             self.pending_requests.pop(request_id, None)
-            raise Exception(f"MCP request timeout after {self.timeout}s: {method}")
+            raise Exception(f"MCP request timeout after {request_timeout}s: {method}")
         except Exception as e:
             self.pending_requests.pop(request_id, None)
             raise
@@ -260,11 +261,14 @@ class PlaywrightMCPClient:
         logger.info("Screenshot saved")
         return str(filepath)
     
-    async def snapshot(self) -> Dict[str, Any]:
-        """Get page snapshot"""
+    async def snapshot(self, timeout: Optional[float] = None) -> Dict[str, Any]:
+        """Get page snapshot with extended timeout for large pages"""
         logger.info("Getting page snapshot...")
         
-        result = await self.call_tool("browser_snapshot", {})
+        # Snapshots can be slow on large pages, use longer timeout (90s default)
+        snapshot_timeout = timeout if timeout is not None else 90.0
+        
+        result = await self.call_tool("browser_snapshot", {}, timeout=snapshot_timeout)
         
         snapshot = {
             "title": result.get("title", ""),
@@ -295,14 +299,14 @@ class PlaywrightMCPClient:
         
         return {"result": result}
     
-    async def call_tool(self, tool_name: str, arguments: Dict[str, Any]) -> Any:
+    async def call_tool(self, tool_name: str, arguments: Dict[str, Any], timeout: Optional[float] = None) -> Any:
         """Call MCP tool"""
         logger.debug(f"Tool call: {tool_name}")
         
         result = await self._send_request("tools/call", {
             "name": tool_name,
             "arguments": arguments
-        })
+        }, timeout=timeout)
         
         return result
     
