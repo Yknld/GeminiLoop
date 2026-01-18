@@ -371,9 +371,16 @@ async def run_loop(task: str, max_iterations: int = 5, base_dir: Path = None, cu
                 files_generated = generation_result.get("files_generated", [])
                 diffs = generation_result.get("diffs", [])
                 
-                print(f"✅ OpenHands generated: {', '.join(files_generated)}")
+                print(f"✅ OpenHands generated: {', '.join(files_generated) if files_generated else 'No new files (edited existing)'}")
                 if diffs:
                     print(f"📝 Diffs: {len(diffs)}")
+                
+                # Always check for index.html in workspace (even if not in files_generated)
+                # This handles the case where OpenHands edited an existing file
+                index_html = state.workspace_dir / "index.html"
+                if index_html.exists() and "index.html" not in files_generated:
+                    files_generated.append("index.html")
+                    print(f"   Found index.html in workspace (edited by OpenHands)")
                 
                 # Copy to project_root for preview server
                 for filename in files_generated:
@@ -388,6 +395,7 @@ async def run_loop(task: str, max_iterations: int = 5, base_dir: Path = None, cu
                         project_file = path_config.project_root / filename
                         project_file.parent.mkdir(parents=True, exist_ok=True)
                         project_file.write_text(workspace_file.read_text())
+                        print(f"   ✅ Copied {filename} to preview server directory")
                 
                 iter_result.files_generated = {f: str(state.workspace_dir / f) for f in files_generated}
                 iter_result.code_generated = f"OpenHands: {','.join(files_generated)}"
