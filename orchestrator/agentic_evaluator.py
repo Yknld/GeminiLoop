@@ -1047,7 +1047,8 @@ Begin systematic testing. You have vision - use it!"""
         final_observation: Dict[str, Any],
         rubric: Dict[str, Any],
         exploration_result: Dict[str, Any],
-        file_compliance: Dict[str, Any] = None
+        file_compliance: Dict[str, Any] = None,
+        template_compliance: Dict[str, Any] = None
     ) -> EvaluationResult:
         """
         Run final vision evaluation using the original GeminiEvaluator logic
@@ -1073,7 +1074,7 @@ Begin systematic testing. You have vision - use it!"""
         )
         
         # Build evaluation prompt
-        prompt = self._build_vision_prompt(task, observation, rubric, exploration_result, file_compliance)
+        prompt = self._build_vision_prompt(task, observation, rubric, exploration_result, file_compliance, template_compliance)
         
         # Call Gemini for final scoring WITH SCREENSHOTS
         model = genai.GenerativeModel(
@@ -1171,13 +1172,98 @@ Begin systematic testing. You have vision - use it!"""
                 'error': str(e)
             }
     
+    async def _check_template_structure_compliance(self, mcp_client) -> Dict[str, Any]:
+        """
+        Check if the page uses the template structure (module navigation, audio controls, etc.)
+        
+        Returns:
+            Dict with template compliance status and details
+        """
+        try:
+            template_check = """
+            (function() {
+                // Check for template structure components
+                const has_module_selector = document.querySelector('select[id*="module"], select[id*="selector"], select[class*="module"]') !== null;
+                const has_prev_next = document.querySelector('button[id*="prev"], button[id*="next"], button[class*="prev"], button[class*="next"]') !== null;
+                const has_progress_indicator = document.body.innerText.includes(' of ') || document.body.innerText.match(/\\d+\\s+of\\s+\\d+/);
+                
+                // Check for audio controls (microphone icons, audio buttons)
+                const audio_controls = Array.from(document.querySelectorAll('button[class*="audio"], button[aria-label*="audio"], button[aria-label*="play"], svg[class*="audio"], .audio-control'));
+                const has_audio_controls = audio_controls.length > 0;
+                
+                // Check for notes panel/button
+                const notes_button = document.querySelector('button[id*="notes"], button[class*="notes"], button[aria-label*="notes"]');
+                const has_notes = notes_button !== null;
+                
+                // Check for chatbot button
+                const chatbot_button = document.querySelector('button[id*="chatbot"], button[id*="chat"], button[class*="chatbot"], button[class*="chat"], button[aria-label*="chat"]');
+                const has_chatbot = chatbot_button !== null;
+                
+                // Check for modules array in JavaScript
+                const scripts = Array.from(document.querySelectorAll('script'));
+                let has_modules_array = false;
+                let modules_count = 0;
+                for (const script of scripts) {
+                    const text = script.textContent || '';
+                    if (text.includes('modules') && (text.includes('let modules') || text.includes('const modules') || text.includes('var modules'))) {
+                        has_modules_array = true;
+                        // Try to extract module count
+                        const match = text.match(/modules\\s*=\\s*\\[([^\\]]*)\\]/);
+                        if (match) {
+                            modules_count = (match[1].match(/\\{[^}]*\\}/g) || []).length;
+                        }
+                    }
+                }
+                
+                // Check for template sections
+                const has_video_section = document.querySelector('iframe[src*="youtube"], iframe[src*="youtu.be"], [id*="video"], [class*="video"]') !== null;
+                const has_explanation = document.querySelector('[id*="explanation"], [class*="explanation"]') !== null;
+                const has_key_points = document.querySelector('[id*="key"], [class*="key-point"], ul, ol') !== null;
+                const has_timeline = document.querySelector('[id*="timeline"], [class*="timeline"]') !== null;
+                const has_fun_fact = document.querySelector('[id*="fun"], [class*="fun-fact"], [class*="funfact"]') !== null;
+                
+                // Check if it's just a simple quiz (no template structure)
+                const is_simple_quiz = !has_module_selector && !has_prev_next && !has_audio_controls && !has_notes && !has_chatbot && !has_modules_array;
+                
+                return {
+                    has_module_navigation: has_module_selector || has_prev_next,
+                    has_progress_indicator: has_progress_indicator,
+                    has_audio_controls: has_audio_controls,
+                    audio_controls_count: audio_controls.length,
+                    has_notes_panel: has_notes,
+                    has_chatbot: has_chatbot,
+                    has_modules_array: has_modules_array,
+                    modules_count: modules_count,
+                    has_video_section: has_video_section,
+                    has_explanation_section: has_explanation,
+                    has_key_points_section: has_key_points,
+                    has_timeline_section: has_timeline,
+                    has_fun_fact_section: has_fun_fact,
+                    is_simple_quiz: is_simple_quiz,
+                    template_compliant: has_module_selector && has_audio_controls && has_modules_array
+                };
+            })()
+            """
+            
+            result = await mcp_client.evaluate(template_check)
+            template_data = result.get('result', {})
+            
+            return template_data
+        except Exception as e:
+            logger.warning(f"Failed to check template structure: {e}")
+            return {
+                'template_compliant': None,
+                'error': str(e)
+            }
+    
     def _build_vision_prompt(
         self,
         task: str,
         observation: BrowserObservation,
         rubric: Dict[str, Any],
         exploration: Dict[str, Any],
-        file_compliance: Dict[str, Any] = None
+        file_compliance: Dict[str, Any] = None,
+        template_compliance: Dict[str, Any] = None
     ) -> str:
         """Build prompt for final vision evaluation with correct rubric weights"""
         
@@ -1196,11 +1282,54 @@ Begin systematic testing. You have vision - use it!"""
             elif file_compliance.get('compliant') is True:
                 compliance_section = "\n**✅ Single-File Compliance: Verified - All CSS/JS are inline**\n"
         
+        # Add template structure compliance check results
+        template_section = ""
+        if template_compliance:
+            if template_compliance.get('is_simple_quiz'):
+                template_section = f"""
+**❌ CRITICAL VIOLATION - Template Structure Missing:**
+The page appears to be a simple quiz page, NOT using the required template structure.
+
+**Missing Template Components:**
+- Module navigation: {template_compliance.get('has_module_navigation', False)}
+- Audio controls: {template_compliance.get('has_audio_controls', False)} (found {template_compliance.get('audio_controls_count', 0)} controls)
+- Notes panel: {template_compliance.get('has_notes_panel', False)}
+- Chatbot: {template_compliance.get('has_chatbot', False)}
+- Modules array: {template_compliance.get('has_modules_array', False)} (modules count: {template_compliance.get('modules_count', 0)})
+- Video section: {template_compliance.get('has_video_section', False)}
+- Explanation section: {template_compliance.get('has_explanation_section', False)}
+- Key points section: {template_compliance.get('has_key_points_section', False)}
+- Timeline section: {template_compliance.get('has_timeline_section', False)}
+- Fun fact section: {template_compliance.get('has_fun_fact_section', False)}
+
+**THIS IS A CRITICAL FAILURE - The page must use the template structure with module navigation, audio controls, notes panel, chatbot, and multiple modules.**
+**A simple quiz page does NOT meet the requirements.**
+**Score must be heavily penalized (deduct at least 40 points) for missing template structure.**
+**The page should have been built using template.html as the starting point.**
+"""
+            elif not template_compliance.get('template_compliant', True):
+                missing = []
+                if not template_compliance.get('has_module_navigation'): missing.append("module navigation")
+                if not template_compliance.get('has_audio_controls'): missing.append("audio controls")
+                if not template_compliance.get('has_notes_panel'): missing.append("notes panel")
+                if not template_compliance.get('has_chatbot'): missing.append("chatbot")
+                if not template_compliance.get('has_modules_array'): missing.append("modules array")
+                
+                template_section = f"""
+**⚠️  Template Structure Issues:**
+- Missing components: {', '.join(missing) if missing else 'None'}
+- Modules count: {template_compliance.get('modules_count', 0)} (should be multiple modules)
+**Deduct points for missing template components.**
+"""
+            else:
+                template_section = "\n**✅ Template Structure: Verified - Template components present**\n"
+        
         prompt = f"""# CRITICAL EVALUATION - Evidence-Based Assessment
 
 **Original Task Requirements:**
 {task}
 {compliance_section}
+{template_section}
 **Autonomous Testing Results:**
 - Total test steps: {exploration['steps_taken']}
 - Completion status: {exploration['completion_reason']}
