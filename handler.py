@@ -29,16 +29,21 @@ if parent_dir_str not in sys.path:
         os.environ['PYTHONPATH'] = f"{parent_dir_str}:{pythonpath}" if pythonpath else parent_dir_str
 
 # Verify qa_browseruse_mcp can be imported before importing orchestrator
+# This must happen BEFORE importing orchestrator.main since it imports qa_browseruse_mcp
 try:
     import qa_browseruse_mcp
+    from qa_browseruse_mcp.client import BrowserUseMCPClient
     logger = logging.getLogger(__name__)
-    logger.info(f"✅ qa_browseruse_mcp found at: {qa_browseruse_mcp.__file__ if hasattr(qa_browseruse_mcp, '__file__') else 'unknown'}")
+    logger.info(f"✅ qa_browseruse_mcp verified before importing orchestrator")
 except ImportError as e:
     logger = logging.getLogger(__name__)
     logger.error(f"❌ qa_browseruse_mcp import failed: {e}")
     logger.error(f"   sys.path: {sys.path[:5]}")
     logger.error(f"   parent_dir: {parent_dir_str}")
-    logger.error(f"   qa_browseruse_mcp exists: {(Path(__file__).parent / 'qa_browseruse_mcp').exists()}")
+    qa_path = Path(__file__).parent / 'qa_browseruse_mcp'
+    logger.error(f"   qa_browseruse_mcp exists: {qa_path.exists()}")
+    if qa_path.exists():
+        logger.error(f"   qa_browseruse_mcp contents: {list(qa_path.iterdir())}")
     raise
 
 # Import runpod first (required for serverless)
