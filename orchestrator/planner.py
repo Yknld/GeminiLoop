@@ -454,6 +454,13 @@ class Planner:
             with open(plan_json_file, 'w') as f:
                 json.dump(plan['plan_json'], f, indent=2)
         
+        # Save todo list if available
+        if plan.get('todo_list'):
+            todo_file = output_path / 'todo_list.json'
+            with open(todo_file, 'w') as f:
+                json.dump(plan['todo_list'], f, indent=2)
+            print(f"   Todo list: {todo_file} ({len(plan['todo_list'])} items)")
+        
         if plan.get('thinking'):
             thinking_file = output_path / 'planner_thinking.txt'
             with open(thinking_file, 'w') as f:
