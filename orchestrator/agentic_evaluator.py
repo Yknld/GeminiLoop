@@ -669,7 +669,8 @@ class AgenticEvaluator(GeminiEvaluator):
                 await asyncio.sleep(1)
         
         if not finished:
-            logger.info(f"\n⏱️  Reached max steps ({self.max_exploration_steps})")
+            logger.info(f"\n⏱️  Reached max exploration steps ({self.max_exploration_steps}) - this is normal, not an error")
+            logger.info(f"   The evaluator has completed {steps_taken} exploration steps and will now perform final evaluation")
             # Get final state
             final_observation = await self._get_browser_state(mcp_client, artifacts_dir, step, phase="final")
         
@@ -697,6 +698,7 @@ class AgenticEvaluator(GeminiEvaluator):
 
 **Available Tools:**
 - browser_click: Click elements (use selectors from the interactive elements list)
+  **NOTE:** Do NOT try to click disabled buttons (they're greyed out for a reason - e.g., prev disabled on first module, next disabled on last module)
 - browser_type: Type into input fields
 - browser_scroll: Scroll up/down to see all content
 - browser_evaluate: Execute JavaScript to check state, get values
