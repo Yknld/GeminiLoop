@@ -279,23 +279,29 @@ class PlaywrightMCPClient:
         logger.info(f"Snapshot: {len(snapshot['buttons'])} buttons")
         return snapshot
     
-    async def get_console(self) -> list:
-        """Get console messages"""
+    async def get_console(self, timeout: Optional[float] = None) -> list:
+        """Get console messages with extended timeout"""
         logger.info("Getting console messages...")
         
-        result = await self.call_tool("browser_console_messages", {})
+        # Console messages can be slow, use longer timeout (60s default)
+        console_timeout = timeout if timeout is not None else 60.0
+        
+        result = await self.call_tool("browser_console_messages", {}, timeout=console_timeout)
         messages = result.get("messages", [])
         
         logger.info(f"Console: {len(messages)} messages")
         return messages
     
-    async def evaluate(self, expression: str) -> Dict[str, Any]:
-        """Evaluate JavaScript expression"""
+    async def evaluate(self, expression: str, timeout: Optional[float] = None) -> Dict[str, Any]:
+        """Evaluate JavaScript expression with extended timeout for complex expressions"""
         logger.debug(f"Evaluate: {expression[:100]}")
+        
+        # Complex evaluations (like DOM snapshots) can be slow, use longer timeout (90s default)
+        eval_timeout = timeout if timeout is not None else 90.0
         
         result = await self.call_tool("browser_evaluate", {
             "expression": expression
-        })
+        }, timeout=eval_timeout)
         
         return {"result": result}
     
