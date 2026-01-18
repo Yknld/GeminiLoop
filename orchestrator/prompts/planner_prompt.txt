@@ -176,15 +176,16 @@ Return a JSON object with EXACT keys below. No extra keys. No markdown.
       "reduced motion support"
     ]
   },
-  "openhands_build_prompt": "A single, extremely detailed instruction prompt for OpenHands to populate the template. It must include: (1) EXPLICIT instruction to START WITH THE PROVIDED TEMPLATE.HTML FILE, (2) instruction to populate the `modules` array with content from notes, creating ONE module object for EACH distinct topic in the notes, (3) for each module, specify: title, videoId (from YouTube links if provided), explanation text, keyPoints array, timeline array (if applicable), funFact, interactiveElement HTML (quizzes/games/simulations), (4) instruction to preserve template structure (navigation, functions, layout skeleton), (5) instruction that colors and minor styling changes are OK but core structure must remain, (6) math rendering requirement (KaTeX/MathJax), (7) responsive requirements. CRITICAL: (1) OpenHands must use template.html as starting point, NOT create from scratch. (2) OpenHands must create ALL modules listed in course_overview - do not stop after one module. (3) Template navigation system and functions must be preserved."
+  "openhands_build_prompt": "A single, extremely detailed instruction prompt for OpenHands to populate the template. It must include: (1) EXPLICIT instruction to START WITH THE PROVIDED TEMPLATE.HTML FILE, (2) instruction to populate the `modules` array with content from notes, creating as many module objects as appropriate based on the content structure, (3) for each module, specify: title, videoId (from YouTube links if provided), explanation text, keyPoints array, timeline array (if applicable), funFact, interactiveElement HTML (quizzes/games/simulations), (4) instruction to preserve template structure (navigation, functions, layout skeleton), (5) instruction that colors and minor styling changes are OK but core structure must remain, (6) math rendering requirement (KaTeX/MathJax), (7) responsive requirements. CRITICAL: (1) OpenHands must use template.html as starting point, NOT create from scratch. (2) OpenHands must create ALL modules listed in course_overview - do not stop after one module. (3) Template navigation system and functions must be preserved."
 }
 
 PLANNING GUIDELINES (IMPORTANT):
-- **CRITICAL: You MUST create a module object for EVERY distinct topic in the notes.**
-  * If notes mention "Circles", "Coordinate Geometry", and "Practice Problems" → create 3 module objects in the modules array
-  * If notes have multiple topics → create a module object for EACH topic
-  * DO NOT create only one module covering everything - break it into separate, focused modules
-  * Each topic from the notes MUST have its own dedicated module object
+- **Module Creation: Create as many modules as appropriate based on the notes content.**
+  * Analyze the notes and determine the natural breakdown into modules
+  * Each module should be a focused, coherent lesson topic
+  * You can create multiple modules for a single topic if it's complex enough to warrant splitting
+  * You can combine related topics into one module if they're closely related
+  * The goal is logical, pedagogically sound module organization - not a strict one-to-one mapping
   * The template already has navigation - OpenHands just needs to populate the modules array
 - **CRITICAL: Plan how to map note content to template structure:**
   * Main explanation text → `explanation` field
@@ -200,7 +201,7 @@ PLANNING GUIDELINES (IMPORTANT):
   1 boss challenge (can be in `interactiveElement`).
 - YouTube is supportive: assign video IDs to appropriate modules based on topic relevance.
 - Ensure the OpenHands build prompt is actionable: specify exact content for each module's fields, what HTML to put in `interactiveElement`, and how to structure the modules array.
-- **In the openhands_build_prompt, explicitly list ALL modules that must be created and specify the content for each module's fields (title, explanation, keyPoints, timeline, funFact, interactiveElement, videoId).**
+- **In the openhands_build_prompt, explicitly list ALL modules that should be created (as many as appropriate for the content) and specify the content for each module's fields (title, explanation, keyPoints, timeline, funFact, interactiveElement, videoId).**
 
 NOW DO THE TASK USING:
 USER REQUIREMENTS:
