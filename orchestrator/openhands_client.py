@@ -271,8 +271,7 @@ class LocalSubprocessOpenHandsClient(OpenHandsClient):
         
         # Run OpenHands via Python SDK
         try:
-            from openhands.sdk import LLM, Agent, Conversation, Workspace
-            from openhands.tools import Tool
+            from openhands.sdk import LLM, Agent, Conversation, Workspace, Tool
             from openhands.tools.file_editor import FileEditorTool
             from openhands.tools.terminal import TerminalTool
             from openhands.tools.preset.default import get_default_agent
@@ -642,8 +641,7 @@ class LocalSubprocessOpenHandsClient(OpenHandsClient):
             # Import OpenHands SDK
             from openhands.sdk import LLM, Agent, Conversation, Workspace, Tool
             from openhands.tools.browser_use import BrowserToolSet
-            from openhands.sdk import LLM, Agent, Conversation, Workspace
-            from openhands.tools import Tool
+            from openhands.sdk import LLM, Agent, Conversation, Workspace, Tool
             from openhands.tools.file_editor import FileEditorTool
             from openhands.tools.terminal import TerminalTool
             from openhands.tools.preset.default import get_default_agent
