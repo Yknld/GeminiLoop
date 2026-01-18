@@ -603,10 +603,14 @@ class AgenticEvaluator(GeminiEvaluator):
                         tested_items = []
                         for prev_step in self.exploration_log[-3:]:  # Last 3 steps
                             tool_name = prev_step.get('tool', 'unknown')
-                            if tool_name not in ['browser_get_state', 'browser_dom_snapshot']:
+                            if tool_name not in ['browser_get_state', 'browser_dom_snapshot', 'browser_evaluate']:
                                 tested_items.append(tool_name)
                         if tested_items:
                             steps_summary += f"Recently tested: {', '.join(set(tested_items))}. "
+                    
+                    # Count how many actual interactions (not just checks)
+                    interaction_count = len([s for s in self.exploration_log 
+                                           if s.get('tool') in ['browser_click', 'browser_type', 'browser_scroll']])
                     
                     response_data = {
                         "success": bool(tool_result.get("success", False)),
@@ -614,7 +618,9 @@ class AgenticEvaluator(GeminiEvaluator):
                         "dom_changed": bool(verification["dom_changed"]),
                         "text_changed": bool(verification["text_changed"]),
                         "new_errors": int(len(verification["new_console_errors"])),
-                        "context": steps_summary + "Use finish_exploration when you've tested everything."
+                        "context": steps_summary + f"Actual interactions: {interaction_count}. " + 
+                                 f"**If you've tested all visible interactive elements, call finish_exploration NOW.** " +
+                                 f"Don't keep exploring - finish when done testing!"
                     }
                     
                     # Create function response parts for ALL function calls
@@ -723,16 +729,32 @@ class AgenticEvaluator(GeminiEvaluator):
 - browser_dom_snapshot: Get detailed interactive element list
 - finish_exploration: Signal done (include detailed summary of findings)
 
+**CRITICAL: USE THE PROVIDED INTERACTIVE ELEMENTS LIST**
+- Each observation includes an "Interactive Elements" list with selectors and text
+- **DO NOT use browser_evaluate to find elements** - the list is already provided!
+- Use the selectors from the list directly with browser_click, browser_type, etc.
+- Only use browser_evaluate if you need to check state/values AFTER interacting
+
 **Testing Strategy:**
-1. OBSERVE: Look at the screenshot, read visible text, check interactive elements list
-2. ACT: Choose a relevant action (click button, type input, scroll, etc.)
+1. OBSERVE: Look at the screenshot AND the provided "Interactive Elements" list (don't query for it again!)
+2. ACT: Pick an element from the list and interact with it (click, type, scroll to it)
 3. VERIFY: After action, check verification signals:
    - Did DOM change?
    - Did visible text change?
    - New console errors?
    - Dialogs detected?
 4. DOCUMENT: Note what works and what doesn't
-5. REPEAT: Continue until all features tested
+5. REPEAT: Test each interactive element from the list, then finish
+
+**CRITICAL: Test Interactive Elements Thoroughly (USE THE PROVIDED LIST):**
+- The observation already includes an "Interactive Elements" list - USE IT, don't query for it again!
+- For each element in the list: CLICK buttons, TYPE in inputs, interact with selects
+- If you see quiz questions, CLICK the answer buttons and verify feedback appears
+- If you see input fields, TYPE into them and verify they accept input
+- If you see "Check Answer" or "Submit" buttons, CLICK them and verify results appear
+- If you see calculators, TYPE numbers and verify calculations work
+- If you see placeholder text like "Interactive content will be placed here", this is a CRITICAL FAILURE - report it
+- **After testing all elements in the current list, call finish_exploration - don't keep exploring!**
 
 **Evaluation Policy - Harsh but Fair:**
 - ✅ Feature works if: You interacted AND saw expected changes (visual/DOM/text)
@@ -741,16 +763,13 @@ class AgenticEvaluator(GeminiEvaluator):
 - Dialog detection: System dialogs (alert/confirm/prompt) are logged and indicate poor UX
 - Console errors: Count as robustness failures
 
-**When to Finish:**
-- Test every feature mentioned in the task
-- Verify each interactive element
-- Scroll entire page
-- Try edge cases if time permits
-- Then call finish_exploration with:
-  - What you tested
-  - What works (with evidence)
-  - What fails (with evidence)
-  - What you couldn't test (with reasons)
+**When to Finish (CALL finish_exploration IMMEDIATELY WHEN DONE):**
+- You've tested all interactive elements from the provided list
+- You've scrolled through the entire page
+- You've tested navigation (Next/Previous buttons if present)
+- You've tested any quiz/input elements if present
+- **THEN IMMEDIATELY call finish_exploration** - don't keep exploring!
+- **Typical course page: 5-15 steps is enough. If you've tested everything visible, FINISH.**
 
 **Memory & Context:**
 - You maintain full conversation history - you can see all previous actions and their results
@@ -836,14 +855,43 @@ Begin systematic testing. You have vision - use it!"""
         
         state = {}
         
-        # Take screenshot
+        # Take screenshot with retry logic for timeout resilience
         screenshot_filename = f"step_{step + 1}_{phase}.png"
         # Ensure artifacts_dir exists
         artifacts_dir.mkdir(parents=True, exist_ok=True)
         screenshot_path = artifacts_dir / screenshot_filename
-        await mcp_client.screenshot(str(screenshot_path))
-        state["screenshot_path"] = str(screenshot_path)
-        logger.debug(f"   Screenshot saved: {screenshot_path}")
+        
+        # Retry screenshot up to 2 times if it times out
+        screenshot_success = False
+        for attempt in range(3):
+            try:
+                await mcp_client.screenshot(str(screenshot_path))
+                state["screenshot_path"] = str(screenshot_path)
+                logger.debug(f"   Screenshot saved: {screenshot_path}")
+                screenshot_success = True
+                break
+            except Exception as e:
+                error_msg = str(e)
+                if "Timeout" in error_msg or "timeout" in error_msg.lower():
+                    if attempt < 2:
+                        logger.warning(f"   Screenshot timeout (attempt {attempt + 1}/3), retrying...")
+                        await asyncio.sleep(0.5)  # Brief pause before retry
+                        continue
+                    else:
+                        logger.error(f"   Screenshot failed after 3 attempts: {e}")
+                        # Continue without screenshot - don't fail the entire step
+                        state["screenshot_path"] = None
+                        screenshot_success = False
+                        break
+                else:
+                    # Non-timeout error, don't retry
+                    logger.error(f"   Screenshot error (non-timeout): {e}")
+                    state["screenshot_path"] = None
+                    screenshot_success = False
+                    break
+        
+        if not screenshot_success:
+            logger.warning(f"   ⚠️  Screenshot unavailable for step {step + 1} ({phase}), continuing without it")
         
         # Get page visible text - ROBUST: handle non-string returns
         try:
@@ -1269,6 +1317,34 @@ Begin systematic testing. You have vision - use it!"""
                 const has_timeline = document.querySelector('[id*="timeline"], [class*="timeline"]') !== null;
                 const has_fun_fact = document.querySelector('[id*="fun"], [class*="fun-fact"], [class*="funfact"]') !== null;
                 
+                // CRITICAL: Check for placeholder text in interactive elements
+                const interactive_containers = document.querySelectorAll('[id*="interactive"], [class*="interactive"], [id*="activity"], [class*="activity"]');
+                let has_placeholder_text = false;
+                let placeholder_text_found = '';
+                for (const container of interactive_containers) {
+                    const text = container.innerText || container.textContent || '';
+                    if (text.includes('Interactive content will be placed here') || 
+                        text.includes('will be placed here') ||
+                        text.includes('quizzes, exercises, interactive games, etc.') ||
+                        (text.trim().length < 50 && text.includes('placeholder'))) {
+                        has_placeholder_text = true;
+                        placeholder_text_found = text.substring(0, 100);
+                        break;
+                    }
+                }
+                // Also check if interactiveElement in modules array has placeholder
+                let modules_has_placeholder = false;
+                for (const script of scripts) {
+                    const text = script.textContent || '';
+                    if (text.includes('interactiveElement') && 
+                        (text.includes('Interactive content will be placed here') || 
+                         text.includes('will be placed here') ||
+                         text.includes('quizzes, exercises, interactive games, etc.'))) {
+                        modules_has_placeholder = true;
+                        break;
+                    }
+                }
+                
                 // Check if it's just a simple quiz (no template structure)
                 const is_simple_quiz = !has_module_selector && !has_prev_next && !has_audio_controls && !has_notes && !has_chatbot && !has_modules_array;
                 
@@ -1287,7 +1363,9 @@ Begin systematic testing. You have vision - use it!"""
                     has_timeline_section: has_timeline,
                     has_fun_fact_section: has_fun_fact,
                     is_simple_quiz: is_simple_quiz,
-                    template_compliant: has_module_selector && has_audio_controls && has_modules_array
+                    has_placeholder_text: has_placeholder_text || modules_has_placeholder,
+                    placeholder_text_found: placeholder_text_found,
+                    template_compliant: has_module_selector && has_audio_controls && has_modules_array && !(has_placeholder_text || modules_has_placeholder)
                 };
             })()
             """
@@ -1332,7 +1410,22 @@ Begin systematic testing. You have vision - use it!"""
         # Add template structure compliance check results
         template_section = ""
         if template_compliance:
-            if template_compliance.get('is_simple_quiz'):
+            # Check for placeholder text FIRST (most critical)
+            if template_compliance.get('has_placeholder_text'):
+                placeholder_text = template_compliance.get('placeholder_text_found', '')
+                template_section = f"""
+**❌ CRITICAL VIOLATION - Placeholder Text Detected:**
+The interactive elements contain PLACEHOLDER TEXT instead of actual interactive content!
+
+**Found Placeholder Text:**
+"{placeholder_text}"
+
+**THIS IS A CRITICAL FAILURE - Interactive elements must contain ACTUAL working HTML/JavaScript (quizzes, games, calculators), NOT placeholder text.**
+**The requirement explicitly states: "DO NOT leave placeholder text in interactiveElement - create actual working interactive content."**
+**Score must be heavily penalized (deduct at least 50 points) for placeholder text.**
+**This indicates the content was NOT properly generated - OpenHands left the template placeholder instead of creating real interactive content.**
+"""
+            elif template_compliance.get('is_simple_quiz'):
                 template_section = f"""
 **❌ CRITICAL VIOLATION - Template Structure Missing:**
 The page appears to be a simple quiz page, NOT using the required template structure.

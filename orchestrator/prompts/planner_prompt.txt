@@ -39,7 +39,7 @@ The template is a single-page HTML application with a module-based architecture.
 ```javascript
 {
   title: "Module Title",
-  videoId: "YouTube video ID (or null)",
+  videoId: "YouTube video ID ",
   explanation: "Main explanatory text content",
   keyPoints: [
     { text: "Key point text", audioId: "keypoint-0" }
@@ -184,7 +184,7 @@ Return a JSON object with EXACT keys below. No extra keys. No markdown.
       "reduced motion support"
     ]
   },
-  "openhands_build_prompt": "**MANDATORY FIRST STEPS - DO THESE BEFORE ANYTHING ELSE:**\n1. There is a file called 'template.html' in your workspace. Find it and read it completely.\n2. Copy template.html to index.html (this becomes your working file).\n3. Understand the template structure: it has a `modules` array, navigation system, audio controls, notes panel, and chatbot.\n4. DO NOT create a new HTML file from scratch. You MUST start with the template.\n\n**THEN, populate the template with content:**\n- Populate the `modules` array with content from the notes, creating as many module objects as appropriate based on the content structure\n- For each module, specify: title, videoId (from YouTube links if provided), explanation text, keyPoints array, timeline array (if applicable), funFact, interactiveElement HTML (quizzes/games/simulations)\n- Preserve template structure: navigation system, module loading functions, audio controls, notes panel, chatbot\n- Colors and minor styling changes are OK but core structure must remain\n- Math rendering: KaTeX or MathJax\n- Responsive: Mobile 375px and Tablet 768px\n- TTS AUDIO GENERATION: Use Google Cloud Text-to-Speech API (API key: AIzaSyDVoAIPakAXm0wYkmuTM-AlFiufWzo93BI) via Python script (google-cloud-texttospeech library) to generate MP3 audio files for all text content (explanation, keyPoints, timeline events, funFact), save files with naming pattern `audio-{module-id}-{section}-{index}.mp3`, populate audioSources object in each module, if audio generation fails for any section remove/hide the audio button for that section\n\n**CRITICAL REMINDERS:**\n(1) You MUST use template.html as starting point - DO NOT create from scratch\n(2) You MUST create ALL modules listed in course_overview - do not stop after one module\n(3) Template navigation system and functions MUST be preserved\n(4) Generate audio files using terminal access and Google TTS API, update audioSources accordingly"
+  "openhands_build_prompt": "**MANDATORY FIRST STEPS - DO THESE BEFORE ANYTHING ELSE:**\n1. There is a file called 'template.html' in your workspace. Find it and read it completely.\n2. Copy template.html to index.html (this becomes your working file).\n3. Understand the template structure: it has a `modules` array, navigation system, audio controls, notes panel, and chatbot.\n4. DO NOT create a new HTML file from scratch. You MUST start with the template.\n\n**THEN, populate the template with content:**\n- Populate the `modules` array with content from the notes, creating as many module objects as appropriate based on the content structure\n- For each module, specify: title, videoId (from YouTube links if provided), explanation text, keyPoints array, timeline array (if applicable), funFact, interactiveElement HTML (quizzes/games/simulations)\n- **CRITICAL: interactiveElement MUST contain ACTUAL working HTML/JavaScript, NOT placeholder text**\n  * Find the placeholder text \"Interactive content will be placed here (quizzes, exercises, interactive games, etc.)\"\n  * REPLACE it with actual interactive content: working quiz questions, interactive calculators, drag-and-drop exercises, etc.\n  * For geometry: Create quiz questions about formulas, interactive calculators for circumference/area, coordinate geometry calculators\n  * The interactiveElement must be FULL HTML with buttons, inputs, JavaScript functions, and feedback (correct/incorrect messages)\n  * DO NOT leave the placeholder - create functional, interactive content that users can actually use\n- Preserve template structure: navigation system, module loading functions, audio controls, notes panel, chatbot\n- Colors and minor styling changes are OK but core structure must remain\n- Math rendering: KaTeX or MathJax\n- Responsive: Mobile 375px and Tablet 768px\n- TTS AUDIO GENERATION: Use Google Cloud Text-to-Speech API (API key: AIzaSyDVoAIPakAXm0wYkmuTM-AlFiufWzo93BI) via Python script (google-cloud-texttospeech library) to generate MP3 audio files for all text content (explanation, keyPoints, timeline events, funFact), save files with naming pattern `audio-{module-id}-{section}-{index}.mp3`, populate audioSources object in each module, if audio generation fails for any section remove/hide the audio button for that section\n\n**CRITICAL REMINDERS:**\n(1) You MUST use template.html as starting point - DO NOT create from scratch\n(2) You MUST create ALL modules listed in course_overview - do not stop after one module\n(3) Template navigation system and functions MUST be preserved\n(4) Generate audio files using terminal access and Google TTS API, update audioSources accordingly\n(5) **MOST IMPORTANT: Replace ALL placeholder text in interactiveElement with actual working interactive content - quizzes, games, calculators, etc. DO NOT leave placeholders.**"
 }
 
 PLANNING GUIDELINES (IMPORTANT):
@@ -218,9 +218,16 @@ PLANNING GUIDELINES (IMPORTANT):
   1 interactive experience (in `interactiveElement`),
   2 checkpoint questions (can be in `interactiveElement`),
   1 boss challenge (can be in `interactiveElement`).
+- **CRITICAL: interactiveElement MUST contain ACTUAL working HTML/JavaScript, NOT placeholder text.**
+  * DO NOT leave "Interactive content will be placed here" placeholder
+  * MUST create functional quizzes, games, simulations, or interactive exercises
+  * For geometry: Create interactive calculators, drag-and-drop diagrams, quiz questions with feedback
+  * For probability: Create coin/dice simulators, interactive probability calculators
+  * The interactiveElement field must be FULL HTML with working buttons, inputs, calculations, and feedback
 - YouTube is supportive: assign video IDs to appropriate modules based on topic relevance.
 - Ensure the OpenHands build prompt is actionable: specify exact content for each module's fields, what HTML to put in `interactiveElement`, and how to structure the modules array.
 - **In the openhands_build_prompt, explicitly list ALL modules that should be created (as many as appropriate for the content) and specify the content for each module's fields (title, explanation, keyPoints, timeline, funFact, interactiveElement, videoId).**
+- **In the openhands_build_prompt, explicitly state: "DO NOT leave placeholder text in interactiveElement - create actual working interactive content with HTML, JavaScript, buttons, inputs, and feedback."**
 
 NOW DO THE TASK USING:
 USER REQUIREMENTS:

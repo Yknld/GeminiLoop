@@ -302,20 +302,76 @@ class MCPServer {
     };
   }
   
-  async screenshot(fullPage = true, filename) {
+  async screenshot(fullPage = true, filename, timeout = 10000) {
     this.log(`Taking screenshot: ${filename}`);
     
-    await this.page.screenshot({
-      path: filename,
-      fullPage
-    });
-    
-    this.log('Screenshot saved');
-    
-    return {
-      success: true,
-      path: filename
-    };
+    try {
+      // Wait for page to be in a stable state before screenshot
+      // This helps avoid font loading timeouts
+      try {
+        await this.page.waitForLoadState('networkidle', { timeout: 5000 }).catch(() => {
+          // If networkidle times out, just proceed - page might be stable enough
+          this.log('Network idle wait timed out, proceeding with screenshot');
+        });
+      } catch (e) {
+        // Ignore networkidle timeout, proceed with screenshot
+      }
+      
+      // Take screenshot with timeout
+      await this.page.screenshot({
+        path: filename,
+        fullPage,
+        timeout: timeout,
+        animations: 'disabled' // Disable animations for faster screenshots
+      });
+      
+      this.log('Screenshot saved');
+      
+      return {
+        success: true,
+        path: filename
+      };
+    } catch (error) {
+      // If screenshot fails due to timeout, try again with shorter timeout
+      if (error.message.includes('Timeout') || error.message.includes('timeout')) {
+        this.log(`Screenshot timeout, retrying with shorter timeout (5s)...`);
+        try {
+          // Don't wait for networkidle on retry, just take screenshot quickly
+          await this.page.screenshot({
+            path: filename,
+            fullPage,
+            timeout: 5000,
+            animations: 'disabled'
+          });
+          this.log('Screenshot saved (retry)');
+          return {
+            success: true,
+            path: filename
+          };
+        } catch (retryError) {
+          this.log(`Screenshot retry failed: ${retryError.message}`);
+          // Try one more time with very short timeout (2s) - just capture what's there
+          try {
+            this.log(`Final retry with minimal timeout (2s)...`);
+            await this.page.screenshot({
+              path: filename,
+              fullPage,
+              timeout: 2000,
+              animations: 'disabled'
+            });
+            this.log('Screenshot saved (final retry)');
+            return {
+              success: true,
+              path: filename
+            };
+          } catch (finalError) {
+            this.log(`All screenshot attempts failed: ${finalError.message}`);
+            throw finalError;
+          }
+        }
+      }
+      throw error;
+    }
   }
   
   async snapshot() {

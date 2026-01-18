@@ -195,7 +195,14 @@ async def handler(job: Dict[str, Any]) -> Dict[str, Any]:
                 }
                 
                 # Add screenshots for this iteration
-                screenshots_dir = Path(f"/runpod-volume/runs/{state.result.run_id}/artifacts/screenshots/iter_{iter_result.iteration}")
+                # Use state.result.artifacts_dir if available, otherwise construct path (note: double "runs" in path)
+                if state.result.artifacts_dir:
+                    artifacts_base = Path(state.result.artifacts_dir)
+                else:
+                    # Fallback: construct path with double "runs" (base_dir/runs/run_id)
+                    artifacts_base = Path(f"/runpod-volume/runs/runs/{state.result.run_id}/artifacts")
+                
+                screenshots_dir = artifacts_base / f"screenshots/iter_{iter_result.iteration}"
                 logger.info(f"Looking for screenshots in: {screenshots_dir}")
                 logger.info(f"Directory exists: {screenshots_dir.exists()}")
                 
@@ -256,14 +263,30 @@ async def handler(job: Dict[str, Any]) -> Dict[str, Any]:
         }
         
         # Get screenshot paths
-        screenshots_dir = Path(f"/runpod-volume/runs/{state.result.run_id}/artifacts/screenshots")
+        # Use state.result.artifacts_dir if available, otherwise construct path (note: double "runs" in path)
+        if state.result.artifacts_dir:
+            artifacts_base = Path(state.result.artifacts_dir)
+        else:
+            # Fallback: construct path with double "runs" (base_dir/runs/run_id)
+            artifacts_base = Path(f"/runpod-volume/runs/runs/{state.result.run_id}/artifacts")
+        
+        screenshots_dir = artifacts_base / "screenshots"
         if screenshots_dir.exists():
             screenshot_files = list(screenshots_dir.rglob("*.png"))
-            response["screenshots"] = [str(f.relative_to("/runpod-volume/runs")) for f in screenshot_files]
+            # Store screenshot paths relative to /runpod-volume/runs (single "runs")
+            # Path structure: /runpod-volume/runs/runs/{run_id}/artifacts/screenshots/...
+            # We want: runs/{run_id}/artifacts/screenshots/...
+            try:
+                # Try relative to /runpod-volume/runs (single)
+                base_path = Path("/runpod-volume/runs")
+                response["screenshots"] = [str(f.relative_to(base_path)) for f in screenshot_files]
+            except ValueError:
+                # Fallback: use filename if relative calculation fails
+                response["screenshots"] = [f.name for f in screenshot_files]
         
         # Get video paths and encode videos
         # Check multiple possible locations for videos
-        artifacts_dir = Path(f"/runpod-volume/runs/{state.result.run_id}/artifacts")
+        artifacts_dir = artifacts_base
         video_files = []
         
         # Check screenshots directory (legacy location)
@@ -283,8 +306,19 @@ async def handler(job: Dict[str, Any]) -> Dict[str, Any]:
         if video_files:
             # Remove duplicates
             video_files = list(set(video_files))
-            response["videos"] = [str(f.relative_to("/runpod-volume/runs")) for f in video_files]
-            response["artifacts"]["videos"] = [str(f.relative_to("/runpod-volume/runs")) for f in video_files]
+            # Store video paths relative to /runpod-volume/runs (single "runs")
+            # Path structure: /runpod-volume/runs/runs/{run_id}/artifacts/screenshots/...
+            # We want: runs/{run_id}/artifacts/screenshots/...
+            try:
+                # Try relative to /runpod-volume/runs (single)
+                base_path = Path("/runpod-volume/runs")
+                video_relative_paths = [str(f.relative_to(base_path)) for f in video_files]
+            except ValueError:
+                # Fallback: use filename if relative calculation fails
+                video_relative_paths = [f.name for f in video_files]
+            
+            response["videos"] = video_relative_paths
+            response["artifacts"]["videos"] = video_relative_paths
             
             logger.info(f"📹 Found {len(video_files)} video file(s)")
             
@@ -292,13 +326,14 @@ async def handler(job: Dict[str, Any]) -> Dict[str, Any]:
             response["videos_data"] = {}
             for video_file in video_files:
                 try:
-                    relative_path = str(video_file.relative_to("/runpod-volume/runs"))
+                    # Use filename as key for videos_data (simpler and more reliable)
+                    video_filename = video_file.name
                     encoded_video = _encode_video_base64(video_file)
                     if encoded_video:
-                        response["videos_data"][relative_path] = encoded_video
-                        logger.info(f"✅ Encoded video: {relative_path} ({video_file.stat().st_size / (1024*1024):.1f}MB)")
+                        response["videos_data"][video_filename] = encoded_video
+                        logger.info(f"✅ Encoded video: {video_filename} ({video_file.stat().st_size / (1024*1024):.1f}MB)")
                     else:
-                        logger.warning(f"⚠️  Video too large or failed to encode: {relative_path}")
+                        logger.warning(f"⚠️  Video too large or failed to encode: {video_filename}")
                 except Exception as e:
                     logger.warning(f"⚠️  Error encoding video {video_file}: {e}")
         else:
@@ -317,7 +352,12 @@ async def handler(job: Dict[str, Any]) -> Dict[str, Any]:
                         pass
         
         # Add planner output to response
-        artifacts_dir = Path(f"/runpod-volume/runs/{state.result.run_id}/artifacts")
+        # Use state.result.artifacts_dir if available, otherwise construct path (note: double "runs" in path)
+        if state.result.artifacts_dir:
+            artifacts_dir = Path(state.result.artifacts_dir)
+        else:
+            # Fallback: construct path with double "runs" (base_dir/runs/run_id)
+            artifacts_dir = Path(f"/runpod-volume/runs/runs/{state.result.run_id}/artifacts")
         planner_files = {
             "openhands_prompt.txt": "planner_prompt",
             "planner_output.json": "planner_output",
