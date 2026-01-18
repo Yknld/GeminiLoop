@@ -19,9 +19,11 @@ Your job:
 
 **MANDATORY: Your openhands_build_prompt MUST start with explicit instructions to:**
 - Read the index.html file that is already in the workspace (this is the template)
-- Edit the existing index.html file directly
+- **CRITICAL: Check if index.html exists before modifying it - if it exists, use `edit` or `write` command, NEVER use `create`**
+- **The file path is index.html (relative to workspace) - be aware of the workspace path structure**
+- Edit the existing index.html file directly using `edit` or `write` command
 - Populate the modules array in the template
-- DO NOT create a new HTML file from scratch
+- DO NOT create a new HTML file from scratch - the file already exists
 
 CONTEXT:
 - We are generating a web-based course from raw notes using a pre-existing template.
@@ -51,7 +53,7 @@ This is a DESCRIPTION of the structure - you describe what should go in each fie
 - keyPoints: Describe what key points should be included (list them as descriptions)
 - timeline: Describe what timeline events should be included (if applicable)
 - funFact: Describe what interesting fact should be included
-- interactiveElement: Describe what interactive activities should be created (e.g., "A quiz with 5 questions about circle formulas" - NOT the actual HTML/JavaScript code)
+- interactiveElement: Describe what FUN interactive activities should be created (e.g., "Circle Calculator where users input radius and see instant calculations" - NOT quizzes/tests, NOT the actual HTML/JavaScript code)
 - audioSources: Describe what audio files should be generated (e.g., "Generate audio for explanation, all key points, and fun fact")
 
 **REMEMBER: You are DESCRIBING the structure, not writing the code. Use natural language to explain what each field should contain.**
@@ -125,7 +127,7 @@ Return a JSON object with EXACT keys below. No extra keys. No markdown.
         "interactive_experiences": [
           {
             "name": "...",
-            "type": "diagram|simulation|manipulative|game|quiz|lab",
+            "type": "calculator|simulation|manipulative|game|diagram|lab",
             "what_user_does": ["...", "..."],
             "what_user_sees": ["...", "..."],
             "success_signal": "how the user knows it worked",
@@ -180,7 +182,7 @@ Return a JSON object with EXACT keys below. No extra keys. No markdown.
       "reduced motion support"
     ]
   },
-  "openhands_build_prompt": "**MANDATORY FIRST STEPS - DO THESE BEFORE ANYTHING ELSE:**\n1. There is already an index.html file in your workspace (this is the template). Read it completely.\n2. Edit the existing index.html file directly - DO NOT create a new file.\n3. Understand the template structure: it has a `modules` array, navigation system, audio controls, notes panel, and chatbot.\n4. DO NOT create a new HTML file from scratch. You MUST edit the existing index.html.\n\n**THEN, populate the template with content:**\n- Populate the `modules` array with content from the notes, creating as many module objects as appropriate based on the content structure\n- For each module, specify: title, videoId (from YouTube links if provided), explanation text, keyPoints array, timeline array (if applicable), funFact, interactiveElement HTML (quizzes/games/simulations)\n- **CRITICAL: interactiveElement MUST contain ACTUAL working HTML/JavaScript, NOT placeholder text**\n  * Find the placeholder text \"Interactive content will be placed here (quizzes, exercises, interactive games, etc.)\"\n  * REPLACE it with actual interactive content: working quiz questions, interactive calculators, drag-and-drop exercises, etc.\n  * For geometry: Create quiz questions about formulas, interactive calculators for circumference/area, coordinate geometry calculators\n  * The interactiveElement must be FULL HTML with buttons, inputs, JavaScript functions, and feedback (correct/incorrect messages)\n  * DO NOT leave the placeholder - create functional, interactive content that users can actually use\n- Preserve template structure: navigation system, module loading functions, audio controls, notes panel, chatbot\n- Colors and minor styling changes are OK but core structure must remain\n- Math rendering: KaTeX or MathJax\n- Responsive: Mobile 375px and Tablet 768px\n- TTS AUDIO GENERATION: Use Google Cloud Text-to-Speech API (API key: AIzaSyDVoAIPakAXm0wYkmuTM-AlFiufWzo93BI) via Python script (google-cloud-texttospeech library) to generate MP3 audio files for all text content (explanation, keyPoints, timeline events, funFact), save files with naming pattern `audio-{module-id}-{section}-{index}.mp3`, populate audioSources object in each module, if audio generation fails for any section remove/hide the audio button for that section\n\n**CRITICAL REMINDERS:**\n(1) You MUST use template.html as starting point - DO NOT create from scratch\n(2) You MUST create ALL modules listed in course_overview - do not stop after one module\n(3) Template navigation system and functions MUST be preserved\n(4) Generate audio files using terminal access and Google TTS API, update audioSources accordingly\n(5) **MOST IMPORTANT: Replace ALL placeholder text in interactiveElement with actual working interactive content - quizzes, games, calculators, etc. DO NOT leave placeholders.**"
+  "openhands_build_prompt": "**MANDATORY FIRST STEPS - DO THESE BEFORE ANYTHING ELSE:**\n1. There is already an index.html file in your workspace (this is the template). The file path is: index.html (in your workspace directory).\n2. **CRITICAL FILE OPERATION RULES:**\n   * ALWAYS check if a file exists before attempting to modify it\n   * If index.html already exists (which it does), you MUST use the `edit` or `write` command, NEVER use `create`\n   * The `create` command will FAIL if the file already exists - you will get an error: \"File already exists. Cannot overwrite files using command create\"\n   * To edit an existing file, use: `file_editor` tool with `edit` operation, or use `write` tool to overwrite\n   * The workspace path is: /runpod-volume/runs/runs/{run_id}/workspace/index.html (or just index.html relative to workspace)\n3. Read the existing index.html file completely to understand its structure.\n4. Understand the template structure: it has a `modules` array, navigation system, audio controls, notes panel, and chatbot.\n5. DO NOT create a new HTML file from scratch. You MUST edit the existing index.html using `edit` or `write` command.\n\n**THEN, populate the template with content:**\n- Populate the `modules` array with content from the notes, creating as many module objects as appropriate based on the content structure\n- For each module, specify: title, videoId (from YouTube links if provided), explanation text, keyPoints array, timeline array (if applicable), funFact, interactiveElement HTML (quizzes/games/simulations)\n- **CRITICAL: interactiveElement MUST contain ACTUAL working HTML/JavaScript, NOT placeholder text**\n  * Find the placeholder text \"Interactive content will be placed here (quizzes, exercises, interactive games, etc.)\"\n  * REPLACE it with actual interactive content: working quiz questions, interactive calculators, drag-and-drop exercises, etc.\n  * For geometry: Create quiz questions about formulas, interactive calculators for circumference/area, coordinate geometry calculators\n  * The interactiveElement must be FULL HTML with buttons, inputs, JavaScript functions, and feedback (correct/incorrect messages)\n  * DO NOT leave the placeholder - create functional, interactive content that users can actually use\n- Preserve template structure: navigation system, module loading functions, audio controls, notes panel, chatbot\n- Colors and minor styling changes are OK but core structure must remain\n- Math rendering: KaTeX or MathJax\n- Responsive: Mobile 375px and Tablet 768px\n- TTS AUDIO GENERATION: Use Google Cloud Text-to-Speech API (API key: AIzaSyDVoAIPakAXm0wYkmuTM-AlFiufWzo93BI) via Python script (google-cloud-texttospeech library) to generate MP3 audio files for all text content (explanation, keyPoints, timeline events, funFact), save files with naming pattern `audio-{module-id}-{section}-{index}.mp3`, populate audioSources object in each module, if audio generation fails for any section remove/hide the audio button for that section\n\n**CRITICAL REMINDERS:**\n(1) You MUST use template.html as starting point - DO NOT create from scratch\n(2) **FILE PATH AWARENESS: The file path is index.html in your workspace. If you see a full path like /runpod-volume/runs/runs/.../workspace/index.html, use just \"index.html\" as the relative path, or check what the actual workspace path is**\n(3) **NEVER use `create` command on index.html - it already exists. Always use `edit` or `write` command**\n(4) You MUST create ALL modules listed in course_overview - do not stop after one module\n(5) Template navigation system and functions MUST be preserved\n(6) Generate audio files using terminal access and Google TTS API, update audioSources accordingly\n(7) **MOST IMPORTANT: Replace ALL placeholder text in interactiveElement with actual working interactive content - quizzes, games, calculators, etc. DO NOT leave placeholders.**"
 }
 
 PLANNING GUIDELINES (IMPORTANT):
@@ -196,7 +198,7 @@ PLANNING GUIDELINES (IMPORTANT):
   * Important concepts → `keyPoints` array
   * Historical events/chronology → `timeline` array (if applicable, otherwise can be empty)
   * Interesting facts → `funFact` field
-  * Interactive activities (quizzes, games, simulations) → `interactiveElement` HTML string
+  * Interactive activities (calculators, games, simulations, manipulatives - NEVER quizzes/tests) → `interactiveElement` HTML string
   * YouTube videos → `videoId` field (extract ID from URL)
 - **CRITICAL: Text-to-Speech (TTS) Audio Generation:**
   * Use Google Cloud Text-to-Speech API to generate audio files for all text content
@@ -214,12 +216,15 @@ PLANNING GUIDELINES (IMPORTANT):
   1 interactive experience (in `interactiveElement`),
   2 checkpoint questions (can be in `interactiveElement`),
   1 boss challenge (can be in `interactiveElement`).
-- **CRITICAL: interactiveElement MUST contain ACTUAL working HTML/JavaScript, NOT placeholder text.**
+- **CRITICAL: interactiveElement MUST contain ACTUAL working HTML/JavaScript, NOT placeholder text, NEVER quizzes/tests.**
   * DO NOT leave "Interactive content will be placed here" placeholder
-  * MUST create functional quizzes, games, simulations, or interactive exercises
-  * For geometry: Create interactive calculators, drag-and-drop diagrams, quiz questions with feedback
-  * For probability: Create coin/dice simulators, interactive probability calculators
-  * The interactiveElement field must be FULL HTML with working buttons, inputs, calculations, and feedback
+  * **FORBIDDEN**: Quizzes, tests, multiple-choice questions, true/false questions, fill-in-the-blank tests
+  * **REQUIRED**: FUN interactive activities - calculators, games, simulations, manipulatives, visual tools
+  * MUST create functional, engaging, game-like interactive experiences that users enjoy
+  * For geometry: Create interactive calculators, drag-and-drop diagram manipulators, visual coordinate tools
+  * For probability: Create coin/dice simulators, interactive probability calculators, visual probability explorers
+  * The interactiveElement field must be FULL HTML with working buttons, inputs, calculations, and visual feedback
+  * Activities should be FUN and engaging, not test-like or quiz-like
 - YouTube is supportive: assign video IDs to appropriate modules based on topic relevance.
 - Ensure the OpenHands build prompt is actionable: specify exact content for each module's fields, what HTML to put in `interactiveElement`, and how to structure the modules array.
 - **In the openhands_build_prompt, explicitly list ALL modules that should be created (as many as appropriate for the content) and specify the content for each module's fields (title, explanation, keyPoints, timeline, funFact, interactiveElement, videoId).**
