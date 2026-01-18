@@ -387,16 +387,44 @@ async def handler(job: Dict[str, Any]) -> Dict[str, Any]:
                         artifacts_dest.mkdir(exist_ok=True)
                         
                         # Copy generated HTML files
+                        # Check multiple locations: site_dir, workspace_dir, and project_root
+                        html_dest = artifacts_dest / "generated"
+                        html_dest.mkdir(exist_ok=True)
+                        html_copied = False
+                        
+                        # Try site_dir first
                         if state.site_dir.exists():
-                            html_dest = artifacts_dest / "generated"
-                            html_dest.mkdir(exist_ok=True)
                             for file in state.site_dir.rglob("*"):
-                                if file.is_file():
+                                if file.is_file() and file.suffix in [".html", ".css", ".js"]:
                                     rel_path = file.relative_to(state.site_dir)
                                     dest = html_dest / rel_path
                                     dest.parent.mkdir(parents=True, exist_ok=True)
                                     shutil.copy2(file, dest)
-                                    logger.info(f"   Copied: {rel_path}")
+                                    logger.info(f"   Copied from site_dir: {rel_path}")
+                                    html_copied = True
+                        
+                        # Also check workspace_dir for index.html
+                        if state.workspace_dir.exists():
+                            workspace_html = state.workspace_dir / "index.html"
+                            if workspace_html.exists():
+                                dest = html_dest / "index.html"
+                                shutil.copy2(workspace_html, dest)
+                                logger.info(f"   Copied from workspace: index.html")
+                                html_copied = True
+                        
+                        # Also check project_root (from path_config)
+                        from orchestrator.paths import get_path_config
+                        path_config = get_path_config()
+                        if path_config.project_root.exists():
+                            project_html = path_config.project_root / "index.html"
+                            if project_html.exists() and not (html_dest / "index.html").exists():
+                                dest = html_dest / "index.html"
+                                shutil.copy2(project_html, dest)
+                                logger.info(f"   Copied from project_root: index.html")
+                                html_copied = True
+                        
+                        if not html_copied:
+                            logger.warning(f"   ⚠️  No HTML files found in site_dir, workspace_dir, or project_root")
                         
                         # Copy screenshots
                         screenshots_dir = artifacts_base / "screenshots"
