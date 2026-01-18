@@ -206,7 +206,7 @@ class AgenticEvaluator(GeminiEvaluator):
     - Comprehensive artifacts saved per step
     """
     
-    def __init__(self, max_exploration_steps: int = 50):
+    def __init__(self, max_exploration_steps: int = 30):
         super().__init__()
         self.max_exploration_steps = max_exploration_steps
         self.exploration_log = []
