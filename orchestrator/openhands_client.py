@@ -218,9 +218,13 @@ class LocalSubprocessOpenHandsClient(OpenHandsClient):
         # Default to False (direct SDK) if not specified - remote server seems to be crashing
         # Can be enabled via OPENHANDS_USE_REMOTE_SERVER env var
         if use_remote_server is None:
-            use_remote_server = os.getenv("OPENHANDS_USE_REMOTE_SERVER", "false").lower() in ("true", "1", "yes")
+            env_value = os.getenv("OPENHANDS_USE_REMOTE_SERVER", "false")
+            use_remote_server = env_value.lower() in ("true", "1", "yes")
+            logger.info(f"   OpenHands client: use_remote_server from env: {env_value} -> {use_remote_server}")
+        else:
+            logger.info(f"   OpenHands client: use_remote_server explicitly set to: {use_remote_server}")
         self.use_remote_server = use_remote_server
-        logger.info(f"   OpenHands client: use_remote_server={self.use_remote_server}")
+        logger.info(f"   ✅ Final setting: use_remote_server={self.use_remote_server}")
         
         # Create diffs directory
         self.diffs_dir = self.artifacts_dir / "diffs"
@@ -629,9 +633,12 @@ class LocalSubprocessOpenHandsClient(OpenHandsClient):
             workspace_path_abs = workspace_path.resolve()
             logger.info(f"   OpenHands workspace: {workspace_path_abs}")
             logger.info(f"   Using OpenHands default agent with built-in planning tools")
+            logger.info(f"   🔧 Remote server setting: use_remote_server={self.use_remote_server}")
             
             # Use remote agent server pattern if enabled (better observability, future VSCode support)
+            # DISABLED BY DEFAULT - remote server is crashing, use direct SDK instead
             if self.use_remote_server:
+                logger.warning("   ⚠️  Remote server enabled - this may crash!")
                 # Use ManagedAPIServer for remote workspace
                 server_port = int(os.getenv("OPENHANDS_SERVER_PORT", "8000"))
                 with ManagedAPIServer(port=server_port, artifacts_dir=self.artifacts_dir) as server:
