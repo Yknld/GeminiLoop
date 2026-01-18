@@ -197,12 +197,14 @@ PLANNING GUIDELINES (IMPORTANT):
 - **CRITICAL: Text-to-Speech (TTS) Audio Generation:**
   * Use Google Cloud Text-to-Speech API to generate audio files for all text content
   * API Key: AIzaSyDVoAIPakAXm0wYkmuTM-AlFiufWzo93BI
+  * Create a Python script using google-cloud-texttospeech library (install via: pip install google-cloud-texttospeech)
   * Generate audio for: explanation, each keyPoint, timeline events, funFact, interactive section intro
-  * Use terminal/curl to call the TTS API and save audio files (MP3 format)
+  * Use terminal to run the Python script for each text section
+  * Audio format: MP3, voice: en-US-Neural2-D (or en-US-Standard-C if unavailable)
   * Audio file naming: `audio-{module-id}-{section}-{index}.mp3` (e.g., `audio-0-explanation.mp3`, `audio-0-keypoint-0.mp3`)
-  * Populate `audioSources` object in each module with the generated audio file paths
-  * If audio generation fails for a section, remove the audio button for that section (hide the microphone icon)
-  * Ensure UI/UX is polished - audio buttons should be visually consistent and properly positioned
+  * Populate `audioSources` object in each module with the generated audio file paths (relative paths from HTML)
+  * If audio generation fails for a section, remove/hide the audio button for that section (use CSS display: none or remove button element)
+  * Ensure UI/UX is polished - audio buttons should be visually consistent, properly positioned, and only visible when audio is available
 - The plan must not be "basic." If the notes are geometry, do interactive dragging diagrams; if probability, do simulations; if biology, do labeled interactive diagrams, etc.
 - Each module must have at least:
   1 interactive experience (in `interactiveElement`),
