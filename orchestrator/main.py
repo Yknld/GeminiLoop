@@ -21,7 +21,16 @@ from .artifacts import ArtifactsManager, create_template_html
 from .evaluator import GeminiEvaluator, EVALUATOR_MODEL_VERSION, RUBRIC_VERSION
 from .agentic_evaluator import AgenticEvaluator
 from .mcp_real_client import PlaywrightMCPClient
-from qa_browseruse_mcp.client import BrowserUseMCPClient
+try:
+    from qa_browseruse_mcp.client import BrowserUseMCPClient
+except ImportError:
+    # Fallback: try relative import if qa_browseruse_mcp is in parent directory
+    import sys
+    from pathlib import Path
+    parent_dir = Path(__file__).parent.parent
+    if str(parent_dir) not in sys.path:
+        sys.path.insert(0, str(parent_dir))
+    from qa_browseruse_mcp.client import BrowserUseMCPClient
 from .openhands_client import get_openhands_client
 from .patch_generator import generate_patch_plan
 from .github_client import get_github_client

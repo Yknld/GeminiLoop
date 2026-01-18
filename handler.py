@@ -8,12 +8,19 @@ Runs the orchestrator and returns results.
 
 import asyncio
 import os
+import sys
 import json
 import logging
 import traceback
 import base64
 from pathlib import Path
 from typing import Dict, Any, Optional
+
+# Add parent directory to Python path so qa_browseruse_mcp can be imported
+# This is needed because qa_browseruse_mcp is a sibling package to orchestrator
+parent_dir = Path(__file__).parent
+if str(parent_dir) not in sys.path:
+    sys.path.insert(0, str(parent_dir))
 
 # Import runpod first (required for serverless)
 try:
