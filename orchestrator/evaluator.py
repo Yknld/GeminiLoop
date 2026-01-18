@@ -17,6 +17,7 @@ from dataclasses import dataclass, asdict
 
 try:
     import google.generativeai as genai
+    import PIL.Image
 except ImportError:
     raise ImportError("Install google-generativeai: pip install google-generativeai")
 
@@ -246,7 +247,11 @@ class GeminiEvaluator:
         
         # Wait a moment for page to stabilize
         try:
-            await mcp_client.call_tool("browser_wait", {"duration": 1000})
+            # Try browser_wait first, fallback to browser_wait_for if needed
+            try:
+                await mcp_client.call_tool("browser_wait", {"duration": 1000})
+            except:
+                await mcp_client.call_tool("browser_wait_for", {"time": 1.0})
         except:
             pass
         
@@ -254,7 +259,8 @@ class GeminiEvaluator:
         logger.info("   Taking desktop screenshot (1440x900)...")
         try:
             desktop_path = screenshots_dir / "desktop.png"
-            await mcp_client.screenshot(desktop_path)
+            # Convert Path to string for screenshot call
+            await mcp_client.screenshot(str(desktop_path))
             observation.desktop_screenshot = str(desktop_path)
             observation.interactions_performed.append("screenshot_desktop")
         except Exception as e:
@@ -263,7 +269,11 @@ class GeminiEvaluator:
         # Get DOM snapshot
         logger.info("   Getting DOM snapshot...")
         try:
-            snapshot = await mcp_client.snapshot()
+            # Try snapshot() method first, fallback to call_tool
+            if hasattr(mcp_client, 'snapshot'):
+                snapshot = await mcp_client.snapshot()
+            else:
+                snapshot = await mcp_client.call_tool("browser_snapshot", {})
             observation.dom_snapshot = snapshot
             observation.interactions_performed.append("snapshot")
         except Exception as e:
@@ -275,17 +285,48 @@ class GeminiEvaluator:
         # Mobile responsive test
         logger.info("   Testing mobile responsiveness (375px)...")
         try:
-            # Resize to mobile
-            await mcp_client.call_tool("browser_evaluate", {
-                "expression": "window.resizeTo(375, 667)"
-            })
+            # Use proper viewport resize - try browser_resize or set_viewport_size
+            # window.resizeTo doesn't work in headless browsers
+            viewport_set = False
+            for tool_name in ["browser_resize", "browser_set_viewport", "set_viewport_size"]:
+                try:
+                    await mcp_client.call_tool(tool_name, {"width": 375, "height": 667})
+                    viewport_set = True
+                    break
+                except:
+                    continue
+            
+            # If no viewport tool available, try Playwright's evaluate to set viewport
+            if not viewport_set:
+                try:
+                    # Try to access page.setViewportSize via evaluate
+                    await mcp_client.call_tool("browser_evaluate", {
+                        "expression": """
+                        (async () => {
+                            if (window.__playwright_page) {
+                                await window.__playwright_page.setViewportSize({width: 375, height: 667});
+                                return true;
+                            }
+                            return false;
+                        })()
+                        """
+                    })
+                except:
+                    logger.warning("   Could not set mobile viewport - mobile screenshot may be desktop size")
             
             # Wait for resize
-            await mcp_client.call_tool("browser_wait", {"duration": 500})
+            try:
+                await mcp_client.call_tool("browser_wait", {"duration": 500})
+            except:
+                try:
+                    await mcp_client.call_tool("browser_wait_for", {"time": 0.5})
+                except:
+                    pass
             
             # Mobile screenshot
             mobile_path = screenshots_dir / "mobile.png"
-            await mcp_client.screenshot(mobile_path)
+            # Convert Path to string for screenshot call
+            await mcp_client.screenshot(str(mobile_path))
             observation.mobile_screenshot = str(mobile_path)
             observation.interactions_performed.append("screenshot_mobile")
         except Exception as e:
@@ -294,11 +335,18 @@ class GeminiEvaluator:
         # Get console logs
         logger.info("   Collecting console logs...")
         try:
-            console_messages = await mcp_client.get_console()
+            # Try get_console() method first, fallback to call_tool
+            if hasattr(mcp_client, 'get_console'):
+                console_messages = await mcp_client.get_console()
+            else:
+                result = await mcp_client.call_tool("browser_console_messages", {})
+                console_messages = result.get("messages", [])
+            
             observation.console_logs = console_messages
+            # Check both 'type' and 'level' fields for errors
             observation.console_errors = [
                 msg for msg in console_messages
-                if msg.get("type") == "error"
+                if msg.get("type") == "error" or msg.get("level") == "error"
             ]
             observation.interactions_performed.append("console_logs")
         except Exception as e:
@@ -345,16 +393,32 @@ class GeminiEvaluator:
                         observation.interaction_results[f"click_{test_name}"] = True
                         
                         # Wait after click
-                        await mcp_client.call_tool("browser_wait", {"duration": 500})
+                        try:
+                            await mcp_client.call_tool("browser_wait", {"duration": 500})
+                        except:
+                            try:
+                                await mcp_client.call_tool("browser_wait_for", {"time": 0.5})
+                            except:
+                                pass
                         
                         logger.info(f"      ✅ Clicked {test_name}")
                     
                     elif "input" in test_name:
-                        # Try filling
-                        await mcp_client.call_tool("browser_fill", {
-                            "selector": selector,
-                            "value": "test input"
-                        })
+                        # Try filling - use browser_type or browser_fill
+                        try:
+                            await mcp_client.call_tool("browser_type", {
+                                "selector": selector,
+                                "text": "test input"
+                            })
+                        except:
+                            # Fallback to browser_fill if browser_type doesn't exist
+                            try:
+                                await mcp_client.call_tool("browser_fill", {
+                                    "selector": selector,
+                                    "value": "test input"
+                                })
+                            except:
+                                raise
                         observation.interactions_performed.append(f"fill_{test_name}")
                         observation.interaction_results[f"fill_{test_name}"] = True
                         
@@ -382,12 +446,20 @@ class GeminiEvaluator:
         # Build evaluation prompt
         prompt = self._build_evaluation_prompt(task, observations, rubric)
         
-        # Prepare images for Gemini
+        # Prepare images for Gemini - use PIL.Image for better reliability
         images = []
         if observations.desktop_screenshot and Path(observations.desktop_screenshot).exists():
-            images.append(genai.upload_file(observations.desktop_screenshot))
+            try:
+                img = PIL.Image.open(observations.desktop_screenshot)
+                images.append(img)
+            except Exception as e:
+                logger.warning(f"Failed to load desktop screenshot: {e}")
         if observations.mobile_screenshot and Path(observations.mobile_screenshot).exists():
-            images.append(genai.upload_file(observations.mobile_screenshot))
+            try:
+                img = PIL.Image.open(observations.mobile_screenshot)
+                images.append(img)
+            except Exception as e:
+                logger.warning(f"Failed to load mobile screenshot: {e}")
         
         # Call Gemini with images and prompt
         try:
@@ -488,23 +560,28 @@ Provide your evaluation in this EXACT JSON format:
     "passed": <true/false>,
     "issues": ["issue1", "issue2"]
   }},
-  "ux": {{
+  "visual_design": {{
     "score": <0-25>,
     "passed": <true/false>,
     "issues": ["issue1", "issue2"]
   }},
+  "ux": {{
+    "score": <0-15>,
+    "passed": <true/false>,
+    "issues": ["issue1", "issue2"]
+  }},
   "accessibility": {{
-    "score": <0-20>,
+    "score": <0-15>,
     "passed": <true/false>,
     "issues": ["issue1", "issue2"]
   }},
   "responsiveness": {{
-    "score": <0-20>,
+    "score": <0-15>,
     "passed": <true/false>,
     "issues": ["issue1", "issue2"]
   }},
   "robustness": {{
-    "score": <0-10>,
+    "score": <0-5>,
     "passed": <true/false>,
     "issues": ["issue1", "issue2"]
   }},
@@ -567,9 +644,9 @@ Generate the evaluation now:
         try:
             data = json.loads(text)
             
-            # Extract category scores
+            # Extract category scores - include visual_design
             category_scores = {}
-            for category in ["functionality", "ux", "accessibility", "responsiveness", "robustness"]:
+            for category in ["functionality", "visual_design", "ux", "accessibility", "responsiveness", "robustness"]:
                 if category in data:
                     category_scores[category] = data[category].get("score", 0)
             
@@ -609,6 +686,7 @@ Generate the evaluation now:
                 passed=False,
                 category_scores={
                     "functionality": 10,
+                    "visual_design": 10,
                     "ux": 10,
                     "accessibility": 10,
                     "responsiveness": 10,

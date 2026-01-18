@@ -7,7 +7,7 @@ import json
 import re
 from pathlib import Path
 import google.generativeai as genai
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List, Optional, Tuple
 
 
 class Planner:
@@ -65,6 +65,63 @@ class Planner:
         
         return prompt_path.read_text(encoding='utf-8')
     
+    def _extract_json_from_text(self, text: str) -> Optional[str]:
+        """
+        Robustly extract JSON from text that may contain markdown, extra text, etc.
+        Uses recursive brace matching instead of fragile regex.
+        """
+        # First, try to find JSON in markdown code blocks
+        markdown_patterns = [
+            r'```json\s*(\{.*?\})\s*```',
+            r'```\s*(\{.*?\})\s*```',
+        ]
+        
+        for pattern in markdown_patterns:
+            matches = list(re.finditer(pattern, text, re.DOTALL))
+            if matches:
+                # Try each match, return first valid JSON
+                for match in matches:
+                    candidate = match.group(1).strip()
+                    if self._is_valid_json(candidate):
+                        return candidate
+        
+        # If no markdown block found, find JSON object by matching braces
+        # Find all potential JSON object starts
+        start_positions = []
+        for i, char in enumerate(text):
+            if char == '{':
+                start_positions.append(i)
+        
+        # Try each potential start position
+        for start_pos in start_positions:
+            # Find matching closing brace
+            brace_count = 0
+            end_pos = None
+            
+            for i in range(start_pos, len(text)):
+                if text[i] == '{':
+                    brace_count += 1
+                elif text[i] == '}':
+                    brace_count -= 1
+                    if brace_count == 0:
+                        end_pos = i + 1
+                        break
+            
+            if end_pos:
+                candidate = text[start_pos:end_pos].strip()
+                if self._is_valid_json(candidate):
+                    return candidate
+        
+        return None
+    
+    def _is_valid_json(self, text: str) -> bool:
+        """Check if text is valid JSON."""
+        try:
+            json.loads(text)
+            return True
+        except (json.JSONDecodeError, ValueError):
+            return False
+    
     def generate_openhands_prompt(
         self, 
         user_requirements: str, 
@@ -106,19 +163,39 @@ class Planner:
         # Format notes - use custom_notes if provided, otherwise use user_requirements
         notes_text = custom_notes if custom_notes else user_requirements
         
+        # Get TTS API key from environment (use GOOGLE_TTS_API_KEY if available, fallback to GOOGLE_AI_STUDIO_API_KEY)
+        tts_api_key = os.getenv('GOOGLE_TTS_API_KEY') or os.getenv('GOOGLE_AI_STUDIO_API_KEY') or 'NOT_SET'
+        if tts_api_key == 'NOT_SET':
+            print("⚠️  Warning: TTS API key not set. Audio generation may fail.")
+        
         # Add template summary to prompt if available
         template_context = ""
         if self.template_summary:
             template_context = f"\n\nTEMPLATE SUMMARY (for reference):\n{self.template_summary}\n"
         
-        # Build the full prompt using string replacement (not .format() to avoid JSON brace conflicts)
-        full_prompt = self.planner_prompt.replace(
-            "{user_requirements}", user_requirements
-        ).replace(
-            "{notes}", notes_text
-        ).replace(
-            "{youtube_links}", youtube_links_text
-        )
+        # Build the full prompt using safe template replacement
+        # Use a unique delimiter approach to avoid conflicts if placeholders appear in content
+        # Replace in reverse order of likelihood to contain other placeholders
+        full_prompt = self.planner_prompt
+        
+        # Use a safer replacement method that handles edge cases
+        # Replace placeholders one at a time, checking for conflicts
+        replacements = {
+            "{tts_api_key}": tts_api_key,
+            "{user_requirements}": user_requirements,
+            "{notes}": notes_text,
+            "{youtube_links}": youtube_links_text,
+        }
+        
+        # Replace in order, but validate no placeholder appears in replacement values
+        for placeholder, value in replacements.items():
+            # Check if this placeholder appears in any replacement value (would cause double replacement)
+            if any(placeholder in str(v) for k, v in replacements.items() if k != placeholder):
+                print(f"⚠️  Warning: Placeholder {placeholder} found in replacement value - may cause issues")
+            
+            # Perform replacement
+            if placeholder in full_prompt:
+                full_prompt = full_prompt.replace(placeholder, str(value))
         
         # Append template summary if available
         if template_context:
@@ -151,19 +228,15 @@ class Planner:
             thinking = '\n'.join(thinking_parts) if thinking_parts else None
             response_text = '\n'.join(response_parts)
             
-            # Parse JSON response
+            # Parse JSON response using robust extraction
             try:
-                # Try to extract JSON from response (might be wrapped in markdown)
-                json_match = re.search(r'```(?:json)?\s*(\{.*?\})\s*```', response_text, re.DOTALL)
-                if json_match:
-                    response_text = json_match.group(1)
-                else:
-                    # Try to find JSON object directly
-                    json_match = re.search(r'(\{.*?\})', response_text, re.DOTALL)
-                    if json_match:
-                        response_text = json_match.group(1)
+                # Use robust JSON extraction
+                extracted_json = self._extract_json_from_text(response_text)
                 
-                plan_json = json.loads(response_text)
+                if not extracted_json:
+                    raise ValueError("Could not extract valid JSON from response")
+                
+                plan_json = json.loads(extracted_json)
                 
                 # Extract the OpenHands build prompt from the JSON
                 generated_prompt = plan_json.get('openhands_build_prompt', response_text)

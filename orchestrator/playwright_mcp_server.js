@@ -17,6 +17,7 @@ class MCPServer {
     this.messageId = 0;
     this.videoPath = null;
     this.recording = false;
+    this.consoleMessages = [];  // Store console messages
     
     // Setup stdio communication
     this.rl = readline.createInterface({
@@ -118,6 +119,37 @@ class MCPServer {
     });
     
     this.page = await this.context.newPage();
+    
+    // Setup console message collection
+    this.consoleMessages = [];
+    this.page.on('console', (msg) => {
+      const message = {
+        type: msg.type(),
+        text: msg.text(),
+        timestamp: Date.now(),
+        location: msg.location() ? {
+          url: msg.location().url,
+          lineNumber: msg.location().lineNumber,
+          columnNumber: msg.location().columnNumber
+        } : null
+      };
+      this.consoleMessages.push(message);
+      // Keep only last 1000 messages to prevent memory issues
+      if (this.consoleMessages.length > 1000) {
+        this.consoleMessages.shift();
+      }
+    });
+    
+    // Setup page error collection
+    this.page.on('pageerror', (error) => {
+      this.consoleMessages.push({
+        type: 'error',
+        text: error.message,
+        stack: error.stack,
+        timestamp: Date.now(),
+        location: null
+      });
+    });
     
     if (visibleBrowser) {
       this.log('Browser launched in VISIBLE mode');
@@ -394,10 +426,21 @@ class MCPServer {
   }
   
   async getConsole() {
-    this.log('Getting console messages...');
+    this.log(`Getting console messages... (${this.consoleMessages.length} stored)`);
+    
+    // Return all stored messages
+    const messages = this.consoleMessages.map(msg => ({
+      type: msg.type,
+      message: msg.text || msg.message || '',
+      timestamp: msg.timestamp,
+      location: msg.location
+    }));
     
     return {
-      messages: []
+      messages: messages,
+      count: messages.length,
+      errors: messages.filter(m => m.type === 'error').length,
+      warnings: messages.filter(m => m.type === 'warning').length
     };
   }
   

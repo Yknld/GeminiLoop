@@ -38,16 +38,16 @@ logger = logging.getLogger(__name__)
 
 
 # MCP Browser Tools as Gemini Function Declarations
-# Using dict format with UPPERCASE type enums (required by google.generativeai)
+# Using lowercase JSON schema types (required by google.generativeai)
 BROWSER_TOOLS = [
     {
         "name": "browser_click",
         "description": "Click an element on the page using a CSS selector",
         "parameters": {
-            "type": "OBJECT",
+            "type": "object",
             "properties": {
                 "selector": {
-                    "type": "STRING",
+                    "type": "string",
                     "description": "CSS selector for the element to click (e.g., 'button', '#submit', '.card')"
                 }
             },
@@ -58,14 +58,14 @@ BROWSER_TOOLS = [
         "name": "browser_type",
         "description": "Type text into an input field",
         "parameters": {
-            "type": "OBJECT",
+            "type": "object",
             "properties": {
                 "selector": {
-                    "type": "STRING",
+                    "type": "string",
                     "description": "CSS selector for the input field"
                 },
                 "text": {
-                    "type": "STRING",
+                    "type": "string",
                     "description": "Text to type into the field"
                 }
             },
@@ -76,14 +76,14 @@ BROWSER_TOOLS = [
         "name": "browser_scroll",
         "description": "Scroll the page up or down",
         "parameters": {
-            "type": "OBJECT",
+            "type": "object",
             "properties": {
                 "direction": {
-                    "type": "STRING",
+                    "type": "string",
                     "description": "Direction to scroll: 'up' or 'down'"
                 },
                 "amount": {
-                    "type": "INTEGER",
+                    "type": "integer",
                     "description": "Amount to scroll in pixels (default: 500)"
                 }
             },
@@ -94,10 +94,10 @@ BROWSER_TOOLS = [
         "name": "browser_evaluate",
         "description": "Execute JavaScript in the browser and return the result",
         "parameters": {
-            "type": "OBJECT",
+            "type": "object",
             "properties": {
                 "expression": {
-                    "type": "STRING",
+                    "type": "string",
                     "description": "JavaScript expression to evaluate"
                 }
             },
@@ -108,18 +108,18 @@ BROWSER_TOOLS = [
         "name": "browser_wait_for",
         "description": "Wait for a condition (selector appears, text appears, or timeout)",
         "parameters": {
-            "type": "OBJECT",
+            "type": "object",
             "properties": {
                 "selector": {
-                    "type": "STRING",
+                    "type": "string",
                     "description": "CSS selector to wait for (optional)"
                 },
                 "text": {
-                    "type": "STRING",
+                    "type": "string",
                     "description": "Text to wait for on page (optional)"
                 },
                 "timeout": {
-                    "type": "INTEGER",
+                    "type": "integer",
                     "description": "Timeout in milliseconds (default: 3000)"
                 }
             },
@@ -130,10 +130,10 @@ BROWSER_TOOLS = [
         "name": "browser_hover",
         "description": "Hover over an element to reveal tooltips or trigger hover effects",
         "parameters": {
-            "type": "OBJECT",
+            "type": "object",
             "properties": {
                 "selector": {
-                    "type": "STRING",
+                    "type": "string",
                     "description": "CSS selector for the element to hover over"
                 }
             },
@@ -144,10 +144,10 @@ BROWSER_TOOLS = [
         "name": "browser_press_key",
         "description": "Press a keyboard key (useful for Tab, Enter, Escape, etc.)",
         "parameters": {
-            "type": "OBJECT",
+            "type": "object",
             "properties": {
                 "key": {
-                    "type": "STRING",
+                    "type": "string",
                     "description": "Key to press (e.g., 'Enter', 'Tab', 'Escape', 'ArrowDown')"
                 }
             },
@@ -158,7 +158,7 @@ BROWSER_TOOLS = [
         "name": "browser_get_url",
         "description": "Get the current page URL (useful to verify navigation)",
         "parameters": {
-            "type": "OBJECT",
+            "type": "object",
             "properties": {},
             "required": []
         }
@@ -167,7 +167,7 @@ BROWSER_TOOLS = [
         "name": "browser_dom_snapshot",
         "description": "Get a concise DOM snapshot with interactive elements and accessibility tree",
         "parameters": {
-            "type": "OBJECT",
+            "type": "object",
             "properties": {},
             "required": []
         }
@@ -176,10 +176,10 @@ BROWSER_TOOLS = [
         "name": "finish_exploration",
         "description": "Signal that exploration is complete and ready for final evaluation",
         "parameters": {
-            "type": "OBJECT",
+            "type": "object",
             "properties": {
                 "summary": {
-                    "type": "STRING",
+                    "type": "string",
                     "description": "Brief summary of what was tested"
                 }
             },
@@ -217,9 +217,10 @@ class AgenticEvaluator(GeminiEvaluator):
         agent_model_name = os.getenv("EVALUATOR_MODEL", "gemini-3-flash-preview")
         logger.info(f"Using agent model: {agent_model_name}")
         
+        # Wrap tools in function_declarations format required by google.generativeai
         self.agent_model = genai.GenerativeModel(
             model_name=agent_model_name,
-            tools=BROWSER_TOOLS
+            tools=[{"function_declarations": BROWSER_TOOLS}]
         )
         
         logger.info(f"Agentic evaluator initialized (max steps: {max_exploration_steps})")
@@ -321,6 +322,13 @@ class AgenticEvaluator(GeminiEvaluator):
             logger.info(f"   Template compliance: {template_compliance.get('template_compliant', 'unknown')}")
             if template_compliance.get('is_simple_quiz'):
                 logger.warning("   ⚠️  Page appears to be a simple quiz, not using template structure!")
+            if template_compliance.get('has_text_visibility_issues'):
+                low_contrast_count = len(template_compliance.get('low_contrast_issues', []))
+                invisible_count = len(template_compliance.get('invisible_text_issues', []))
+                logger.error(f"   ❌ CRITICAL: Text visibility issues detected!")
+                logger.error(f"      Low contrast text: {low_contrast_count} elements")
+                logger.error(f"      Invisible text: {invisible_count} elements")
+                logger.error(f"      This is a severe UX/accessibility failure!")
             
             # Phase 3: Final vision evaluation
             logger.info("\n👁️  Phase 3b: Final Vision Evaluation")
@@ -479,8 +487,8 @@ class AgenticEvaluator(GeminiEvaluator):
                     except Exception as e:
                         logger.warning(f"Failed to load screenshot: {e}")
                 
-                # Send multimodal message
-                response = chat.send_message(content_parts)
+                # Send multimodal message (run in thread to avoid blocking async loop)
+                response = await asyncio.to_thread(chat.send_message, content_parts)
                 
                 # Parse response safely
                 parsed = self._safe_extract_response_parts(response)
@@ -510,49 +518,61 @@ class AgenticEvaluator(GeminiEvaluator):
                 consecutive_failures = 0
                 
                 if function_calls:
-                    # Gemini expects responses for ALL function calls
+                    # Execute ALL function calls in order (Gemini may produce dependent calls)
                     if len(function_calls) > 1:
-                        logger.warning(f"⚠️  Multiple function calls detected ({len(function_calls)}), will execute all")
+                        logger.info(f"🔧 Multiple function calls detected ({len(function_calls)}), executing all in order")
                     
-                    # For now, only execute first but log all
-                    func_call = function_calls[0]
-                    args_dict = dict(func_call.args) if func_call.args else {}
+                    all_tool_results = []
+                    all_verifications = []
+                    after_state = before_state  # Will be updated after last call
                     
-                    logger.info(f"🔧 Tool call: {func_call.name} (1 of {len(function_calls)})")
-                    logger.info(f"   Args: {args_dict}")
-                    
-                    # Check for finish signal
-                    if func_call.name == "finish_exploration":
-                        logger.info(f"✅ Gemini finished exploration")
-                        logger.info(f"   Summary: {args_dict.get('summary', 'N/A')}")
+                    for i, func_call in enumerate(function_calls):
+                        args_dict = dict(func_call.args) if func_call.args else {}
                         
-                        # Log the step
-                        step_log = {
-                            "step": step + 1,
-                            "tool": func_call.name,
-                            "args": args_dict,
-                            "reasoning": reasoning_text,
-                            "before_state": self._compact_state(before_state),
-                        }
-                        self.exploration_log.append(step_log)
+                        logger.info(f"🔧 Tool call {i+1}/{len(function_calls)}: {func_call.name}")
+                        logger.info(f"   Args: {args_dict}")
                         
-                        finished = True
-                        final_observation = before_state
+                        # Check for finish signal (execute it but break after)
+                        if func_call.name == "finish_exploration":
+                            logger.info(f"✅ Gemini finished exploration")
+                            logger.info(f"   Summary: {args_dict.get('summary', 'N/A')}")
+                            
+                            # Log the step
+                            step_log = {
+                                "step": step + 1,
+                                "tool": func_call.name,
+                                "args": args_dict,
+                                "reasoning": reasoning_text,
+                                "before_state": self._compact_state(before_state),
+                            }
+                            self.exploration_log.append(step_log)
+                            
+                            finished = True
+                            final_observation = before_state
+                            break
+                        
+                        # Execute browser action
+                        tool_result = await self._execute_tool(
+                            func_call.name,
+                            args_dict,
+                            mcp_client
+                        )
+                        
+                        logger.info(f"   Result: {tool_result.get('success', False)}")
+                        all_tool_results.append((func_call.name, tool_result))
+                        
+                        # Small wait between tool calls
+                        if i < len(function_calls) - 1:
+                            await asyncio.sleep(0.3)
+                    
+                    # If we broke due to finish_exploration, skip the rest
+                    if finished:
                         break
                     
-                    # Execute browser action and verify
-                    tool_result = await self._execute_tool(
-                        func_call.name,
-                        args_dict,
-                        mcp_client
-                    )
-                    
-                    logger.info(f"   Result: {tool_result.get('success', False)}")
-                    
-                    # Wait a moment after action
+                    # Wait a moment after all actions
                     await asyncio.sleep(0.5)
                     
-                    # Get AFTER state for verification
+                    # Get AFTER state for verification (after all tool calls)
                     logger.info("📸 Capturing AFTER state...")
                     after_state = await self._get_browser_state(mcp_client, artifacts_dir, step, phase="after")
                     
@@ -562,13 +582,16 @@ class AgenticEvaluator(GeminiEvaluator):
                                f"text_changed={verification['text_changed']}, "
                                f"dialogs={len(verification['dialogs'])}")
                     
-                    # Log the step with full context
+                    # Log the step with full context (use first tool call for main logging)
+                    main_tool = function_calls[0].name
+                    main_args = dict(function_calls[0].args) if function_calls[0].args else {}
                     step_log = {
                         "step": step + 1,
-                        "tool": func_call.name,
-                        "args": args_dict,
+                        "tool": main_tool,
+                        "tool_calls": [{"name": fc.name, "args": dict(fc.args) if fc.args else {}} for fc in function_calls],
+                        "args": main_args,
                         "reasoning": reasoning_text,
-                        "tool_result": tool_result,
+                        "tool_results": [{"name": name, "result": result} for name, result in all_tool_results],
                         "before_state": self._compact_state(before_state),
                         "after_state": self._compact_state(after_state),
                         "verification": verification
@@ -584,7 +607,6 @@ class AgenticEvaluator(GeminiEvaluator):
                         "screenshot": after_state.get("screenshot_path")  # For vision evaluation
                     }
                     self.step_artifacts.append(step_artifact)
-                    # Also store in exploration_log for easy access
                     step_log["screenshot"] = after_state.get("screenshot_path")
                     
                     # Save observation JSON
@@ -597,7 +619,6 @@ class AgenticEvaluator(GeminiEvaluator):
                     }, indent=2))
                     
                     # Send tool result back to Gemini with verification info
-                    # Include summary of what's been tested so far (memory context)
                     steps_summary = f"Steps completed: {step + 1}/{self.max_exploration_steps}. "
                     if self.exploration_log:
                         tested_items = []
@@ -612,9 +633,12 @@ class AgenticEvaluator(GeminiEvaluator):
                     interaction_count = len([s for s in self.exploration_log 
                                            if s.get('tool') in ['browser_click', 'browser_type', 'browser_scroll']])
                     
+                    # Use result from first tool call for main response
+                    main_result = all_tool_results[0][1] if all_tool_results else {"success": False, "message": "No tool executed"}
+                    
                     response_data = {
-                        "success": bool(tool_result.get("success", False)),
-                        "message": str(tool_result.get("message", "")),
+                        "success": bool(main_result.get("success", False)),
+                        "message": str(main_result.get("message", "")),
                         "dom_changed": bool(verification["dom_changed"]),
                         "text_changed": bool(verification["text_changed"]),
                         "new_errors": int(len(verification["new_console_errors"])),
@@ -623,30 +647,30 @@ class AgenticEvaluator(GeminiEvaluator):
                                  f"Don't keep exploring - finish when done testing!"
                     }
                     
-                    # Create function response parts for ALL function calls
-                    # (even if we only executed the first one)
+                    # Create function response parts for ALL function calls with structured responses (not JSON strings)
                     response_parts = []
                     for i, fc in enumerate(function_calls):
-                        if i == 0:
-                            # Use actual result for first call
+                        if i < len(all_tool_results):
+                            # Use actual result for executed calls
+                            tool_name, tool_result = all_tool_results[i]
                             response_parts.append(
                                 genai.protos.Part(function_response=genai.protos.FunctionResponse(
                                     name=fc.name,
-                                    response={"result": json.dumps(response_data)}
+                                    response=tool_result  # Return structured object, not JSON string
                                 ))
                             )
                         else:
-                            # Send "not executed" for additional calls
+                            # Shouldn't happen, but handle gracefully
                             response_parts.append(
                                 genai.protos.Part(function_response=genai.protos.FunctionResponse(
                                     name=fc.name,
-                                    response={"result": json.dumps({"success": False, "message": "Only first function call executed per turn"})}
+                                    response={"success": False, "message": "Tool not executed"}
                                 ))
                             )
                     
-                    # Send function response with retry
+                    # Send function response with retry (async)
                     try:
-                        chat.send_message(genai.protos.Content(parts=response_parts))
+                        await asyncio.to_thread(chat.send_message, genai.protos.Content(parts=response_parts))
                     except Exception as e:
                         logger.warning(f"⚠️  Failed to send function response (attempt 1): {e}")
                         # Retry once with minimal payload
@@ -662,6 +686,25 @@ class AgenticEvaluator(GeminiEvaluator):
                         except Exception as e2:
                             logger.error(f"❌ Failed to send function response (attempt 2): {e2}")
                             # Don't crash, just continue with next step
+                            consecutive_failures += 1
+                            if consecutive_failures >= 3:
+                                logger.error("❌ Too many response send failures, ending exploration")
+                                final_observation = after_state
+                                break
+                    except Exception as e:
+                        logger.warning(f"⚠️  Failed to send function response (attempt 1): {e}")
+                        # Retry once with minimal payload
+                        try:
+                            simple_response = genai.protos.Content(parts=[
+                                genai.protos.Part(function_response=genai.protos.FunctionResponse(
+                                    name=function_calls[0].name,
+                                    response={"success": True, "message": "executed"}
+                                ))
+                            ])
+                            await asyncio.to_thread(chat.send_message, simple_response)
+                            logger.info("   ✅ Retry succeeded with simple response")
+                        except Exception as e2:
+                            logger.error(f"❌ Failed to send function response (attempt 2): {e2}")
                             consecutive_failures += 1
                             if consecutive_failures >= 3:
                                 logger.error("❌ Too many response send failures, ending exploration")
@@ -1040,24 +1083,65 @@ Begin systematic testing. You have vision - use it!"""
             elif tool_name == "browser_wait_for":
                 selector = args.get("selector")
                 text = args.get("text")
-                timeout = args.get("timeout", 3000)
+                timeout_ms = args.get("timeout", 3000)
                 
-                # Simple wait implementation via polling
+                # Proper polling implementation
+                start_time = asyncio.get_event_loop().time() * 1000  # Convert to ms
+                poll_interval = 100  # Check every 100ms
+                
                 if selector:
                     wait_js = f"""
                     (function() {{
                         const el = document.querySelector({json.dumps(selector)});
-                        return el !== null;
+                        return el !== null && el.offsetWidth > 0 && el.offsetHeight > 0;
                     }})()
                     """
-                    result = await mcp_client.evaluate(wait_js)
-                    if result.get("result"):
-                        return {"success": True, "message": f"Element {selector} found"}
-                    else:
-                        await asyncio.sleep(timeout / 1000)
-                        return {"success": False, "message": f"Element {selector} not found after {timeout}ms"}
+                    while True:
+                        elapsed = (asyncio.get_event_loop().time() * 1000) - start_time
+                        if elapsed >= timeout_ms:
+                            return {"success": False, "message": f"Element {selector} not found after {timeout_ms}ms"}
+                        
+                        result = await mcp_client.evaluate(wait_js)
+                        if result.get("result"):
+                            return {"success": True, "message": f"Element {selector} found after {elapsed:.0f}ms"}
+                        
+                        await asyncio.sleep(poll_interval / 1000)
                 elif text:
-                    # Wait for text
+                    # Wait for text (polling)
+                    wait_text_js = f"""
+                    (function() {{
+                        return document.body.innerText.includes({json.dumps(text)});
+                    }})()
+                    """
+                    while True:
+                        elapsed = (asyncio.get_event_loop().time() * 1000) - start_time
+                        if elapsed >= timeout_ms:
+                            return {"success": False, "message": f"Text '{text}' not found after {timeout_ms}ms"}
+                        
+                        result = await mcp_client.evaluate(wait_text_js)
+                        if result.get("result"):
+                            return {"success": True, "message": f"Text '{text}' found after {elapsed:.0f}ms"}
+                        
+                        await asyncio.sleep(poll_interval / 1000)
+                else:
+                    # No selector or text provided, just wait for timeout
+                    await asyncio.sleep(timeout_ms / 1000)
+                    return {"success": True, "message": f"Waited {timeout_ms}ms (no condition specified)"} (polling)
+                    wait_text_js = f"""
+                    (function() {{
+                        return document.body.innerText.includes({json.dumps(text)});
+                    }})()
+                    """
+                    while True:
+                        elapsed = (asyncio.get_event_loop().time() * 1000) - start_time
+                        if elapsed >= timeout_ms:
+                            return {"success": False, "message": f"Text '{text}' not found after {timeout_ms}ms"}
+                        
+                        result = await mcp_client.evaluate(wait_text_js)
+                        if result.get("result"):
+                            return {"success": True, "message": f"Text '{text}' found after {elapsed:.0f}ms"}
+                        
+                        await asyncio.sleep(poll_interval / 1000)
                     await asyncio.sleep(timeout / 1000)
                     text_js = "document.body.innerText"
                     result = await mcp_client.evaluate(text_js)
@@ -1348,6 +1432,59 @@ Begin systematic testing. You have vision - use it!"""
                 // Check if it's just a simple quiz (no template structure)
                 const is_simple_quiz = !has_module_selector && !has_prev_next && !has_audio_controls && !has_notes && !has_chatbot && !has_modules_array;
                 
+                // CRITICAL: Check text visibility/contrast issues
+                const text_elements = document.querySelectorAll('[id*="fun"], [class*="fun-fact"], [class*="funfact"], [id*="explanation"], [class*="explanation"], [id*="key"], [class*="key-point"], p, span, div');
+                let low_contrast_issues = [];
+                let invisible_text_issues = [];
+                
+                for (const el of text_elements) {
+                    const style = window.getComputedStyle(el);
+                    const bgColor = style.backgroundColor;
+                    const textColor = style.color;
+                    const fontSize = parseFloat(style.fontSize);
+                    const text = el.innerText || el.textContent || '';
+                    
+                    // Skip if no text or very small
+                    if (!text.trim() || fontSize < 10) continue;
+                    
+                    // Check if text color and background are too similar (low contrast)
+                    // Simple heuristic: if both are dark colors or both are light colors
+                    const rgbToLuminance = (rgb) => {
+                        const match = rgb.match(/\\d+/g);
+                        if (!match || match.length < 3) return 0.5;
+                        const [r, g, b] = match.map(x => parseInt(x) / 255);
+                        return 0.299 * r + 0.587 * g + 0.114 * b;
+                    };
+                    
+                    const textLum = rgbToLuminance(textColor);
+                    const bgLum = rgbToLuminance(bgColor);
+                    const contrast = Math.abs(textLum - bgLum);
+                    
+                    // Low contrast threshold: less than 0.3 difference
+                    if (contrast < 0.3 && text.trim().length > 10) {
+                        const snippet = text.trim().substring(0, 50);
+                        low_contrast_issues.push({
+                            element: el.tagName + (el.id ? '#' + el.id : '') + (el.className ? '.' + el.className.split(' ')[0] : ''),
+                            text: snippet,
+                            contrast: contrast.toFixed(2),
+                            textColor: textColor,
+                            bgColor: bgColor
+                        });
+                    }
+                    
+                    // Check if text is completely invisible (opacity 0 or color matches background exactly)
+                    const opacity = parseFloat(style.opacity);
+                    if (opacity === 0 || textColor === bgColor) {
+                        const snippet = text.trim().substring(0, 50);
+                        invisible_text_issues.push({
+                            element: el.tagName + (el.id ? '#' + el.id : '') + (el.className ? '.' + el.className.split(' ')[0] : ''),
+                            text: snippet
+                        });
+                    }
+                }
+                
+                const has_visibility_issues = low_contrast_issues.length > 0 || invisible_text_issues.length > 0;
+                
                 return {
                     has_module_navigation: has_module_selector || has_prev_next,
                     has_progress_indicator: has_progress_indicator,
@@ -1365,7 +1502,10 @@ Begin systematic testing. You have vision - use it!"""
                     is_simple_quiz: is_simple_quiz,
                     has_placeholder_text: has_placeholder_text || modules_has_placeholder,
                     placeholder_text_found: placeholder_text_found,
-                    template_compliant: has_module_selector && has_audio_controls && has_modules_array && !(has_placeholder_text || modules_has_placeholder)
+                    has_text_visibility_issues: has_visibility_issues,
+                    low_contrast_issues: low_contrast_issues.slice(0, 5), // Limit to first 5
+                    invisible_text_issues: invisible_text_issues.slice(0, 5), // Limit to first 5
+                    template_compliant: has_module_selector && has_audio_controls && has_modules_array && !(has_placeholder_text || modules_has_placeholder) && !has_visibility_issues
                 };
             })()
             """
@@ -1410,8 +1550,37 @@ Begin systematic testing. You have vision - use it!"""
         # Add template structure compliance check results
         template_section = ""
         if template_compliance:
-            # Check for placeholder text FIRST (most critical)
-            if template_compliance.get('has_placeholder_text'):
+            # Check for text visibility issues FIRST (most critical UX issue)
+            if template_compliance.get('has_text_visibility_issues'):
+                low_contrast = template_compliance.get('low_contrast_issues', [])
+                invisible = template_compliance.get('invisible_text_issues', [])
+                
+                visibility_details = []
+                if low_contrast:
+                    visibility_details.append(f"\n**Low Contrast Text ({len(low_contrast)} found):**")
+                    for issue in low_contrast[:3]:  # Show first 3
+                        visibility_details.append(f"- {issue.get('element', 'unknown')}: \"{issue.get('text', '')[:40]}...\" (contrast: {issue.get('contrast', 'N/A')})")
+                        visibility_details.append(f"  Text color: {issue.get('textColor', 'N/A')}, Background: {issue.get('bgColor', 'N/A')}")
+                
+                if invisible:
+                    visibility_details.append(f"\n**Invisible Text ({len(invisible)} found):**")
+                    for issue in invisible[:3]:  # Show first 3
+                        visibility_details.append(f"- {issue.get('element', 'unknown')}: \"{issue.get('text', '')[:40]}...\"")
+                
+                template_section = f"""
+**❌ CRITICAL VIOLATION - Text Visibility Issues:**
+Text on the page is NOT READABLE due to poor contrast or invisible styling!
+
+{''.join(visibility_details)}
+
+**THIS IS A CRITICAL FAILURE - All text must be clearly visible and readable.**
+**Users cannot read content that has low contrast (dark text on dark background) or is invisible.**
+**This is a severe accessibility and UX issue.**
+**Score must be heavily penalized (deduct at least 40 points) for text visibility issues.**
+**Check the screenshot - if you can't read the text clearly, this is a major problem.**
+"""
+            # Check for placeholder text (second priority)
+            elif template_compliance.get('has_placeholder_text'):
                 placeholder_text = template_compliance.get('placeholder_text_found', '')
                 template_section = f"""
 **❌ CRITICAL VIOLATION - Placeholder Text Detected:**
@@ -1514,6 +1683,8 @@ The page appears to be a simple quiz page, NOT using the required template struc
    - Modern, beautiful UI (not default browser styles)
    - Professional appearance, good spacing, colors
    - Smooth interactions (if verified working)
+   - **CRITICAL: All text must be clearly readable - check contrast in screenshot**
+   - **If text is hard to read or invisible, this is a severe UX failure**
 
 **Evaluation Rubric (MATCH THESE RANGES EXACTLY):**
 """
@@ -1629,31 +1800,53 @@ The page appears to be a simple quiz page, NOT using the required template struc
         discover_js = """
         (function() {
             function computeSelector(el) {
-                // Prefer ID
+                // Prefer ID (unique)
                 if (el.id) return '#' + el.id;
                 
-                // Try data-testid
+                // Try data-testid (unique)
                 if (el.dataset.testid) return '[data-testid="' + el.dataset.testid + '"]';
                 
-                // Try aria-label
+                // Try aria-label (may not be unique, but better than class)
                 if (el.getAttribute('aria-label')) {
                     const label = el.getAttribute('aria-label').replace(/"/g, '\\\\"');
-                    return el.tagName.toLowerCase() + '[aria-label="' + label + '"]';
+                    const selector = el.tagName.toLowerCase() + '[aria-label="' + label + '"]';
+                    // Check if unique
+                    if (document.querySelectorAll(selector).length === 1) return selector;
+                    // If not unique, add nth-of-type
+                    const siblings = Array.from(el.parentElement.children).filter(c => c.tagName === el.tagName);
+                    const index = siblings.indexOf(el);
+                    return selector + ':nth-of-type(' + (index + 1) + ')';
                 }
                 
-                // Try name attribute
+                // Try name attribute (for form elements)
                 if (el.name) {
-                    return el.tagName.toLowerCase() + '[name="' + el.name + '"]';
+                    const selector = el.tagName.toLowerCase() + '[name="' + el.name + '"]';
+                    if (document.querySelectorAll(selector).length === 1) return selector;
+                    const siblings = Array.from(el.parentElement.children).filter(c => c.tagName === el.tagName && c.name === el.name);
+                    const index = siblings.indexOf(el);
+                    return selector + ':nth-of-type(' + (index + 1) + ')';
                 }
                 
-                // Fallback: tag + class (first class only)
+                // Fallback: tag + class with nth-of-type for uniqueness
                 if (el.className && typeof el.className === 'string') {
                     const firstClass = el.className.split(' ')[0];
-                    if (firstClass) return el.tagName.toLowerCase() + '.' + firstClass;
+                    if (firstClass) {
+                        const selector = el.tagName.toLowerCase() + '.' + firstClass;
+                        const matches = document.querySelectorAll(selector);
+                        if (matches.length === 1) return selector;
+                        // Add nth-of-type for uniqueness
+                        const siblings = Array.from(el.parentElement.children).filter(c => 
+                            c.tagName === el.tagName && c.className && c.className.split(' ')[0] === firstClass
+                        );
+                        const index = siblings.indexOf(el);
+                        return selector + ':nth-of-type(' + (index + 1) + ')';
+                    }
                 }
                 
-                // Last resort: tag only (not great but better than nothing)
-                return el.tagName.toLowerCase();
+                // Last resort: tag with nth-of-type (better than just tag)
+                const siblings = Array.from(el.parentElement.children).filter(c => c.tagName === el.tagName);
+                const index = siblings.indexOf(el);
+                return el.tagName.toLowerCase() + ':nth-of-type(' + (index + 1) + ')';
             }
             
             function isVisible(el) {
@@ -1708,7 +1901,8 @@ The page appears to be a simple quiz page, NOT using the required template struc
         """
         Compute a DOM change signature for verification
         
-        Uses: text content hash + element counts + URL
+        Uses: text content hash + element counts + URL + state indicators
+        Includes: aria-expanded, modals, open classes, etc. to catch UI state changes
         """
         signature_js = """
         (function() {
@@ -1718,12 +1912,30 @@ The page appears to be a simple quiz page, NOT using the required template struc
             const linkCount = document.querySelectorAll('a').length;
             const url = window.location.href;
             
+            // State indicators that change on interactions
+            const expandedCount = document.querySelectorAll('[aria-expanded="true"]').length;
+            const openCount = document.querySelectorAll('.open, [class*="open"], [class*="active"], [class*="show"]').length;
+            const modalCount = document.querySelectorAll('.modal, [role="dialog"], [role="alertdialog"]').length;
+            const visibleModalCount = Array.from(document.querySelectorAll('.modal, [role="dialog"], [role="alertdialog"]'))
+                .filter(el => {
+                    const style = window.getComputedStyle(el);
+                    return style.display !== 'none' && style.visibility !== 'hidden';
+                }).length;
+            
+            // Hash of body HTML structure (truncated for performance)
+            const bodyHTML = document.body.innerHTML.slice(0, 2000);
+            
             return JSON.stringify({
                 text: text,
                 buttons: buttonCount,
                 inputs: inputCount,
                 links: linkCount,
-                url: url
+                url: url,
+                expanded: expandedCount,
+                open: openCount,
+                modals: modalCount,
+                visibleModals: visibleModalCount,
+                htmlHash: bodyHTML.length + '-' + bodyHTML.slice(0, 100).replace(/[^a-zA-Z0-9]/g, '').length
             });
         })()
         """

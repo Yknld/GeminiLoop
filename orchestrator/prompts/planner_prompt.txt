@@ -204,7 +204,7 @@ PLANNING GUIDELINES (IMPORTANT):
   * YouTube videos → `videoId` field (extract ID from URL)
 - **CRITICAL: Text-to-Speech (TTS) Audio Generation:**
   * Use Google Cloud Text-to-Speech API to generate audio files for all text content
-  * API Key: AIzaSyDVoAIPakAXm0wYkmuTM-AlFiufWzo93BI
+  * API Key: {tts_api_key} (use environment variable GOOGLE_AI_STUDIO_API_KEY or GOOGLE_TTS_API_KEY)
   * Create a Python script using google-cloud-texttospeech library (install via: pip install google-cloud-texttospeech)
   * Generate audio for: explanation, each keyPoint, timeline events, funFact, interactive section intro
   * Use terminal to run the Python script for each text section

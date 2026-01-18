@@ -233,13 +233,16 @@ DETAILED REQUIREMENTS FOR FIXES
    - Add focus indicators (outline: 2px solid)
    
 3. RESPONSIVE DESIGN (HIGH PRIORITY):
-   - Test at 375px mobile width
-   - Test at 768px tablet width  
+   - **CRITICAL: Code must look good and function properly on mobile (375px) AND tablet (768px)**
+   - Test at 375px mobile width - ensure all content is readable and interactive
+   - Test at 768px tablet width - ensure layout adapts properly for tablet screens
    - Test at 1440px desktop width
-   - Use CSS media queries
+   - Use CSS media queries for all breakpoints
    - Stack elements vertically on mobile
-   - Increase tap target sizes to 44px minimum
-   - Prevent horizontal scrolling
+   - Increase tap target sizes to 44px minimum on mobile
+   - Prevent horizontal scrolling on all screen sizes
+   - Ensure text is readable without zooming on mobile
+   - Adjust font sizes appropriately for each breakpoint
    
 4. ACCESSIBILITY (REQUIRED):
    - Use semantic HTML (header, main, nav, section, article)
@@ -260,7 +263,8 @@ SUCCESS CRITERIA
 =====================================================
 ✅ All buttons and forms work perfectly
 ✅ Color contrast passes WCAG AA
-✅ Looks good on mobile, tablet, and desktop
+✅ **CRITICAL: Looks good on mobile (375px) AND tablet (768px) - test both!**
+✅ Looks good on desktop (1440px)
 ✅ No console errors
 ✅ Professional, polished appearance
 ✅ Score improves to 80+/100

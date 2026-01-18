@@ -14,6 +14,8 @@ import subprocess
 import logging
 import re
 import traceback
+import threading
+import signal
 from pathlib import Path
 from typing import Dict, Any, Optional, List
 from abc import ABC, abstractmethod
@@ -187,7 +189,35 @@ class LocalSubprocessOpenHandsClient(OpenHandsClient):
                 logger.info(f"   Before files: {list(before_files.keys())[:5]}")
             
             conversation.send_message(prompt)
-            conversation.run()
+            
+            # Run with timeout (default 10 minutes, configurable via env var)
+            timeout_seconds = float(os.getenv('OPENHANDS_TIMEOUT_SECONDS', '600'))  # 10 minutes default
+            
+            # Use threading to implement timeout for blocking call
+            run_complete = threading.Event()
+            run_exception = [None]
+            
+            def run_conversation():
+                try:
+                    conversation.run()
+                    run_complete.set()
+                except Exception as e:
+                    run_exception[0] = e
+                    run_complete.set()
+            
+            # Start conversation in separate thread
+            run_thread = threading.Thread(target=run_conversation, daemon=True)
+            run_thread.start()
+            
+            # Wait for completion or timeout
+            if not run_complete.wait(timeout=timeout_seconds):
+                logger.error(f"OpenHands execution timed out after {timeout_seconds}s")
+                # Note: We can't easily kill the thread, but we'll raise the error
+                raise RuntimeError(f"OpenHands execution timed out after {timeout_seconds}s. The operation may still be running in the background.")
+            
+            # Check if exception occurred
+            if run_exception[0]:
+                raise run_exception[0]
             
             # Capture after state
             after_files = self._capture_workspace_state(workspace_path)
@@ -302,7 +332,34 @@ class LocalSubprocessOpenHandsClient(OpenHandsClient):
             logger.info("   Sending patch instructions to OpenHands agent...")
             logger.info(f"   Instructions length: {len(instructions)} characters")
             conversation.send_message(instructions)
-            conversation.run()
+            
+            # Run with timeout (default 10 minutes, configurable via env var)
+            timeout_seconds = float(os.getenv('OPENHANDS_TIMEOUT_SECONDS', '600'))  # 10 minutes default
+            
+            # Use threading to implement timeout for blocking call
+            run_complete = threading.Event()
+            run_exception = [None]
+            
+            def run_conversation():
+                try:
+                    conversation.run()
+                    run_complete.set()
+                except Exception as e:
+                    run_exception[0] = e
+                    run_complete.set()
+            
+            # Start conversation in separate thread
+            run_thread = threading.Thread(target=run_conversation, daemon=True)
+            run_thread.start()
+            
+            # Wait for completion or timeout
+            if not run_complete.wait(timeout=timeout_seconds):
+                logger.error(f"OpenHands patch execution timed out after {timeout_seconds}s")
+                raise RuntimeError(f"OpenHands patch execution timed out after {timeout_seconds}s. The operation may still be running in the background.")
+            
+            # Check if exception occurred
+            if run_exception[0]:
+                raise run_exception[0]
             
             # Capture after state
             after_files = self._capture_workspace_state(workspace_path)
@@ -556,9 +613,18 @@ class LocalSubprocessOpenHandsClient(OpenHandsClient):
                 prompt += f"\n- The interactiveElement must be FULL HTML with working JavaScript - buttons that respond, inputs that calculate, feedback messages"
                 prompt += f"\n- DO NOT leave placeholder text - create functional, interactive content that users can actually interact with"
                 prompt += f"\n- The template already has all CSS and JavaScript inline - do NOT add external files"
+            # Get TTS API key from environment (use GOOGLE_TTS_API_KEY if available, fallback to GOOGLE_AI_STUDIO_API_KEY)
+            tts_api_key = os.getenv('GOOGLE_TTS_API_KEY') or os.getenv('GOOGLE_AI_STUDIO_API_KEY')
+            if not tts_api_key:
+                logger.warning("⚠️  TTS API key not set. Audio generation instructions will be skipped.")
+                tts_api_key = "NOT_SET"
+            
             prompt += f"\n\n**CRITICAL: TTS AUDIO GENERATION (MANDATORY - DO NOT SKIP):**"
             prompt += f"\n- You MUST generate audio files using Google Cloud Text-to-Speech API"
-            prompt += f"\n- API Key: AIzaSyDVoAIPakAXm0wYkmuTM-AlFiufWzo93BI"
+            if tts_api_key != "NOT_SET":
+                prompt += f"\n- API Key: {tts_api_key} (use this key for TTS API calls)"
+            else:
+                prompt += f"\n- API Key: Use environment variable GOOGLE_TTS_API_KEY or GOOGLE_AI_STUDIO_API_KEY"
             prompt += f"\n- STEP 1: Install the library: pip install google-cloud-texttospeech"
             prompt += f"\n- STEP 2: Create a Python script (e.g., generate_audio.py) that:"
             prompt += f"\n  1. Imports: from google.cloud import texttospeech"

@@ -349,9 +349,24 @@ async def run_loop(task: str, max_iterations: int = 5, base_dir: Path = None, cu
                     # Copy template to index.html in workspace (OpenHands will edit this file)
                     index_dest = state.workspace_dir / "index.html"
                     import shutil
-                    shutil.copy2(template_file, index_dest)
+                    import os
+                    
+                    # Read template and inject API key from environment variable
+                    template_content = template_file.read_text(encoding='utf-8')
+                    gemini_api_key = os.getenv('GOOGLE_AI_STUDIO_API_KEY', '')
+                    
+                    # Replace placeholder with actual API key (or empty if not set)
+                    template_content = template_content.replace('{GEMINI_API_KEY}', gemini_api_key)
+                    
+                    # Write to destination
+                    index_dest.write_text(template_content, encoding='utf-8')
+                    
                     print(f"✅ Template loaded as index.html: {index_dest}")
                     print(f"   Source: {template_file}")
+                    if gemini_api_key:
+                        print(f"   ✅ Gemini API key injected from environment")
+                    else:
+                        print(f"   ⚠️  Warning: GOOGLE_AI_STUDIO_API_KEY not set - chatbot will be disabled")
                     print(f"   OpenHands will now edit this existing file")
                 else:
                     print("⚠️  Template file not found, OpenHands will create from scratch")

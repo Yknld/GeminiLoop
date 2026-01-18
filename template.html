@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="gemini-api-key" content="{GEMINI_API_KEY}">
     <title>Interactive Notes Template</title>
     <style>
         * {
@@ -1663,7 +1664,12 @@
         });
 
         // Gemini Chatbot
-        const GEMINI_API_KEY = 'AIzaSyDVoAIPakAXm0wYkmuTM-AlFiufWzo93BI';
+        // Get API key from meta tag (injected at runtime from environment variable)
+        const geminiApiKeyMeta = document.querySelector('meta[name="gemini-api-key"]');
+        const GEMINI_API_KEY = geminiApiKeyMeta ? geminiApiKeyMeta.getAttribute('content') : '';
+        if (!GEMINI_API_KEY || GEMINI_API_KEY === '{GEMINI_API_KEY}') {
+            console.warn('Gemini API key not set. Chatbot functionality will be disabled.');
+        }
         const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent';
 
         const chatbotButton = document.getElementById('chatbot-button');
