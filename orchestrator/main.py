@@ -397,53 +397,22 @@ async def run_loop(task: str, max_iterations: int = 5, base_dir: Path = None, cu
                     print("⚠️  Template file not found, OpenHands will create from scratch")
                     template_file = None
                 
-                # Get todo list from planner
-                todo_list = plan.get('todo_list', [])
-                if not todo_list:
-                    # Fallback: use old approach if no todo list
-                    print("⚠️  No todo list found, using full prompt approach")
-                    generation_result = openhands.generate_code(
-                        task=openhands_prompt,
-                        workspace_path=str(state.workspace_dir),
-                        detailed_requirements=None,
-                        template_file=None
-                    )
-                    if not generation_result["success"]:
-                        error_msg = generation_result.get("error", "Unknown error")
-                        raise RuntimeError(f"❌ OpenHands code generation failed: {error_msg}")
-                    files_generated = generation_result.get("files_generated", [])
-                    diffs = generation_result.get("diffs", [])
-                else:
-                    # Process todos one at a time
-                    print(f"📋 Processing {len(todo_list)} todo items...")
-                    all_modules_info = plan.get('course_overview', {}).get('modules', [])
-                    files_generated = []
-                    diffs = []
-                    
-                    for todo_idx, todo in enumerate(todo_list):
-                        print(f"\n{'='*70}")
-                        print(f"📝 Todo {todo_idx + 1}/{len(todo_list)}: {todo['title']}")
-                        print(f"{'='*70}")
-                        
-                        todo_result = openhands.execute_todo_task(
-                            todo=todo,
-                            workspace_path=str(state.workspace_dir),
-                            all_modules_info=all_modules_info
-                        )
-                        
-                        if not todo_result.get("success"):
-                            error_msg = todo_result.get("error", "Unknown error")
-                            print(f"⚠️  Todo '{todo['title']}' failed: {error_msg}")
-                            # Continue with next todo instead of failing completely
-                            continue
-                        
-                        # Collect files from this todo
-                        todo_files = todo_result.get("files_generated", [])
-                        files_generated.extend(todo_files)
-                        print(f"✅ Todo completed: {todo_result.get('duration_seconds', 0):.2f}s")
-                    
-                    print(f"\n✅ All todos processed. Total files modified: {len(set(files_generated))}")
-                    files_generated = list(set(files_generated))  # Remove duplicates
+                # Use OpenHands' built-in planning capabilities instead of custom todos
+                # OpenHands will create its own plan and execute it
+                print("🤖 OpenHands: Using built-in planning tools...")
+                print("   OpenHands will create its own plan and execute it step by step")
+                
+                generation_result = openhands.generate_code(
+                    task=openhands_prompt,
+                    workspace_path=str(state.workspace_dir),
+                    detailed_requirements=None,
+                    template_file=None
+                )
+                if not generation_result["success"]:
+                    error_msg = generation_result.get("error", "Unknown error")
+                    raise RuntimeError(f"❌ OpenHands code generation failed: {error_msg}")
+                files_generated = generation_result.get("files_generated", [])
+                diffs = generation_result.get("diffs", [])
                 
                 print(f"✅ OpenHands generated: {', '.join(files_generated) if files_generated else 'No new files (edited existing)'}")
                 if diffs:
