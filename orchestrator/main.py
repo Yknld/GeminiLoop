@@ -344,13 +344,14 @@ async def run_loop(task: str, max_iterations: int = 5, base_dir: Path = None, cu
             trace.iteration_start(iteration, max_iterations)
             events.emit_iteration_start(iteration)  # Live monitoring
             
-            # Phase 1: Generate Code
+            # Phase 1: Generate/Fix Code
             print(f"\n🎨 Phase 1: Code Generation")
             print("-" * 70)
             
             gen_start_time = time.time()
             trace.generation_start(task)
             
+            # Build task for OpenHands (initial generation or fix based on feedback)
             if iteration == 1:
                 # First iteration: OpenHands processes todos one at a time
                 print("🤖 OpenHands: Processing tasks from todo list...")
@@ -447,39 +448,73 @@ async def run_loop(task: str, max_iterations: int = 5, base_dir: Path = None, cu
                 print(f"✅ OpenHands generated: {', '.join(files_generated) if files_generated else 'No new files (edited existing)'}")
                 if diffs:
                     print(f"📝 Diffs: {len(diffs)}")
-                
-                # Always check for index.html in workspace (even if not in files_generated)
-                # This handles the case where OpenHands edited an existing file
-                index_html = state.workspace_dir / "index.html"
-                if index_html.exists() and "index.html" not in files_generated:
-                    files_generated.append("index.html")
-                    print(f"   Found index.html in workspace (edited by OpenHands)")
-                
-                # Copy to project_root for preview server
-                import shutil
-                for filename in files_generated:
-                    workspace_file = state.workspace_dir / filename
-                    if workspace_file.exists():
-                        # Copy to site for compatibility
-                        dest_file = state.site_dir / filename
-                        dest_file.parent.mkdir(parents=True, exist_ok=True)
-                        # Use shutil.copy2 to handle both text and binary files
-                        shutil.copy2(workspace_file, dest_file)
-                        
-                        # Copy to project_root for HTTP preview
-                        project_file = path_config.project_root / filename
-                        project_file.parent.mkdir(parents=True, exist_ok=True)
-                        shutil.copy2(workspace_file, project_file)
-                        print(f"   ✅ Copied {filename} to preview server directory")
-                
-                iter_result.files_generated = {f: str(state.workspace_dir / f) for f in files_generated}
-                iter_result.code_generated = f"OpenHands: {','.join(files_generated)}"
-                
-                # Emit code generation event for live monitoring
-                events.emit_code_generated(files_generated, method="openhands")
             else:
-                print("🔄 Using patched files from previous iteration")
-                files_generated = list(iter_result.files_generated.keys()) if iter_result.files_generated else ["index.html"]
+                # Iteration 2+: Fix issues based on evaluation feedback
+                print(f"🔧 OpenHands: Fixing issues from previous evaluation...")
+                
+                # Build fix prompt from evaluation feedback
+                fix_prompt = f"""Fix the following issues in index.html:
+
+**EVALUATION FEEDBACK:**
+{iter_result.feedback if hasattr(iter_result, 'feedback') else 'No specific feedback'}
+
+**ISSUES TO FIX:**
+{chr(10).join([f"- {issue.get('description', 'Unknown issue')}" for issue in (iter_result.issues[:10] if hasattr(iter_result, 'issues') and iter_result.issues else [])])}
+
+**REQUIREMENTS:**
+- Edit the existing index.html file (it already exists)
+- Use file_editor tool with action_type='edit'
+- Fix all reported issues
+- Maintain existing functionality
+- Improve score to 80+/100
+
+**CRITICAL:** The file index.html already exists. Use 'edit' command, NOT 'create'."""
+                
+                generation_result = openhands.generate_code(
+                    task=fix_prompt,
+                    workspace_path=str(state.workspace_dir),
+                    detailed_requirements=None,
+                    template_file=None
+                )
+                
+                if not generation_result["success"]:
+                    error_msg = generation_result.get("error", "Unknown error")
+                    print(f"⚠️  OpenHands fix failed: {error_msg}")
+                    # Continue with existing files
+                    files_generated = list(iter_result.files_generated.keys()) if iter_result.files_generated else ["index.html"]
+                else:
+                    files_generated = generation_result.get("files_generated", [])
+                    print(f"✅ OpenHands fixed: {', '.join(files_generated) if files_generated else 'No new files (edited existing)'}")
+            
+            # Always check for index.html in workspace (even if not in files_generated)
+            # This handles the case where OpenHands edited an existing file
+            index_html = state.workspace_dir / "index.html"
+            if index_html.exists() and "index.html" not in files_generated:
+                files_generated.append("index.html")
+                print(f"   Found index.html in workspace (edited by OpenHands)")
+            
+            # Copy to project_root for preview server
+            import shutil
+            for filename in files_generated:
+                workspace_file = state.workspace_dir / filename
+                if workspace_file.exists():
+                    # Copy to site for compatibility
+                    dest_file = state.site_dir / filename
+                    dest_file.parent.mkdir(parents=True, exist_ok=True)
+                    # Use shutil.copy2 to handle both text and binary files
+                    shutil.copy2(workspace_file, dest_file)
+                    
+                    # Copy to project_root for HTTP preview
+                    project_file = path_config.project_root / filename
+                    project_file.parent.mkdir(parents=True, exist_ok=True)
+                    shutil.copy2(workspace_file, project_file)
+                    print(f"   ✅ Copied {filename} to preview server directory")
+            
+            iter_result.files_generated = {f: str(state.workspace_dir / f) for f in files_generated}
+            iter_result.code_generated = f"OpenHands: {','.join(files_generated)}"
+            
+            # Emit code generation event for live monitoring
+            events.emit_code_generated(files_generated, method="openhands")
             
             iter_result.generation_time_seconds = time.time() - gen_start_time
             print(f"   Time: {iter_result.generation_time_seconds:.2f}s")
