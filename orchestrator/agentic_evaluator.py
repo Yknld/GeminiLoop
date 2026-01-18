@@ -558,7 +558,14 @@ class AgenticEvaluator(GeminiEvaluator):
                             mcp_client
                         )
                         
-                        logger.info(f"   Result: {tool_result.get('success', False)}")
+                        success = tool_result.get('success', False)
+                        logger.info(f"   Result: {success}")
+                        
+                        # Log warnings for failed tool calls
+                        if not success:
+                            error_msg = tool_result.get('error') or tool_result.get('message', 'Unknown error')
+                            logger.warning(f"   ⚠️  Tool call failed: {func_call.name} - {error_msg}")
+                        
                         all_tool_results.append((func_call.name, tool_result))
                         
                         # Small wait between tool calls
@@ -636,15 +643,23 @@ class AgenticEvaluator(GeminiEvaluator):
                     # Use result from first tool call for main response
                     main_result = all_tool_results[0][1] if all_tool_results else {"success": False, "message": "No tool executed"}
                     
+                    # Build response with failure indicators
+                    main_success = bool(main_result.get("success", False))
+                    main_error = main_result.get("error") or ""
+                    failure_warning = ""
+                    if not main_success:
+                        failure_warning = f" **⚠️ WARNING: Last action FAILED ({main_error}). This indicates a broken feature - report it in your summary!**"
+                    
                     response_data = {
-                        "success": bool(main_result.get("success", False)),
+                        "success": main_success,
                         "message": str(main_result.get("message", "")),
+                        "error": main_error,
                         "dom_changed": bool(verification["dom_changed"]),
                         "text_changed": bool(verification["text_changed"]),
                         "new_errors": int(len(verification["new_console_errors"])),
                         "context": steps_summary + f"Actual interactions: {interaction_count}. " + 
                                  f"**If you've tested all visible interactive elements, call finish_exploration NOW.** " +
-                                 f"Don't keep exploring - finish when done testing!"
+                                 f"Don't keep exploring - finish when done testing!" + failure_warning
                     }
                     
                     # Create function response parts for ALL function calls with structured responses (not JSON strings)
@@ -811,6 +826,14 @@ class AgenticEvaluator(GeminiEvaluator):
 - Dialog detection: System dialogs (alert/confirm/prompt) are logged and indicate poor UX
 - Console errors: Count as robustness failures
 
+**CRITICAL: IMMEDIATELY FLAG OBVIOUS PROBLEMS:**
+- If you see placeholder text like "Interactive content will be placed here" → CRITICAL FAILURE, report it immediately
+- If JavaScript evaluation returns errors (null elements, undefined properties) → This indicates broken functionality, report it
+- If tool calls return success:false or errors → The interaction failed, report it as a problem
+- If text is invisible or has poor contrast (you can see it in screenshot but can't read it) → CRITICAL UX FAILURE, report it
+- If required elements are missing (e.g., module-select not found when it should exist) → Report as missing/broken feature
+- Don't wait until the end - flag problems as you discover them during exploration!
+
 **When to Finish (CALL finish_exploration IMMEDIATELY WHEN DONE):**
 - You've verified the module count matches requirements (use browser_evaluate to check `modules.length`)
 - You've verified interactive activity types match requirements (calculators/simulations, NOT quizzes if specified)
@@ -947,7 +970,13 @@ Begin systematic testing. You have vision - use it!"""
         try:
             text_js = "document.body.innerText"
             result = await mcp_client.evaluate(text_js)
-            visible_text_raw = result.get("result", "")
+            # Handle nested result structure: {"result": {"success": true, "result": <actual_value>}}
+            inner_result = result.get("result", {})
+            if isinstance(inner_result, dict) and inner_result.get("success"):
+                visible_text_raw = inner_result.get("result", "")
+            else:
+                # Fallback: assume direct result
+                visible_text_raw = inner_result if not isinstance(inner_result, dict) else ""
             
             # Defensive: coerce to string safely
             if isinstance(visible_text_raw, str):
@@ -1006,7 +1035,13 @@ Begin systematic testing. You have vision - use it!"""
         try:
             url_js = "window.location.href"
             result = await mcp_client.evaluate(url_js)
-            state["current_url"] = result.get("result", "")
+            # Handle nested result structure: {"result": {"success": true, "result": <actual_value>}}
+            inner_result = result.get("result", {})
+            if isinstance(inner_result, dict) and inner_result.get("success"):
+                state["current_url"] = inner_result.get("result", "")
+            else:
+                # Fallback: assume direct result
+                state["current_url"] = inner_result if isinstance(inner_result, str) else ""
         except:
             state["current_url"] = ""
         
@@ -1085,7 +1120,17 @@ Begin systematic testing. You have vision - use it!"""
             
             elif tool_name == "browser_evaluate":
                 result = await mcp_client.evaluate(args["expression"])
-                return {"success": True, "result": result.get("result")}
+                # Handle nested result structure: {"result": {"success": true, "result": <actual_value>}}
+                inner_result = result.get("result", {})
+                if isinstance(inner_result, dict) and inner_result.get("success"):
+                    actual_result = inner_result.get("result")
+                    return {"success": True, "result": actual_result}
+                elif isinstance(inner_result, dict) and not inner_result.get("success"):
+                    error_msg = inner_result.get("error", "Unknown error")
+                    return {"success": False, "error": error_msg, "result": None}
+                else:
+                    # Fallback: assume direct result
+                    return {"success": True, "result": inner_result}
             
             elif tool_name == "browser_wait_for":
                 selector = args.get("selector")
@@ -1109,7 +1154,13 @@ Begin systematic testing. You have vision - use it!"""
                             return {"success": False, "message": f"Element {selector} not found after {timeout_ms}ms"}
                         
                         result = await mcp_client.evaluate(wait_js)
-                        if result.get("result"):
+                        # Handle nested result structure
+                        inner_result = result.get("result", {})
+                        if isinstance(inner_result, dict) and inner_result.get("success"):
+                            actual_result = inner_result.get("result", False)
+                        else:
+                            actual_result = inner_result if not isinstance(inner_result, dict) else False
+                        if actual_result:
                             return {"success": True, "message": f"Element {selector} found after {elapsed:.0f}ms"}
                         
                         await asyncio.sleep(poll_interval / 1000)
@@ -1126,7 +1177,13 @@ Begin systematic testing. You have vision - use it!"""
                             return {"success": False, "message": f"Text '{text}' not found after {timeout_ms}ms"}
                         
                         result = await mcp_client.evaluate(wait_text_js)
-                        if result.get("result"):
+                        # Handle nested result structure
+                        inner_result = result.get("result", {})
+                        if isinstance(inner_result, dict) and inner_result.get("success"):
+                            actual_result = inner_result.get("result", False)
+                        else:
+                            actual_result = inner_result if not isinstance(inner_result, dict) else False
+                        if actual_result:
                             return {"success": True, "message": f"Text '{text}' found after {elapsed:.0f}ms"}
                         
                         await asyncio.sleep(poll_interval / 1000)
@@ -1149,7 +1206,12 @@ Begin systematic testing. You have vision - use it!"""
                 }})()
                 """
                 result = await mcp_client.evaluate(hover_js)
-                success = result.get("result", False)
+                # Handle nested result structure
+                inner_result = result.get("result", {})
+                if isinstance(inner_result, dict) and inner_result.get("success"):
+                    success = inner_result.get("result", False)
+                else:
+                    success = inner_result if not isinstance(inner_result, dict) else False
                 return {"success": success, "message": f"Hovered {selector}"}
             
             elif tool_name == "browser_press_key":
@@ -1167,17 +1229,35 @@ Begin systematic testing. You have vision - use it!"""
             elif tool_name == "browser_get_url":
                 url_js = "window.location.href"
                 result = await mcp_client.evaluate(url_js)
-                url = result.get("result", "")
+                # Handle nested result structure
+                inner_result = result.get("result", {})
+                if isinstance(inner_result, dict) and inner_result.get("success"):
+                    url = inner_result.get("result", "")
+                else:
+                    url = inner_result if isinstance(inner_result, str) else ""
                 return {"success": True, "url": url, "message": f"Current URL: {url}"}
             
             elif tool_name == "browser_dom_snapshot":
-                # Return concise DOM snapshot
-                targets = await self._discover_interactive_targets(mcp_client)
-                return {
-                    "success": True,
-                    "interactive_elements": targets[:30],
-                    "message": f"Found {len(targets)} interactive elements"
-                }
+                # Use BrowserUse's native dom_snapshot for better performance
+                try:
+                    snapshot = await mcp_client.snapshot()
+                    interactive_elements = snapshot.get("interactive_elements", [])
+                    return {
+                        "success": True,
+                        "interactive_elements": interactive_elements[:30],  # Limit to top 30
+                        "title": snapshot.get("title", ""),
+                        "textContent": snapshot.get("textContent", ""),
+                        "message": f"Found {len(interactive_elements)} interactive elements"
+                    }
+                except Exception as e:
+                    logger.warning(f"BrowserUse snapshot failed, using fallback: {e}")
+                    # Fallback to custom discovery
+                    targets = await self._discover_interactive_targets(mcp_client)
+                    return {
+                        "success": True,
+                        "interactive_elements": targets[:30],
+                        "message": f"Found {len(targets)} interactive elements (fallback)"
+                    }
             
             else:
                 return {"success": False, "error": f"Unknown tool: {tool_name}"}
@@ -1307,8 +1387,11 @@ Begin systematic testing. You have vision - use it!"""
             css_result = await mcp_client.evaluate(css_check)
             js_result = await mcp_client.evaluate(js_check)
             
-            css_data = css_result.get('result', {})
-            js_data = js_result.get('result', {})
+            # Handle nested result structure
+            css_inner = css_result.get('result', {})
+            js_inner = js_result.get('result', {})
+            css_data = css_inner.get('result', {}) if isinstance(css_inner, dict) and css_inner.get('success') else (css_inner if isinstance(css_inner, dict) else {})
+            js_data = js_inner.get('result', {}) if isinstance(js_inner, dict) and js_inner.get('success') else (js_inner if isinstance(js_inner, dict) else {})
             
             external_css = css_data.get('external_css_count', 0)
             external_js = js_data.get('external_js_count', 0)
@@ -1493,7 +1576,13 @@ Begin systematic testing. You have vision - use it!"""
             """
             
             result = await mcp_client.evaluate(template_check)
-            template_data = result.get('result', {})
+            # Handle nested result structure
+            inner_result = result.get('result', {})
+            if isinstance(inner_result, dict) and inner_result.get('success'):
+                template_data = inner_result.get('result', {})
+            else:
+                # Fallback: assume direct result
+                template_data = inner_result if isinstance(inner_result, dict) else {}
             
             return template_data
         except Exception as e:
@@ -1764,120 +1853,132 @@ The page appears to be a simple quiz page, NOT using the required template struc
         try:
             dialog_js = "window.__dialogCalls || []"
             result = await mcp_client.evaluate(dialog_js)
-            dialogs = result.get("result", [])
+            # Handle nested result structure
+            inner_result = result.get("result", {})
+            if isinstance(inner_result, dict) and inner_result.get("success"):
+                dialogs = inner_result.get("result", [])
+            else:
+                dialogs = inner_result if isinstance(inner_result, list) else []
             return dialogs if isinstance(dialogs, list) else []
         except:
             return []
     
     async def _discover_interactive_targets(self, mcp_client) -> List[Dict[str, Any]]:
         """
-        Discover interactive elements with stable selectors
+        Discover interactive elements with stable selectors using BrowserUse's native dom_snapshot
         
         Returns ranked list of actionable targets with:
         - Stable selector (prefer #id, fallback to other strategies)
         - Element role/tag
         - Accessible name/text
         - Visibility info
+        
+        Uses BrowserUse's built-in dom_snapshot which provides better selector computation
+        than custom JS evaluation.
         """
-        discover_js = """
-        (function() {
-            function computeSelector(el) {
-                // Prefer ID (unique)
-                if (el.id) return '#' + el.id;
-                
-                // Try data-testid (unique)
-                if (el.dataset.testid) return '[data-testid="' + el.dataset.testid + '"]';
-                
-                // Try aria-label (may not be unique, but better than class)
-                if (el.getAttribute('aria-label')) {
-                    const label = el.getAttribute('aria-label').replace(/"/g, '\\\\"');
-                    const selector = el.tagName.toLowerCase() + '[aria-label="' + label + '"]';
-                    // Check if unique
-                    if (document.querySelectorAll(selector).length === 1) return selector;
-                    // If not unique, add nth-of-type
-                    const siblings = Array.from(el.parentElement.children).filter(c => c.tagName === el.tagName);
-                    const index = siblings.indexOf(el);
-                    return selector + ':nth-of-type(' + (index + 1) + ')';
+        try:
+            # Use BrowserUse's native dom_snapshot method (better than custom JS)
+            snapshot = await mcp_client.snapshot()
+            
+            # Extract interactive elements from snapshot
+            interactive_elements = snapshot.get("interactive_elements", [])
+            
+            if not interactive_elements:
+                logger.debug("No interactive elements found in snapshot")
+                return []
+            
+            # Convert BrowserUse format to our expected format
+            targets = []
+            for el in interactive_elements:
+                # BrowserUse already provides stable selectors, so use them directly
+                target = {
+                    "selector": el.get("selector", ""),
+                    "tag": el.get("tag", ""),
+                    "role": el.get("role", el.get("tag", "")),
+                    "text": el.get("text", "")[:100],  # Limit text length
+                    "type": el.get("type"),
+                    "visible": el.get("visible", True),
+                    "disabled": el.get("disabled", False)
                 }
-                
-                // Try name attribute (for form elements)
-                if (el.name) {
-                    const selector = el.tagName.toLowerCase() + '[name="' + el.name + '"]';
-                    if (document.querySelectorAll(selector).length === 1) return selector;
-                    const siblings = Array.from(el.parentElement.children).filter(c => c.tagName === el.tagName && c.name === el.name);
-                    const index = siblings.indexOf(el);
-                    return selector + ':nth-of-type(' + (index + 1) + ')';
-                }
-                
-                // Fallback: tag + class with nth-of-type for uniqueness
-                if (el.className && typeof el.className === 'string') {
-                    const firstClass = el.className.split(' ')[0];
-                    if (firstClass) {
-                        const selector = el.tagName.toLowerCase() + '.' + firstClass;
-                        const matches = document.querySelectorAll(selector);
-                        if (matches.length === 1) return selector;
-                        // Add nth-of-type for uniqueness
-                        const siblings = Array.from(el.parentElement.children).filter(c => 
-                            c.tagName === el.tagName && c.className && c.className.split(' ')[0] === firstClass
-                        );
+                # Only include visible, non-disabled elements
+                if target["visible"] and not target["disabled"]:
+                    targets.append(target)
+            
+            logger.debug(f"Discovered {len(targets)} interactive targets via BrowserUse dom_snapshot")
+            return targets
+            
+        except Exception as e:
+            logger.warning(f"BrowserUse dom_snapshot failed, falling back to custom JS: {e}")
+            # Fallback to custom JS if BrowserUse fails
+            discover_js = """
+            (function() {
+                function computeSelector(el) {
+                    if (el.id) return '#' + el.id;
+                    if (el.dataset.testid) return '[data-testid="' + el.dataset.testid + '"]';
+                    if (el.getAttribute('aria-label')) {
+                        const label = el.getAttribute('aria-label').replace(/"/g, '\\\\"');
+                        const selector = el.tagName.toLowerCase() + '[aria-label="' + label + '"]';
+                        if (document.querySelectorAll(selector).length === 1) return selector;
+                        const siblings = Array.from(el.parentElement.children).filter(c => c.tagName === el.tagName);
                         const index = siblings.indexOf(el);
                         return selector + ':nth-of-type(' + (index + 1) + ')';
                     }
+                    if (el.name) {
+                        const selector = el.tagName.toLowerCase() + '[name="' + el.name + '"]';
+                        if (document.querySelectorAll(selector).length === 1) return selector;
+                        const siblings = Array.from(el.parentElement.children).filter(c => c.tagName === el.tagName && c.name === el.name);
+                        const index = siblings.indexOf(el);
+                        return selector + ':nth-of-type(' + (index + 1) + ')';
+                    }
+                    const siblings = Array.from(el.parentElement.children).filter(c => c.tagName === el.tagName);
+                    const index = siblings.indexOf(el);
+                    return el.tagName.toLowerCase() + ':nth-of-type(' + (index + 1) + ')';
                 }
                 
-                // Last resort: tag with nth-of-type (better than just tag)
-                const siblings = Array.from(el.parentElement.children).filter(c => c.tagName === el.tagName);
-                const index = siblings.indexOf(el);
-                return el.tagName.toLowerCase() + ':nth-of-type(' + (index + 1) + ')';
-            }
-            
-            function isVisible(el) {
-                const style = window.getComputedStyle(el);
-                return style.display !== 'none' && 
-                       style.visibility !== 'hidden' && 
-                       style.opacity !== '0' &&
-                       el.offsetParent !== null;
-            }
-            
-            function getText(el) {
-                return (el.textContent || el.value || el.getAttribute('aria-label') || el.placeholder || '').trim();
-            }
-            
-            // Find interactive elements
-            const selectors = [
-                'button', 'a[href]', 'input', 'select', 'textarea', 
-                '[role="button"]', '[role="link"]', '[role="checkbox"]', '[role="radio"]',
-                '[tabindex]', 'summary', 'details'
-            ];
-            
-            const elements = [];
-            document.querySelectorAll(selectors.join(', ')).forEach((el, idx) => {
-                if (idx >= 50) return; // Limit to 50 elements
+                function isVisible(el) {
+                    const style = window.getComputedStyle(el);
+                    return style.display !== 'none' && 
+                           style.visibility !== 'hidden' && 
+                           style.opacity !== '0' &&
+                           el.offsetParent !== null;
+                }
                 
-                const visible = isVisible(el);
-                if (!visible) return; // Skip invisible elements
+                function getText(el) {
+                    return (el.textContent || el.value || el.getAttribute('aria-label') || el.placeholder || '').trim();
+                }
                 
-                elements.push({
-                    selector: computeSelector(el),
-                    tag: el.tagName.toLowerCase(),
-                    role: el.getAttribute('role') || el.tagName.toLowerCase(),
-                    text: getText(el).slice(0, 100),
-                    type: el.type || null,
-                    visible: visible
+                const selectors = ['button', 'a[href]', 'input', 'select', 'textarea', '[role="button"]', '[role="link"]', '[tabindex]'];
+                const elements = [];
+                document.querySelectorAll(selectors.join(', ')).forEach((el, idx) => {
+                    if (idx >= 50) return;
+                    const visible = isVisible(el);
+                    if (!visible) return;
+                    elements.push({
+                        selector: computeSelector(el),
+                        tag: el.tagName.toLowerCase(),
+                        role: el.getAttribute('role') || el.tagName.toLowerCase(),
+                        text: getText(el).slice(0, 100),
+                        type: el.type || null,
+                        visible: visible
+                    });
                 });
-            });
-            
-            return elements;
-        })()
-        """
-        
-        try:
-            result = await mcp_client.evaluate(discover_js)
-            targets = result.get("result", [])
-            return targets if isinstance(targets, list) else []
-        except Exception as e:
-            logger.error(f"Failed to discover interactive targets: {e}")
-            return []
+                return elements;
+            })()
+            """
+            try:
+                result = await mcp_client.evaluate(discover_js)
+                inner_result = result.get("result", {})
+                if isinstance(inner_result, dict) and inner_result.get("success"):
+                    targets = inner_result.get("result", [])
+                    if isinstance(targets, list):
+                        logger.debug(f"Discovered {len(targets)} interactive targets (fallback JS)")
+                        return targets
+                targets = inner_result if isinstance(inner_result, list) else []
+                logger.debug(f"Discovered {len(targets)} interactive targets (direct result)")
+                return targets
+            except Exception as fallback_error:
+                logger.error(f"Fallback JS evaluation also failed: {fallback_error}")
+                return []
     
     async def _compute_dom_signature(self, mcp_client) -> str:
         """
@@ -1924,7 +2025,12 @@ The page appears to be a simple quiz page, NOT using the required template struc
         
         try:
             result = await mcp_client.evaluate(signature_js)
-            sig_json = result.get("result", "{}")
+            # Handle nested result structure
+            inner_result = result.get("result", {})
+            if isinstance(inner_result, dict) and inner_result.get("success"):
+                sig_json = inner_result.get("result", "{}")
+            else:
+                sig_json = inner_result if isinstance(inner_result, str) else "{}"
             # Hash it
             sig_hash = hashlib.md5(sig_json.encode()).hexdigest()
             return sig_hash
