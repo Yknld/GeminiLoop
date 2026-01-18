@@ -49,6 +49,7 @@ runs/
 # Docs (reduce build context size)
 *.md
 !README.md
+!TEMPLATE_SUMMARY.md
 assets/
 
 # Test files (not needed in container)
