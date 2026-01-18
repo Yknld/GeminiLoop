@@ -28,6 +28,14 @@ class Planner:
         
         # Load planner prompt
         self.planner_prompt = self._load_planner_prompt()
+        
+        # Load template summary if available
+        template_summary_file = Path(__file__).parent.parent.parent / "TEMPLATE_SUMMARY.md"
+        if template_summary_file.exists():
+            self.template_summary = template_summary_file.read_text(encoding='utf-8')
+        else:
+            self.template_summary = None
+            print("⚠️  Template summary not found, proceeding without template context")
     
     def _load_planner_prompt(self) -> str:
         """Load the planner prompt from file."""
@@ -79,6 +87,11 @@ class Planner:
         # Format notes - use custom_notes if provided, otherwise use user_requirements
         notes_text = custom_notes if custom_notes else user_requirements
         
+        # Add template summary to prompt if available
+        template_context = ""
+        if self.template_summary:
+            template_context = f"\n\nTEMPLATE SUMMARY (for reference):\n{self.template_summary}\n"
+        
         # Build the full prompt using string replacement (not .format() to avoid JSON brace conflicts)
         full_prompt = self.planner_prompt.replace(
             "{user_requirements}", user_requirements
@@ -87,6 +100,10 @@ class Planner:
         ).replace(
             "{youtube_links}", youtube_links_text
         )
+        
+        # Append template summary if available
+        if template_context:
+            full_prompt += template_context
         
         print("🧠 Planner: Generating detailed prompt with Gemini 3.0 Pro Preview...")
         

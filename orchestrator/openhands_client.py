@@ -113,13 +113,17 @@ class LocalSubprocessOpenHandsClient(OpenHandsClient):
             logger.error(f"   Import error: {e}")
             logger.error("   Install with: pip install openhands-sdk openhands-tools openhands-workspace")
     
-    def generate_code(self, task: str, workspace_path: str, detailed_requirements: Dict[str, Any]) -> Dict[str, Any]:
-        """Generate initial code using OpenHands Python SDK"""
+    def generate_code(self, task: str, workspace_path: str, detailed_requirements: Dict[str, Any] = None, template_file: str = None) -> Dict[str, Any]:
+        """Generate initial code using OpenHands Python SDK, optionally starting from template"""
         
         start_time = datetime.now()
         workspace_path = Path(workspace_path)
         
-        logger.info(f"🎨 OpenHands SDK: Generating code from scratch")
+        if template_file and Path(template_file).exists():
+            logger.info(f"🎨 OpenHands SDK: Populating template with content")
+            logger.info(f"   Template: {template_file}")
+        else:
+            logger.info(f"🎨 OpenHands SDK: Generating code from scratch")
         logger.info(f"   Task: {task}")
         logger.info(f"   Workspace: {workspace_path}")
         
@@ -127,7 +131,7 @@ class LocalSubprocessOpenHandsClient(OpenHandsClient):
             raise RuntimeError("OpenHands not available. Cannot generate code without OpenHands.")
         
         # Build detailed prompt for OpenHands
-        prompt = self._build_generation_prompt(task, detailed_requirements)
+        prompt = self._build_generation_prompt(task, detailed_requirements, template_file)
         
         # Save prompt for debugging
         prompt_file = self.artifacts_dir / f"generation_prompt_{start_time.strftime('%Y%m%d_%H%M%S')}.txt"
@@ -445,10 +449,26 @@ class LocalSubprocessOpenHandsClient(OpenHandsClient):
         
         return diffs
     
-    def _build_generation_prompt(self, task: str, requirements: Dict[str, Any]) -> str:
-        """Build simple task prompt for OpenHands"""
+    def _build_generation_prompt(self, task: str, requirements: Dict[str, Any] = None, template_file: str = None) -> str:
+        """Build task prompt for OpenHands, optionally including template instructions"""
         
         prompt = f"{task}"
+        
+        # If template file exists, add instructions to use it
+        if template_file and Path(template_file).exists():
+            template_path = Path(template_file)
+            prompt += f"\n\n**CRITICAL: START WITH THE TEMPLATE FILE**"
+            prompt += f"\n- The template file is located at: {template_path.name} (already in workspace)"
+            prompt += f"\n- You MUST use this template as your starting point"
+            prompt += f"\n- Read the template.html file and populate the `modules` array with content from the notes"
+            prompt += f"\n- Create ONE module object for EACH distinct topic in the notes"
+            prompt += f"\n- Preserve the template structure: navigation system, module loading functions, audio controls, notes panel, chatbot"
+            prompt += f"\n- You can modify colors and remove specific cards, but the skeleton structure must remain"
+            prompt += f"\n- Each module should have: title, videoId, explanation, keyPoints, timeline, funFact, interactiveElement, audioSources"
+            prompt += f"\n- The template already has all CSS and JavaScript inline - do NOT add external files"
+        
+        # Add mobile/tablet requirement
+        prompt += "\n\n**CRITICAL RESPONSIVE DESIGN REQUIREMENT**: The code must look good and function properly on mobile (375px) AND tablet (768px) devices. Use CSS media queries for responsive breakpoints, ensure touch targets are at least 44px on mobile, and prevent horizontal scrolling on all screen sizes."
         
         # Add specific requirements if provided
         if requirements:
