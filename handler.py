@@ -276,7 +276,6 @@ async def handler(job: Dict[str, Any]) -> Dict[str, Any]:
             if planner_file.exists():
                 try:
                     if filename.endswith('.json'):
-                        import json
                         response["planner_output"][key] = json.loads(planner_file.read_text())
                     else:
                         response["planner_output"][key] = planner_file.read_text()
