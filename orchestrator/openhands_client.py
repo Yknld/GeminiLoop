@@ -1498,13 +1498,30 @@ class CloudOpenHandsClient(OpenHandsClient):
             server_image = os.getenv("OPENHANDS_SERVER_IMAGE", "ghcr.io/openhands/agent-server:latest-python")
             logger.info(f"   Server image: {server_image}")
             
-            with APIRemoteWorkspace(
-                runtime_api_url=self.runtime_api_url,
-                runtime_api_key=self.runtime_api_key,  # Pass as string, not SecretStr
-                server_image=server_image,
-                image_pull_policy="Always",  # Ensure we get latest image
-            ) as workspace:
+            try:
+                workspace = APIRemoteWorkspace(
+                    runtime_api_url=self.runtime_api_url,
+                    runtime_api_key=self.runtime_api_key,  # Pass as string, not SecretStr
+                    server_image=server_image,
+                    image_pull_policy="Always",  # Ensure we get latest image
+                )
+                logger.info(f"   Attempting to connect to Runtime API...")
+                workspace.__enter__()  # This will raise if connection fails
                 logger.info(f"   ✅ Connected to cloud workspace")
+            except Exception as conn_error:
+                error_type = type(conn_error).__name__
+                error_msg = str(conn_error)
+                logger.error(f"   ❌ Failed to connect to Runtime API")
+                logger.error(f"   Error type: {error_type}")
+                logger.error(f"   Error message: {error_msg}")
+                logger.error(f"   Runtime API URL: {self.runtime_api_url}")
+                logger.error(f"   This error typically means:")
+                logger.error(f"   1. Cannot resolve hostname '{self.runtime_api_url.split('//')[1].split('/')[0]}'")
+                logger.error(f"   2. Network connectivity issue from RunPod to OpenHands Runtime API")
+                logger.error(f"   3. Runtime API service may be down or unreachable")
+                raise RuntimeError(f"Failed to connect to OpenHands Runtime API at {self.runtime_api_url}: {error_type}: {error_msg}")
+            
+            try:
                 
                 # Upload workspace files to cloud
                 logger.info(f"   Uploading workspace files to cloud...")
@@ -1576,6 +1593,13 @@ class CloudOpenHandsClient(OpenHandsClient):
                     "stderr": "",
                     "duration_seconds": duration
                 }
+            finally:
+                # Ensure workspace is properly closed
+                try:
+                    if 'workspace' in locals():
+                        workspace.__exit__(None, None, None)
+                except:
+                    pass
         
         except Exception as e:
             error_msg = str(e)
