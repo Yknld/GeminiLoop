@@ -1472,8 +1472,11 @@ class CloudOpenHandsClient(OpenHandsClient):
             if response.status_code != 200:
                 error_text = response.text
                 logger.error(f"   ❌ API request failed: {response.status_code}")
+                logger.error(f"   URL used: {conversations_url}")
+                logger.error(f"   Method: POST")
+                logger.error(f"   Headers: Authorization present: {'Authorization' in headers}")
                 logger.error(f"   Response: {error_text}")
-                raise RuntimeError(f"OpenHands Cloud API returned {response.status_code}: {error_text}")
+                raise RuntimeError(f"OpenHands Cloud API returned {response.status_code} for {conversations_url}: {error_text}")
             
             result = response.json()
             conversation_id = result.get("conversation_id")
