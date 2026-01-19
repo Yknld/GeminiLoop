@@ -1605,10 +1605,24 @@ class CloudOpenHandsClient(OpenHandsClient):
                 status_response = httpx.get(status_url, headers=headers, timeout=30.0)
                 if status_response.status_code != 200:
                     logger.warning(f"   Status check failed: {status_response.status_code}")
+                    logger.warning(f"   Response: {status_response.text[:200]}")
                     time.sleep(poll_interval)
                     continue
                 
-                status_data = status_response.json()
+                # Parse JSON response with error handling
+                try:
+                    status_data = status_response.json()
+                except Exception as e:
+                    logger.error(f"   ❌ Failed to parse status response JSON: {e}")
+                    logger.error(f"   Response text: {status_response.text[:500]}")
+                    time.sleep(poll_interval)
+                    continue
+                
+                if status_data is None:
+                    logger.warning(f"   ⚠️  Status response is None, retrying...")
+                    time.sleep(poll_interval)
+                    continue
+                
                 # Check both 'status' and 'conversation_status' fields
                 status = status_data.get("status") or status_data.get("conversation_status", "unknown")
                 
@@ -1630,7 +1644,10 @@ class CloudOpenHandsClient(OpenHandsClient):
                 
                 time.sleep(poll_interval)
             
-            # Get conversation results
+            # Get conversation results (status_data should be set from the loop)
+            if status_data is None:
+                raise RuntimeError("Failed to get conversation status - status_data is None")
+            
             conversation_url = status_data.get("url", "")
             pr_number = status_data.get("pr_number")
             
