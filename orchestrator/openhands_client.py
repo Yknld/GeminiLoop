@@ -579,9 +579,11 @@ class LocalSubprocessOpenHandsClient(OpenHandsClient):
         prompt += f"}}\n"
         prompt += "```\n\n"
         
-        prompt += "**CRITICAL: interactiveElement (REQUIRED - FUN ACTIVITY, NOT QUIZ):**\n"
-        prompt += "- **NEVER CREATE QUIZZES, TESTS, OR MULTIPLE-CHOICE QUESTIONS**\n"
+        prompt += "**CRITICAL: funModule (REQUIRED - FUN ACTIVITY, NOT QUIZ - goes in left column):**\n"
+        prompt += "- **NEVER CREATE QUIZZES, TESTS, OR MULTIPLE-CHOICE QUESTIONS IN funModule**\n"
         prompt += "- **MUST CREATE FUN INTERACTIVE ACTIVITY**: calculator, simulation, game, manipulative\n"
+        prompt += "**CRITICAL: test (REQUIRED - QUIZ/TEST QUESTIONS - goes in right column):**\n"
+        prompt += "- **CREATE QUIZ/TEST QUESTIONS** for the right column\n"
         
         if interactive_experiences:
             for exp in interactive_experiences:
