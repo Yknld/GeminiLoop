@@ -1379,6 +1379,297 @@ class LocalSubprocessOpenHandsClient(OpenHandsClient):
     
 
 
+class CloudOpenHandsClient(OpenHandsClient):
+    """
+    OpenHands Cloud API client for code generation.
+    
+    Uses OpenHands Cloud API (https://app.all-hands.dev/api/conversations) to generate code remotely.
+    The checker/evaluator runs on RunPod, but code generation happens in the cloud.
+    """
+    
+    def __init__(self, artifacts_dir: Optional[Path] = None):
+        self.artifacts_dir = Path(artifacts_dir) if artifacts_dir else Path.cwd() / "artifacts"
+        self.artifacts_dir.mkdir(parents=True, exist_ok=True)
+        
+        # OpenHands Cloud API configuration
+        self.api_key = os.getenv("OPENHANDS_CLOUD_API_KEY")
+        self.api_base_url = os.getenv("OPENHANDS_CLOUD_API_URL", "https://app.all-hands.dev/api")
+        self.runtime_api_url = os.getenv("OPENHANDS_RUNTIME_API_URL", "https://runtime.eval.all-hands.dev")
+        self.runtime_api_key = os.getenv("OPENHANDS_RUNTIME_API_KEY")
+        
+        if not self.api_key:
+            raise RuntimeError("OPENHANDS_CLOUD_API_KEY environment variable is required for cloud mode")
+        if not self.runtime_api_key:
+            raise RuntimeError("OPENHANDS_RUNTIME_API_KEY environment variable is required for cloud mode")
+        
+        logger.info("☁️  Using CloudOpenHandsClient (OpenHands Cloud API)")
+        logger.info(f"   API Base URL: {self.api_base_url}")
+        logger.info(f"   Runtime API URL: {self.runtime_api_url}")
+    
+    def generate_code(self, task: str, workspace_path: str, detailed_requirements: Dict[str, Any] = None, template_file: str = None) -> Dict[str, Any]:
+        """Generate code using OpenHands Cloud API with APIRemoteWorkspace"""
+        
+        start_time = datetime.now()
+        workspace_path = Path(workspace_path)
+        
+        logger.info(f"☁️  OpenHands Cloud API: Generating code")
+        logger.info(f"   Task: {task[:100]}...")
+        logger.info(f"   Workspace: {workspace_path}")
+        
+        try:
+            # Import OpenHands SDK
+            from openhands.sdk import LLM, Agent, Conversation, Tool
+            from openhands.tools.file_editor import FileEditorTool
+            from openhands.tools.terminal import TerminalTool
+            from openhands.tools.preset.default import get_default_agent
+            from openhands.workspace import APIRemoteWorkspace
+            from pydantic import SecretStr
+            
+            # Build detailed prompt for OpenHands
+            prompt = self._build_generation_prompt(task, detailed_requirements, template_file, workspace_path)
+            
+            # Save prompt for debugging
+            prompt_file = self.artifacts_dir / f"cloud_generation_prompt_{start_time.strftime('%Y%m%d_%H%M%S')}.txt"
+            prompt_file.write_text(prompt)
+            logger.info(f"   Prompt saved: {prompt_file}")
+            
+            # Capture before state
+            before_files = self._capture_workspace_state(workspace_path)
+            
+            # Configure LLM - use gemini-3-flash-preview as requested
+            model = os.getenv("GEMINI_MODEL", "gemini-3-flash-preview")
+            # For OpenHands Cloud, we may need gemini/ prefix depending on SDK version
+            # Try without prefix first, SDK should handle it
+            
+            llm = LLM(
+                model=model,
+                api_key=SecretStr(os.getenv("GOOGLE_AI_STUDIO_API_KEY")),
+            )
+            logger.info(f"   Using model: {model}")
+            
+            # Create agent
+            try:
+                agent = get_default_agent(
+                    llm=llm,
+                    cli_mode=True,  # Disable browser tools for code generation
+                )
+                logger.info(f"   ✅ Default agent created")
+            except Exception as agent_error:
+                logger.warning(f"⚠️  Failed to create default agent: {agent_error}")
+                logger.info("   Creating agent with explicit Tool references...")
+                agent = Agent(
+                    llm=llm,
+                    tools=[
+                        Tool(name=FileEditorTool.name),
+                        Tool(name=TerminalTool.name),
+                    ],
+                )
+                logger.info("   ✅ Fallback agent created")
+            
+            # Use APIRemoteWorkspace for cloud execution
+            logger.info(f"   Connecting to OpenHands Cloud Runtime API...")
+            with APIRemoteWorkspace(
+                runtime_api_url=self.runtime_api_url,
+                runtime_api_key=SecretStr(self.runtime_api_key),
+                server_image="ghcr.io/openhands/agent-server:main-python"
+            ) as workspace:
+                logger.info(f"   ✅ Connected to cloud workspace")
+                
+                # Upload workspace files to cloud
+                logger.info(f"   Uploading workspace files to cloud...")
+                self._upload_workspace_to_cloud(workspace, workspace_path)
+                
+                # Create conversation
+                conversation = Conversation(agent=agent, workspace=workspace)
+                
+                logger.info("   Sending task to OpenHands Cloud agent...")
+                logger.info(f"   Task length: {len(prompt)} characters")
+                
+                conversation.send_message(prompt)
+                
+                # Run with timeout
+                timeout_seconds = float(os.getenv('OPENHANDS_TIMEOUT_SECONDS', '600'))  # 10 minutes default
+                logger.info(f"   Running conversation (timeout: {timeout_seconds}s)...")
+                
+                # Use threading to implement timeout for blocking call
+                run_complete = threading.Event()
+                run_exception = [None]
+                
+                def run_conversation():
+                    try:
+                        conversation.run()
+                        run_complete.set()
+                    except Exception as e:
+                        run_exception[0] = e
+                        run_complete.set()
+                
+                # Start conversation in separate thread
+                run_thread = threading.Thread(target=run_conversation, daemon=True)
+                run_thread.start()
+                
+                # Wait for completion or timeout
+                if not run_complete.wait(timeout=timeout_seconds):
+                    logger.error(f"OpenHands Cloud execution timed out after {timeout_seconds}s")
+                    raise RuntimeError(f"OpenHands Cloud execution timed out after {timeout_seconds}s")
+                
+                # Check if exception occurred
+                if run_exception[0]:
+                    raise run_exception[0]
+                
+                logger.info("   ✅ Conversation completed")
+                
+                # Download workspace files from cloud
+                logger.info(f"   Downloading generated files from cloud...")
+                self._download_workspace_from_cloud(workspace, workspace_path)
+                
+                # Capture after state
+                after_files = self._capture_workspace_state(workspace_path)
+                
+                # Compute diffs
+                diffs = self._compute_diffs(before_files, after_files)
+                files_generated = list(after_files.keys() - before_files.keys())
+                files_modified = [f for f in after_files.keys() if f in before_files and before_files[f] != after_files[f]]
+                
+                duration = (datetime.now() - start_time).total_seconds()
+                
+                logger.info(f"   ✅ Code generation complete")
+                logger.info(f"   Files generated: {len(files_generated)}")
+                logger.info(f"   Files modified: {len(files_modified)}")
+                logger.info(f"   Duration: {duration:.2f}s")
+                
+                return {
+                    "success": True,
+                    "files_generated": files_generated + files_modified,
+                    "diffs": diffs,
+                    "stdout": f"Generated {len(files_generated)} new files, modified {len(files_modified)} files",
+                    "stderr": "",
+                    "duration_seconds": duration
+                }
+        
+        except Exception as e:
+            error_msg = str(e)
+            error_traceback = traceback.format_exc()
+            logger.error(f"❌ OpenHands Cloud API failed: {error_msg}")
+            logger.error(f"   Full traceback:\n{error_traceback}")
+            
+            return {
+                "success": False,
+                "error": error_msg,
+                "files_generated": [],
+                "diffs": [],
+                "stdout": "",
+                "stderr": error_traceback,
+                "duration_seconds": (datetime.now() - start_time).total_seconds()
+            }
+    
+    def _upload_workspace_to_cloud(self, workspace, local_workspace_path: Path):
+        """Upload local workspace files to cloud workspace"""
+        try:
+            # Get all files in workspace
+            uploaded_count = 0
+            for file_path in local_workspace_path.rglob("*"):
+                if file_path.is_file():
+                    relative_path = file_path.relative_to(local_workspace_path)
+                    try:
+                        content = file_path.read_text(encoding="utf-8")
+                        # APIRemoteWorkspace uses write_file method
+                        workspace.write_file(str(relative_path), content)
+                        uploaded_count += 1
+                        logger.debug(f"   Uploaded: {relative_path}")
+                    except UnicodeDecodeError:
+                        # Skip binary files
+                        logger.debug(f"   Skipped binary file: {relative_path}")
+                    except Exception as e:
+                        logger.warning(f"   Failed to upload {relative_path}: {e}")
+            logger.info(f"   ✅ Uploaded {uploaded_count} files to cloud workspace")
+        except Exception as e:
+            logger.warning(f"   Error uploading workspace: {e}")
+    
+    def _download_workspace_from_cloud(self, workspace, local_workspace_path: Path):
+        """Download cloud workspace files to local workspace"""
+        try:
+            downloaded_count = 0
+            # Try to list files in workspace
+            if hasattr(workspace, 'list_files'):
+                try:
+                    files = workspace.list_files()
+                    for file_info in files:
+                        filename = file_info.get('path', file_info) if isinstance(file_info, dict) else str(file_info)
+                        try:
+                            content = workspace.read_file(filename)
+                            file_path = local_workspace_path / filename
+                            file_path.parent.mkdir(parents=True, exist_ok=True)
+                            file_path.write_text(content, encoding="utf-8")
+                            downloaded_count += 1
+                            logger.debug(f"   Downloaded: {filename}")
+                        except Exception as e:
+                            logger.debug(f"   Could not download {filename}: {e}")
+                except Exception as e:
+                    logger.warning(f"   Could not list files: {e}")
+            
+            # Fallback: try common files if list_files doesn't work
+            if downloaded_count == 0:
+                common_files = ["index.html", "style.css", "script.js", "template.html"]
+                for filename in common_files:
+                    try:
+                        content = workspace.read_file(filename)
+                        file_path = local_workspace_path / filename
+                        file_path.parent.mkdir(parents=True, exist_ok=True)
+                        file_path.write_text(content, encoding="utf-8")
+                        downloaded_count += 1
+                        logger.debug(f"   Downloaded: {filename}")
+                    except Exception as e:
+                        logger.debug(f"   Could not download {filename}: {e}")
+            
+            logger.info(f"   ✅ Downloaded {downloaded_count} files from cloud workspace")
+        except Exception as e:
+            logger.warning(f"   Error downloading workspace: {e}")
+    
+    def _build_generation_prompt(self, task: str, requirements: Dict[str, Any] = None, template_file: str = None, workspace_path: str = None) -> str:
+        """Build task prompt for OpenHands Cloud API - reuse LocalSubprocessOpenHandsClient logic"""
+        # Create a temporary instance to reuse the prompt building logic
+        temp_client = LocalSubprocessOpenHandsClient(artifacts_dir=self.artifacts_dir)
+        return temp_client._build_generation_prompt(task, requirements, template_file, workspace_path)
+    
+    def _capture_workspace_state(self, workspace_path: Path) -> Dict[str, str]:
+        """Capture current state of workspace files"""
+        state = {}
+        if workspace_path.exists():
+            for file_path in workspace_path.rglob("*"):
+                if file_path.is_file():
+                    try:
+                        relative_path = str(file_path.relative_to(workspace_path))
+                        state[relative_path] = file_path.read_text(encoding="utf-8")
+                    except (UnicodeDecodeError, Exception):
+                        pass  # Skip binary files or errors
+        return state
+    
+    def _compute_diffs(self, before: Dict[str, str], after: Dict[str, str]) -> List[Dict[str, Any]]:
+        """Compute diffs between before and after states"""
+        diffs = []
+        for file_path in set(before.keys()) | set(after.keys()):
+            before_content = before.get(file_path, "")
+            after_content = after.get(file_path, "")
+            if before_content != after_content:
+                diffs.append({
+                    "file": file_path,
+                    "type": "modified" if file_path in before else "created",
+                    "diff": f"File {file_path} was {'modified' if file_path in before else 'created'}"
+                })
+        return diffs
+    
+    def apply_patch_plan(self, workspace_path: str, patch_plan: Dict[str, Any]) -> Dict[str, Any]:
+        """Apply patch plan using OpenHands Cloud API"""
+        # Similar to generate_code but with patch instructions
+        instructions = patch_plan.get("instructions", "")
+        return self.generate_code(
+            task=instructions,
+            workspace_path=workspace_path,
+            detailed_requirements=None,
+            template_file=None
+        )
+
+
 class MockOpenHandsClient(OpenHandsClient):
     """
     Mock OpenHands client for testing/demo
@@ -1686,15 +1977,18 @@ def get_openhands_client(artifacts_dir: Optional[Path] = None) -> OpenHandsClien
     Factory function to get appropriate OpenHands client
     
     Based on OPENHANDS_MODE environment variable:
-    - "local": LocalSubprocessOpenHandsClient
-    - "mock": MockOpenHandsClient (default)
+    - "cloud": CloudOpenHandsClient (uses OpenHands Cloud API)
+    - "local": LocalSubprocessOpenHandsClient (local SDK)
+    - "mock": MockOpenHandsClient (default, for testing)
     """
     
     mode = os.getenv("OPENHANDS_MODE", "mock").lower()
     
     logger.info(f"🔧 Initializing OpenHands client: mode={mode}")
     
-    if mode == "local":
+    if mode == "cloud":
+        return CloudOpenHandsClient(artifacts_dir)
+    elif mode == "local":
         return LocalSubprocessOpenHandsClient(artifacts_dir)
     elif mode == "mock":
         return MockOpenHandsClient(artifacts_dir)
