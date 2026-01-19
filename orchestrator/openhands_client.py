@@ -1389,11 +1389,16 @@ class CloudOpenHandsClient(OpenHandsClient):
     Key Differences:
     - Runtime API Key: Authenticates with OpenHands Runtime API to manage remote sandboxed environments,
       containers, workspaces, and execute commands. Required for APIRemoteWorkspace.
-    - LLM API Key: Used to access the language model (Gemini, Claude, etc.) - passed separately via
-      GOOGLE_AI_STUDIO_API_KEY for Gemini models.
-    - Cloud API Key: Used for OpenHands Cloud UI/conversations API (not needed for APIRemoteWorkspace).
+      → Get from: "OpenHands API Keys" section → Click "Create API Key"
+    - Cloud API Key: Same type of key as Runtime API Key, but used for OpenHands Conversations REST API
+      (POST /api/conversations). Optional - not needed for APIRemoteWorkspace.
+      → Get from: "OpenHands API Keys" section → Click "Create API Key" (same section!)
+    - LLM API Key: Different key - used to access the language model (Gemini, Claude, etc.)
+      → Get from: "OpenHands LLM Key" section (different section, single key you can refresh)
     
-    For APIRemoteWorkspace, we only need the Runtime API Key.
+    IMPORTANT: Both Runtime API Key and Cloud API Key come from the SAME "OpenHands API Keys" section!
+    They're the same type of key, just used for different API endpoints. For APIRemoteWorkspace, 
+    we only need the Runtime API Key (from "OpenHands API Keys" section).
     """
     
     def __init__(self, artifacts_dir: Optional[Path] = None):
