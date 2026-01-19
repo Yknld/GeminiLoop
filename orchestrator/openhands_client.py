@@ -1398,7 +1398,8 @@ class CloudOpenHandsClient(OpenHandsClient):
         
         # OpenHands Cloud Conversations API configuration
         self.cloud_api_key = os.getenv("OPENHANDS_CLOUD_API_KEY")
-        self.cloud_api_url = os.getenv("OPENHANDS_CLOUD_API_URL", "https://app.all-hands.dev/api")
+        # Default to base URL without /api - we'll append /api/conversations
+        self.cloud_api_url = os.getenv("OPENHANDS_CLOUD_API_URL", "https://app.all-hands.dev")
         
         if not self.cloud_api_key:
             raise RuntimeError(
@@ -1446,16 +1447,13 @@ class CloudOpenHandsClient(OpenHandsClient):
             
             # Make API call to OpenHands Cloud Conversations API
             # Build the full conversations endpoint URL
-            # Ensure we have the correct base URL (should end with /api)
+            # The endpoint should be: https://app.all-hands.dev/api/conversations
             base_url = self.cloud_api_url.rstrip('/')
-            if not base_url.endswith('/api'):
-                # If it doesn't end with /api, append it
-                if base_url.endswith('/'):
-                    base_url = f"{base_url}api"
-                else:
-                    base_url = f"{base_url}/api"
-            
-            conversations_url = f"{base_url}/conversations"
+            # If base_url already ends with /api, use it as-is, otherwise append /api
+            if base_url.endswith('/api'):
+                conversations_url = f"{base_url}/conversations"
+            else:
+                conversations_url = f"{base_url}/api/conversations"
             logger.info(f"   Cloud API Base URL (env): {self.cloud_api_url}")
             logger.info(f"   Cloud API Base URL (normalized): {base_url}")
             logger.info(f"   Conversations endpoint: {conversations_url}")
@@ -1507,7 +1505,12 @@ class CloudOpenHandsClient(OpenHandsClient):
             logger.info(f"   Track progress at: https://app.all-hands.dev/conversations/{conversation_id}")
             
             # Poll for conversation status until complete
-            status_url = f"{self.cloud_api_url}/conversations/{conversation_id}"
+            # Build status URL - ensure it has /api in the path
+            base_url = self.cloud_api_url.rstrip('/')
+            if base_url.endswith('/api'):
+                status_url = f"{base_url}/conversations/{conversation_id}"
+            else:
+                status_url = f"{base_url}/api/conversations/{conversation_id}"
             timeout_seconds = float(os.getenv('OPENHANDS_TIMEOUT_SECONDS', '600'))  # 10 minutes default
             poll_interval = 5  # Poll every 5 seconds
             start_poll_time = time.time()
@@ -1618,7 +1621,12 @@ class CloudOpenHandsClient(OpenHandsClient):
         for filename in common_files:
             try:
                 # Use select-file endpoint: GET /api/conversations/{conversation_id}/select-file?file=path
-                file_url = f"{self.cloud_api_url}/conversations/{conversation_id}/select-file"
+                # Build file URL - ensure it has /api in the path
+                base_url = self.cloud_api_url.rstrip('/')
+                if base_url.endswith('/api'):
+                    file_url = f"{base_url}/conversations/{conversation_id}/select-file"
+                else:
+                    file_url = f"{base_url}/api/conversations/{conversation_id}/select-file"
                 params = {"file": filename}
                 
                 # Note: API may use X-Session-API-Key header instead of Authorization
