@@ -1523,8 +1523,6 @@ class CloudOpenHandsClient(OpenHandsClient):
                 time.sleep(poll_interval)
             
             # Get conversation results
-            # The conversation may have created a PR or modified files in a repository
-            # For now, we'll check the conversation URL and PR number if available
             conversation_url = status_data.get("url", "")
             pr_number = status_data.get("pr_number")
             
@@ -1532,12 +1530,14 @@ class CloudOpenHandsClient(OpenHandsClient):
                 logger.info(f"   ✅ Pull request created: PR #{pr_number}")
                 logger.info(f"   View at: {conversation_url}")
             
-            # Note: Files are typically in the repository or workspace managed by OpenHands Cloud
-            # We may need to clone the repository or use additional API endpoints to get files
-            # For now, we'll mark as successful and note that files are in the conversation/repo
             logger.info(f"   Conversation URL: {conversation_url}")
             
-            # Check local workspace for any files (in case we need to sync)
+            # Download generated files from conversation
+            # Use the select-file endpoint to get files
+            logger.info(f"   Downloading generated files from conversation...")
+            downloaded_files = self._download_files_from_conversation(conversation_id, workspace_path, headers)
+            
+            # Check local workspace for downloaded files
             after_files = self._capture_workspace_state(workspace_path)
             
             # Compute diffs
@@ -1584,13 +1584,47 @@ class CloudOpenHandsClient(OpenHandsClient):
         # OpenHands Cloud handles the workspace
         pass
     
-    def _download_workspace_from_cloud(self, workspace, local_workspace_path: Path):
-        """Download files from OpenHands Cloud conversation"""
-        # TODO: Implement file download from conversation
-        # This may require additional API endpoints to get files from the conversation
-        # For now, this is a placeholder
-        logger.warning("   File download from conversation not yet implemented")
-        logger.warning("   Files may need to be retrieved via OpenHands Cloud UI or additional API endpoints")
+    def _download_files_from_conversation(self, conversation_id: str, local_workspace_path: Path, headers: Dict[str, str]) -> List[str]:
+        """Download files from OpenHands Cloud conversation using select-file endpoint"""
+        downloaded_files = []
+        
+        # Common files that might be generated
+        common_files = ["index.html", "style.css", "script.js", "template.html"]
+        
+        for filename in common_files:
+            try:
+                # Use select-file endpoint: GET /api/conversations/{conversation_id}/select-file?file=path
+                file_url = f"{self.cloud_api_url}/conversations/{conversation_id}/select-file"
+                params = {"file": filename}
+                
+                # Note: API may use X-Session-API-Key header instead of Authorization
+                file_headers = headers.copy()
+                if "X-Session-API-Key" not in file_headers:
+                    # Try with X-Session-API-Key header (as per docs)
+                    file_headers["X-Session-API-Key"] = self.cloud_api_key
+                
+                response = httpx.get(file_url, headers=file_headers, params=params, timeout=30.0)
+                
+                if response.status_code == 200:
+                    file_data = response.json()
+                    file_content = file_data.get("content", "")
+                    
+                    if file_content:
+                        file_path = local_workspace_path / filename
+                        file_path.parent.mkdir(parents=True, exist_ok=True)
+                        file_path.write_text(file_content, encoding="utf-8")
+                        downloaded_files.append(filename)
+                        logger.debug(f"   Downloaded: {filename}")
+                elif response.status_code == 404:
+                    # File doesn't exist, skip
+                    logger.debug(f"   File not found: {filename}")
+                else:
+                    logger.debug(f"   Could not download {filename}: {response.status_code}")
+            except Exception as e:
+                logger.debug(f"   Error downloading {filename}: {e}")
+        
+        logger.info(f"   ✅ Downloaded {len(downloaded_files)} files from conversation")
+        return downloaded_files
     
     def _build_generation_prompt(self, task: str, requirements: Dict[str, Any] = None, template_file: str = None, workspace_path: str = None) -> str:
         """Build task prompt for OpenHands Cloud API - reuse LocalSubprocessOpenHandsClient logic"""
