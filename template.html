@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="gemini-api-key" content="{GEMINI_API_KEY}">
-    <title>Interactive Notes Template</title>
+    <title>Interactive Course</title>
     <style>
         * {
             margin: 0;
@@ -14,894 +14,41 @@
 
         :root {
             --primary: #2563eb;
-            --primary-hover: #1d4ed8;
             --text-primary: #0f172a;
             --text-secondary: #475569;
-            --text-tertiary: #64748b;
             --bg-primary: #ffffff;
             --bg-secondary: #f8fafc;
-            --bg-tertiary: #f1f5f9;
             --border: #e2e8f0;
-            --border-light: #f1f5f9;
-            --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-            --radius: 12px;
-            --radius-sm: 8px;
         }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', Roboto, 'Helvetica Neue', Arial, sans-serif;
-            line-height: 1.7;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            line-height: 1.6;
             color: var(--text-primary);
-            background: #0a0e27;
-            background-image: 
-                radial-gradient(at 0% 0%, rgba(37, 99, 235, 0.15) 0px, transparent 50%),
-                radial-gradient(at 100% 100%, rgba(139, 92, 246, 0.15) 0px, transparent 50%);
-            background-attachment: fixed;
-            padding: 0;
-            font-size: 16px;
-            -webkit-font-smoothing: antialiased;
-            -moz-osx-font-smoothing: grayscale;
-            min-height: 100vh;
+            background: #f8fafc;
+            padding: 20px;
         }
-
 
         .container {
-            max-width: 1400px;
+            max-width: 1200px;
             margin: 0 auto;
+        }
+
+        /* Module Navigation */
+        .module-nav {
             display: flex;
-            gap: 32px;
-            align-items: flex-start;
-            padding: 32px 20px;
-        }
-
-        .main-content {
-            flex: 1;
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(20px);
-            border-radius: 24px;
-            padding: 56px;
-            box-shadow: 
-                0 20px 25px -5px rgba(0, 0, 0, 0.3),
-                0 10px 10px -5px rgba(0, 0, 0, 0.2);
-            min-width: 0;
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            user-select: text;
-            -webkit-user-select: text;
-            position: relative;
-            z-index: 1;
-            pointer-events: auto;
-        }
-
-        .main-content * {
-            user-select: text;
-            -webkit-user-select: text;
-        }
-
-        .main-content button,
-        .main-content input,
-        .main-content textarea,
-        .main-content select,
-        .main-content .audio-control {
-            user-select: none;
-            -webkit-user-select: none;
-        }
-
-        .sidebar {
-            width: 320px;
-            flex-shrink: 0;
-        }
-
-        h1 {
-            font-size: 42px;
-            font-weight: 800;
-            margin-bottom: 16px;
-            background: linear-gradient(135deg, #2563eb 0%, #7c3aed 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-            letter-spacing: -0.03em;
-            line-height: 1.1;
-        }
-
-        .subtitle {
-            font-size: 19px;
-            color: var(--text-secondary);
-            margin-bottom: 56px;
-            font-weight: 400;
-            line-height: 1.7;
-            opacity: 0.9;
-        }
-
-        .section {
-            margin-bottom: 56px;
-            position: relative;
-            z-index: 1;
-        }
-
-        .section:last-child {
-            margin-bottom: 0;
-        }
-
-        .section-title {
-            font-size: 26px;
-            font-weight: 700;
+            justify-content: space-between;
+            align-items: center;
             margin-bottom: 24px;
-            color: var(--text-primary);
-            letter-spacing: -0.02em;
-            position: relative;
-            padding-bottom: 12px;
-        }
-
-        .section-title::after {
-            content: '';
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            width: 48px;
-            height: 3px;
-            background: linear-gradient(90deg, #2563eb, #7c3aed);
-            border-radius: 2px;
-        }
-
-        .video-container {
-            position: relative;
-            width: 100%;
-            max-width: 720px;
-            margin: 0 auto 40px;
-            padding-bottom: 40.625%;
-            background: #000;
-            border-radius: 20px;
-            overflow: hidden;
-            box-shadow: 
-                0 25px 50px -12px rgba(0, 0, 0, 0.5),
-                0 0 0 1px rgba(255, 255, 255, 0.1);
-            transform: translateY(0);
-            transition: transform 0.3s ease;
-            z-index: 1;
-            pointer-events: auto;
-        }
-
-        .video-container:hover {
-            transform: translateY(-4px);
-        }
-
-        .video-container iframe {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            pointer-events: auto;
-        }
-
-        .video-container iframe[style*="display: none"] {
-            pointer-events: none !important;
-            z-index: -1;
-        }
-
-        .video-placeholder {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: #94a3b8;
-            font-size: 15px;
-            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
-        }
-
-        .explanation {
-            font-size: 17px;
-            line-height: 1.8;
-            color: var(--text-secondary);
-            margin-bottom: 0;
-            user-select: text;
-            -webkit-user-select: text;
-        }
-
-        .fun-fact {
-            background: linear-gradient(135deg, rgba(37, 99, 235, 0.1) 0%, rgba(124, 58, 237, 0.1) 100%);
-            border: 1px solid rgba(37, 99, 235, 0.2);
-            border-left: 4px solid var(--primary);
-            padding: 28px;
-            border-radius: 16px;
-            box-shadow: 
-                0 10px 15px -3px rgba(0, 0, 0, 0.1),
-                0 4px 6px -2px rgba(0, 0, 0, 0.05);
-            backdrop-filter: blur(10px);
-        }
-
-        .fun-fact-label {
-            font-size: 11px;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.08em;
-            color: var(--primary);
-            margin-bottom: 12px;
-        }
-
-        .fun-fact-content {
-            font-size: 15px;
-            color: var(--text-primary);
-            line-height: 1.7;
-            user-select: text;
-            -webkit-user-select: text;
-        }
-
-
-        .interactive-element {
-            margin-top: 0;
-            padding: 32px;
-            background: linear-gradient(135deg, rgba(37, 99, 235, 0.05) 0%, rgba(124, 58, 237, 0.05) 100%);
-            border-radius: 16px;
-            border: 1px solid rgba(37, 99, 235, 0.1);
-        }
-
-        .button {
-            display: inline-block;
-            padding: 12px 24px;
-            font-size: 14px;
-            font-weight: 500;
-            color: var(--primary);
-            background: var(--bg-primary);
-            border: 1px solid var(--primary);
-            border-radius: var(--radius-sm);
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-
-        .button:hover {
-            background: var(--primary);
-            color: white;
-            transform: translateY(-1px);
-            box-shadow: var(--shadow-md);
-        }
-
-        .key-points {
-            list-style: none;
-            padding-left: 0;
-        }
-
-        .key-points li {
-            transition: transform 0.2s ease;
-        }
-
-        .key-points li:hover {
-            transform: translateX(4px);
-        }
-
-        @media (max-width: 968px) {
-            .container {
-                flex-direction: column;
-                gap: 32px;
-            }
-
-            .sidebar {
-                width: 100%;
-            }
-
-            .fun-fact {
-                position: static;
-            }
-        }
-
-        /* Text Selection - Ask Gemini Button */
-        .ask-gemini-button {
-            position: fixed !important;
-            display: none;
-            align-items: center;
-            gap: 8px;
-            padding: 10px 16px;
-            background: linear-gradient(135deg, #2563eb 0%, #7c3aed 100%) !important;
-            color: white !important;
-            border: none;
-            border-radius: 24px;
-            font-size: 14px;
-            font-weight: 500;
-            cursor: pointer;
-            box-shadow: 
-                0 10px 15px -3px rgba(37, 99, 235, 0.4),
-                0 4px 6px -2px rgba(37, 99, 235, 0.2);
-            z-index: 99999 !important;
-            transition: all 0.2s ease;
-            pointer-events: auto !important;
-            visibility: visible !important;
-            opacity: 1 !important;
-        }
-
-        .ask-gemini-button[style*="display: flex"] {
-            animation: slideIn 0.2s ease-out;
-        }
-
-        .ask-gemini-button:hover {
-            transform: translateY(-2px);
-            box-shadow: 
-                0 12px 18px -3px rgba(37, 99, 235, 0.5),
-                0 6px 8px -2px rgba(37, 99, 235, 0.3);
-        }
-
-        .ask-gemini-button svg {
-            width: 18px;
-            height: 18px;
-        }
-
-        @keyframes slideIn {
-            from {
-                opacity: 0;
-                transform: translateY(10px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        .text-selection-highlight {
-            background: rgba(37, 99, 235, 0.2);
-            border-radius: 2px;
-        }
-
-        @media (max-width: 768px) {
-            body {
-                background: #0a0e27;
-            }
-
-            .container {
-                padding: 20px 16px;
-            }
-
-            .ask-gemini-button {
-                font-size: 13px;
-                padding: 8px 14px;
-            }
-
-            .main-content {
-                padding: 32px 24px;
-                border-radius: 20px;
-            }
-
-            h1 {
-                font-size: 32px;
-            }
-
-            .subtitle {
-                font-size: 16px;
-                margin-bottom: 32px;
-            }
-
-            .section {
-                margin-bottom: 40px;
-            }
-
-            .section-title {
-                font-size: 22px;
-            }
-
-            /* Timeline removed */
-                padding-left: 40px;
-            }
-
-            .chatbot-panel {
-                width: calc(100vw - 32px);
-                height: calc(100vh - 120px);
-                right: -16px;
-                border-radius: 20px;
-            }
-        }
-
-        /* Floating Notes Panel */
-        .notes-container {
-            position: fixed;
-            bottom: 24px;
-            right: 100px;
-            z-index: 999;
-        }
-
-        @media (max-width: 768px) {
-            .notes-container {
-                right: 24px;
-                bottom: 100px;
-            }
-        }
-
-        .notes-button {
-            width: 64px;
-            height: 64px;
-            border-radius: 50%;
-            background: linear-gradient(135deg, #2563eb 0%, #7c3aed 100%);
-            color: white;
-            border: none;
-            cursor: pointer;
-            box-shadow: 
-                0 20px 25px -5px rgba(37, 99, 235, 0.4),
-                0 10px 10px -5px rgba(37, 99, 235, 0.2);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 28px;
-            transition: all 0.3s ease;
-        }
-
-        .notes-button:hover {
-            transform: scale(1.1) translateY(-2px);
-            box-shadow: 
-                0 25px 30px -5px rgba(37, 99, 235, 0.5),
-                0 15px 15px -5px rgba(37, 99, 235, 0.3);
-        }
-
-        .notes-panel {
-            position: absolute;
-            bottom: 70px;
-            right: 0;
-            width: 360px;
-            height: 500px;
-            background: rgba(255, 255, 255, 0.98);
-            backdrop-filter: blur(20px);
-            border-radius: 24px;
-            box-shadow: 
-                0 25px 50px -12px rgba(0, 0, 0, 0.4),
-                0 0 0 1px rgba(255, 255, 255, 0.2);
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            display: none;
-            flex-direction: column;
-            overflow: hidden;
-        }
-
-        .notes-panel.open {
-            display: flex;
-            animation: slideUp 0.3s ease-out;
-        }
-
-        .notes-header {
-            padding: 20px 24px;
-            background: linear-gradient(135deg, #2563eb 0%, #7c3aed 100%);
-            color: white;
-            font-weight: 600;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            font-size: 16px;
-        }
-
-        .notes-close {
-            background: none;
-            border: none;
-            color: white;
-            font-size: 24px;
-            cursor: pointer;
-            padding: 0;
-            width: 28px;
-            height: 28px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: 6px;
-            transition: background 0.2s;
-        }
-
-        .notes-close:hover {
-            background: rgba(255, 255, 255, 0.1);
-        }
-
-        .notes-content {
-            flex: 1;
-            padding: 24px;
-            overflow-y: auto;
-            background: var(--bg-secondary);
-        }
-
-        .notes-textarea-floating {
-            width: 100%;
-            height: 100%;
-            min-height: 400px;
             padding: 16px;
-            border: 1px solid var(--border);
-            border-radius: 12px;
-            font-family: inherit;
-            font-size: 14px;
-            resize: none;
-            background: var(--bg-primary);
-            color: var(--text-primary);
-            transition: all 0.3s ease;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
         }
 
-        .notes-textarea-floating:focus {
-            outline: none;
-            border-color: var(--primary);
-            box-shadow: 
-                0 0 0 3px rgba(37, 99, 235, 0.1),
-                0 2px 4px rgba(0, 0, 0, 0.1);
-        }
-
-        @media (max-width: 768px) {
-            .notes-container {
-                right: 24px;
-                bottom: 100px;
-            }
-
-            .notes-panel {
-                width: calc(100vw - 32px);
-                height: calc(100vh - 200px);
-                right: -16px;
-            }
-
-            .chatbot-container {
-                bottom: 24px;
-            }
-        }
-
-        /* Chatbot Styles */
-        .chatbot-container {
-            position: fixed;
-            bottom: 24px;
-            right: 24px;
-            z-index: 1000;
-        }
-
-        .chatbot-button {
-            width: 64px;
-            height: 64px;
-            border-radius: 50%;
-            background: linear-gradient(135deg, #2563eb 0%, #7c3aed 100%);
-            color: white;
-            border: none;
-            cursor: pointer;
-            box-shadow: 
-                0 20px 25px -5px rgba(37, 99, 235, 0.4),
-                0 10px 10px -5px rgba(37, 99, 235, 0.2);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 28px;
-            transition: all 0.3s ease;
-        }
-
-        .chatbot-button:hover {
-            transform: scale(1.1) translateY(-2px);
-            box-shadow: 
-                0 25px 30px -5px rgba(37, 99, 235, 0.5),
-                0 15px 15px -5px rgba(37, 99, 235, 0.3);
-        }
-
-        .chatbot-panel {
-            position: absolute;
-            bottom: 80px;
-            right: 0;
-            width: 400px;
-            height: 600px;
-            background: rgba(255, 255, 255, 0.98);
-            backdrop-filter: blur(20px);
-            border-radius: 24px;
-            box-shadow: 
-                0 25px 50px -12px rgba(0, 0, 0, 0.4),
-                0 0 0 1px rgba(255, 255, 255, 0.2);
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            display: none;
-            flex-direction: column;
-            overflow: hidden;
-        }
-
-        .chatbot-panel.open {
-            display: flex;
-            animation: slideUp 0.3s ease-out;
-        }
-
-        @keyframes slideUp {
-            from {
-                opacity: 0;
-                transform: translateY(20px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        .chatbot-header {
-            padding: 20px 24px;
-            background: linear-gradient(135deg, #2563eb 0%, #7c3aed 100%);
-            color: white;
-            font-weight: 600;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            font-size: 16px;
-        }
-
-        .chatbot-close {
-            background: none;
-            border: none;
-            color: white;
+        .module-nav h2 {
             font-size: 24px;
-            cursor: pointer;
-            padding: 0;
-            width: 28px;
-            height: 28px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: 6px;
-            transition: background 0.2s;
-        }
-
-        .chatbot-close:hover {
-            background: rgba(255, 255, 255, 0.1);
-        }
-
-        .chatbot-messages {
-            flex: 1;
-            overflow-y: auto;
-            padding: 24px;
-            display: flex;
-            flex-direction: column;
-            gap: 16px;
-            background: var(--bg-secondary);
-        }
-
-        .chatbot-message {
-            max-width: 80%;
-            padding: 12px 16px;
-            border-radius: 16px;
-            font-size: 14px;
-            line-height: 1.6;
-        }
-
-        .chatbot-message.user {
-            align-self: flex-end;
-            background: linear-gradient(135deg, #2563eb 0%, #7c3aed 100%);
-            color: white;
-            border-bottom-right-radius: 4px;
-            box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.3);
-        }
-
-        .chatbot-message.bot {
-            align-self: flex-start;
-            background: var(--bg-primary);
-            color: var(--text-primary);
-            border: 1px solid var(--border);
-            border-bottom-left-radius: 4px;
-        }
-
-        .chatbot-input-container {
-            padding: 20px;
-            border-top: 1px solid var(--border);
-            display: flex;
-            gap: 12px;
-            background: var(--bg-primary);
-        }
-
-        .chatbot-input {
-            flex: 1;
-            padding: 12px 16px;
-            border: 1px solid var(--border);
-            border-radius: 24px;
-            font-size: 14px;
-            font-family: inherit;
-            outline: none;
-            background: var(--bg-secondary);
-            transition: all 0.2s;
-        }
-
-        .chatbot-input:focus {
-            border-color: var(--primary);
-            background: var(--bg-primary);
-            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
-        }
-
-        .chatbot-send {
-            padding: 12px 24px;
-            background: linear-gradient(135deg, #2563eb 0%, #7c3aed 100%);
-            color: white;
-            border: none;
-            border-radius: 24px;
-            cursor: pointer;
-            font-size: 14px;
-            font-weight: 500;
-            transition: all 0.2s;
-            box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.3);
-        }
-
-        .chatbot-send:hover {
-            transform: translateY(-1px);
-            box-shadow: 0 6px 8px -1px rgba(37, 99, 235, 0.4);
-        }
-
-        .chatbot-send:disabled {
-            background: var(--text-tertiary);
-            cursor: not-allowed;
-        }
-
-        .chatbot-loading {
-            display: inline-block;
-            width: 12px;
-            height: 12px;
-            border: 2px solid #999;
-            border-top-color: transparent;
-            border-radius: 50%;
-            animation: spin 0.6s linear infinite;
-        }
-
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-
-        /* Audio Player Styles */
-        .audio-control {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            background: linear-gradient(135deg, #2563eb 0%, #7c3aed 100%);
-            color: white;
-            border: none;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.3);
-            flex-shrink: 0;
-            position: relative;
-        }
-
-        .audio-control:hover {
-            transform: scale(1.1);
-            box-shadow: 0 6px 8px -1px rgba(37, 99, 235, 0.4);
-        }
-
-        .audio-control.playing {
-            animation: pulse 2s ease-in-out infinite;
-        }
-
-        @keyframes pulse {
-            0%, 100% {
-                box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.3);
-            }
-            50% {
-                box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.6), 0 0 0 4px rgba(37, 99, 235, 0.1);
-            }
-        }
-
-        .audio-control svg {
-            width: 20px;
-            height: 20px;
-        }
-
-        .section-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            margin-bottom: 20px;
-        }
-
-        .section-title-wrapper {
-            flex: 1;
-        }
-
-        .explanation-wrapper {
-            position: relative;
-            padding-right: 56px;
-        }
-
-        .explanation-audio {
-            position: absolute;
-            top: 0;
-            right: 0;
-        }
-
-        .key-point-item {
-            display: flex;
-            align-items: flex-start;
-            gap: 12px;
-            padding: 16px 0;
-            padding-left: 40px;
-            position: relative;
-        }
-
-        .key-point-item::before {
-            content: "";
-            position: absolute;
-            left: 8px;
-            top: 22px;
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            background: linear-gradient(135deg, #2563eb, #7c3aed);
-            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
-        }
-
-        .key-point-text {
-            flex: 1;
-            font-size: 17px;
-            color: var(--text-secondary);
-            line-height: 1.8;
-            user-select: text;
-            -webkit-user-select: text;
-        }
-
-        .key-point-audio {
-            margin-top: 2px;
-        }
-
-
-        .fun-fact-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            margin-bottom: 12px;
-        }
-
-        .fun-fact-audio {
-            margin-top: -4px;
-        }
-
-        .audio-control-small {
-            width: 36px;
-            height: 36px;
-        }
-
-        .audio-control-small svg {
-            width: 18px;
-            height: 18px;
-        }
-
-        @media (max-width: 480px) {
-            .chatbot-panel {
-                width: calc(100vw - 40px);
-                height: calc(100vh - 100px);
-            }
-        }
-
-        /* Module Navigation Styles */
-        .module-navigation {
-            max-width: 1400px;
-            margin: 0 auto;
-            padding: 24px 20px 0;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 16px;
-        }
-
-        .module-info {
-            flex: 1;
-            display: flex;
-            align-items: center;
-            gap: 16px;
-        }
-
-        .module-selector {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(20px);
-            padding: 8px 16px;
-            border-radius: 12px;
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-        }
-
-        .module-selector select {
-            border: none;
-            background: transparent;
-            font-size: 15px;
             font-weight: 600;
-            color: var(--text-primary);
-            cursor: pointer;
-            outline: none;
-            padding: 4px 8px;
-            min-width: 200px;
-        }
-
-        .module-progress {
-            font-size: 13px;
-            color: var(--text-secondary);
-            white-space: nowrap;
         }
 
         .nav-buttons {
@@ -909,1042 +56,333 @@
             gap: 12px;
         }
 
-        .nav-button {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            padding: 10px 20px;
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(20px);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            border-radius: 12px;
-            color: var(--text-primary);
-            font-size: 14px;
-            font-weight: 500;
+        .nav-btn {
+            padding: 8px 16px;
+            border: 1px solid var(--border);
+            background: white;
+            border-radius: 6px;
             cursor: pointer;
-            transition: all 0.3s ease;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            font-size: 14px;
         }
 
-        .nav-button:hover:not(:disabled) {
-            background: linear-gradient(135deg, #2563eb 0%, #7c3aed 100%);
-            color: white;
-            transform: translateY(-2px);
-            box-shadow: 0 4px 8px rgba(37, 99, 235, 0.3);
+        .nav-btn:hover {
+            background: var(--bg-secondary);
         }
 
-        .nav-button:disabled {
+        .nav-btn:disabled {
             opacity: 0.5;
             cursor: not-allowed;
         }
 
-        .nav-button svg {
-            width: 18px;
-            height: 18px;
+        /* Video Section - Top */
+        .video-section {
+            margin-bottom: 24px;
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        .video-wrapper {
+            position: relative;
+            padding-bottom: 56.25%; /* 16:9 aspect ratio */
+            height: 0;
+            background: #000;
+        }
+
+        .video-wrapper iframe {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+
+        .video-audio-control {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            padding: 8px 12px;
+            background: rgba(255,255,255,0.9);
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            z-index: 10;
+        }
+
+        /* Bottom Section - Two Columns */
+        .bottom-section {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+            margin-bottom: 24px;
         }
 
         @media (max-width: 768px) {
-            .module-navigation {
-                flex-direction: column;
-                align-items: stretch;
+            .bottom-section {
+                grid-template-columns: 1fr;
             }
+        }
 
-            .module-info {
-                flex-direction: column;
-                align-items: stretch;
-            }
+        /* Fun Module - Bottom Left */
+        .fun-module {
+            background: white;
+            border-radius: 8px;
+            padding: 24px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
 
-            .module-selector {
-                width: 100%;
-            }
+        .fun-module h3 {
+            font-size: 20px;
+            margin-bottom: 16px;
+            color: var(--primary);
+        }
 
-            .module-selector select {
-                width: 100%;
-            }
+        .fun-module-content {
+            color: var(--text-secondary);
+            line-height: 1.7;
+        }
 
-            .nav-buttons {
-                width: 100%;
-            }
+        .fun-module-audio {
+            margin-top: 16px;
+            padding: 8px 16px;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+        }
 
-            .nav-button {
-                flex: 1;
-                justify-content: center;
-            }
+        /* Test Section - Bottom Right */
+        .test-section {
+            background: white;
+            border-radius: 8px;
+            padding: 24px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        .test-section h3 {
+            font-size: 20px;
+            margin-bottom: 16px;
+            color: var(--primary);
+        }
+
+        .test-content {
+            color: var(--text-secondary);
+        }
+
+        /* Module TTS Audio */
+        .module-audio-control {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            padding: 12px 24px;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 500;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            z-index: 1000;
+        }
+
+        .module-audio-control:hover {
+            opacity: 0.9;
+        }
+
+        .module-audio-control.playing {
+            background: #dc2626;
+        }
+
+        /* Hidden audio element */
+        audio {
+            display: none;
         }
     </style>
 </head>
 <body>
-    <!-- Ask Gemini Button (appears on text selection) -->
-    <button class="ask-gemini-button" id="ask-gemini-button" style="position: fixed; z-index: 99999; display: none;">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
-            <path d="M13 8H7"></path>
-            <path d="M17 12H7"></path>
-        </svg>
-        Ask Gemini
-    </button>
-
-    <!-- Module Navigation -->
-    <div class="module-navigation">
-        <div class="module-info">
-            <div class="module-selector">
-                <select id="module-selector" aria-label="Select module">
-                    <option value="0">Module 1: Introduction</option>
-                </select>
-            </div>
-            <div class="module-progress" id="module-progress">1 of 1</div>
-        </div>
-        <div class="nav-buttons">
-            <button class="nav-button" id="prev-module" disabled>
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <polyline points="15 18 9 12 15 6"></polyline>
-                </svg>
-                Previous
-            </button>
-            <button class="nav-button" id="next-module">
-                Next
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <polyline points="9 18 15 12 9 6"></polyline>
-                </svg>
-            </button>
-        </div>
-    </div>
-
     <div class="container">
-        <div class="main-content">
-            <h1 id="lesson-title">Lesson Title</h1>
-            <p class="subtitle" id="lesson-subtitle">Lesson subtitle or brief description</p>
-
-            <!-- Video Section -->
-            <div class="section">
-                <div class="section-header">
-                    <div class="section-title-wrapper">
-                        <div class="section-title">Video Content</div>
-                    </div>
-                    <button class="audio-control audio-control-small video-audio" data-audio-id="video" aria-label="Play video audio">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
-                            <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>
-                        </svg>
-                    </button>
-                </div>
-                <div class="video-container">
-                    <div class="video-placeholder" id="video-placeholder">
-                        Video content
-                    </div>
-                    <iframe 
-                        id="youtube-video"
-                        style="display: none; pointer-events: none;"
-                        src=""
-                        frameborder="0"
-                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                        allowfullscreen>
-                    </iframe>
-                </div>
-                <audio id="audio-video" preload="none"></audio>
+        <!-- Module Navigation -->
+        <div class="module-nav">
+            <h2 id="module-title">Module 1</h2>
+            <div class="nav-buttons">
+                <button class="nav-btn" id="prev-btn" onclick="previousModule()">← Previous</button>
+                <button class="nav-btn" id="next-btn" onclick="nextModule()">Next →</button>
             </div>
-
-            <!-- Explanation Text -->
-            <div class="section">
-                <div class="section-header">
-                    <div class="section-title-wrapper">
-                        <div class="section-title">Explanation</div>
-                    </div>
-                </div>
-                <div class="explanation-wrapper">
-                    <div class="explanation" id="explanation-text">
-                        This is where the main explanation text will go. It should be clear, concise, and easy to understand.
-                    </div>
-                    <button class="audio-control explanation-audio" data-audio-id="explanation" aria-label="Play explanation audio">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
-                            <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>
-                        </svg>
-                    </button>
-                    <audio id="audio-explanation" preload="none"></audio>
-                </div>
-            </div>
-
-            <!-- Key Points -->
-            <div class="section">
-                <div class="section-header">
-                    <div class="section-title-wrapper">
-                        <div class="section-title">Key Points</div>
-                    </div>
-                </div>
-                <ul class="key-points" id="key-points">
-                    <li class="key-point-item">
-                        <span class="key-point-text">Key point one</span>
-                        <button class="audio-control audio-control-small key-point-audio" data-audio-id="keypoint-0" aria-label="Play audio">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
-                                <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>
-                            </svg>
-                        </button>
-                        <audio id="audio-keypoint-0" preload="none"></audio>
-                    </li>
-                    <li class="key-point-item">
-                        <span class="key-point-text">Key point two</span>
-                        <button class="audio-control audio-control-small key-point-audio" data-audio-id="keypoint-1" aria-label="Play audio">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
-                                <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>
-                            </svg>
-                        </button>
-                        <audio id="audio-keypoint-1" preload="none"></audio>
-                    </li>
-                    <li class="key-point-item">
-                        <span class="key-point-text">Key point three</span>
-                        <button class="audio-control audio-control-small key-point-audio" data-audio-id="keypoint-2" aria-label="Play audio">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
-                                <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>
-                            </svg>
-                        </button>
-                        <audio id="audio-keypoint-2" preload="none"></audio>
-                    </li>
-                </ul>
-            </div>
-
-
-            <!-- Interactive Element Placeholder -->
-            <div class="section">
-                <div class="section-header">
-                    <div class="section-title-wrapper">
-                        <div class="section-title">Interactive Activity</div>
-                    </div>
-                    <button class="audio-control audio-control-small interactive-audio" data-audio-id="interactive" aria-label="Play interactive activity audio">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
-                            <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>
-                        </svg>
-                    </button>
-                </div>
-                <div class="interactive-element" id="interactive-element">
-                    <p style="color: var(--text-secondary); margin: 0;">Interactive content will be placed here (quizzes, exercises, interactive games, etc.)</p>
-                </div>
-                <audio id="audio-interactive" preload="none"></audio>
-            </div>
-
         </div>
 
-        <!-- Sidebar with Fun Fact -->
-        <div class="sidebar">
-            <div class="fun-fact">
-                <div class="fun-fact-header">
-                    <div class="fun-fact-label">Fun Fact</div>
-                    <button class="audio-control audio-control-small fun-fact-audio" data-audio-id="funfact" aria-label="Play fun fact audio">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
-                            <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>
-                        </svg>
-                    </button>
+        <!-- Video Section - Top -->
+        <div class="video-section">
+            <div class="video-wrapper">
+                <iframe 
+                    id="youtube-video"
+                    src=""
+                    frameborder="0"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowfullscreen>
+                </iframe>
+                <button class="video-audio-control" id="video-audio-btn" onclick="toggleVideoAudio()">🔊 Video Audio</button>
+            </div>
+            <audio id="video-audio" preload="none"></audio>
+        </div>
+
+        <!-- Bottom Section - Two Columns -->
+        <div class="bottom-section">
+            <!-- Fun Module - Bottom Left -->
+            <div class="fun-module">
+                <h3>Fun Module</h3>
+                <div class="fun-module-content" id="fun-module-content">
+                    Interactive content will appear here (calculators, games, simulations).
                 </div>
-                <div class="fun-fact-content" id="fun-fact-content">
-                    This is where an interesting fun fact related to the lesson will appear.
+                <button class="fun-module-audio" id="fun-audio-btn" onclick="toggleFunAudio()">🔊 Play Audio</button>
+                <audio id="fun-audio" preload="none"></audio>
+            </div>
+
+            <!-- Test Section - Bottom Right -->
+            <div class="test-section">
+                <h3>Test</h3>
+                <div class="test-content" id="test-content">
+                    Quiz/test questions will appear here.
                 </div>
-                <audio id="audio-funfact" preload="none"></audio>
             </div>
         </div>
     </div>
 
-    <!-- Floating Notes Panel -->
-    <div class="notes-container">
-        <div class="notes-panel" id="notes-panel">
-            <div class="notes-header">
-                <span>Your Notes</span>
-                <button class="notes-close" id="notes-close">×</button>
-            </div>
-            <div class="notes-content">
-                <textarea 
-                    class="notes-textarea-floating" 
-                    id="notes-textarea"
-                    placeholder="Take notes here..."></textarea>
-            </div>
-        </div>
-        <button class="notes-button" id="notes-button" aria-label="Open notes">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 24px; height: 24px;">
-                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                <polyline points="14 2 14 8 20 8"></polyline>
-                <line x1="16" y1="13" x2="8" y2="13"></line>
-                <line x1="16" y1="17" x2="8" y2="17"></line>
-                <polyline points="10 9 9 9 8 9"></polyline>
-            </svg>
-        </button>
-    </div>
-
-    <!-- Gemini Chatbot -->
-    <div class="chatbot-container">
-        <div class="chatbot-panel" id="chatbot-panel">
-            <div class="chatbot-header">
-                <span>Gemini Assistant</span>
-                <button class="chatbot-close" id="chatbot-close">×</button>
-            </div>
-            <div class="chatbot-messages" id="chatbot-messages">
-                <div class="chatbot-message bot">
-                    Hello! I'm your Gemini assistant. How can I help you with this lesson?
-                </div>
-            </div>
-            <div class="chatbot-input-container">
-                <input 
-                    type="text" 
-                    class="chatbot-input" 
-                    id="chatbot-input"
-                    placeholder="Ask me anything..."
-                    autocomplete="off"
-                />
-                <button class="chatbot-send" id="chatbot-send">Send</button>
-            </div>
-        </div>
-        <button class="chatbot-button" id="chatbot-button">💬</button>
-    </div>
+    <!-- Module TTS Audio Control -->
+    <button class="module-audio-control" id="module-audio-btn" onclick="toggleModuleAudio()">
+        🔊 Play Module Explanation
+    </button>
+    <audio id="module-audio" preload="none"></audio>
 
     <script>
-        // ============================================
-        // MODULE MANAGEMENT SYSTEM
-        // ============================================
-        // This page supports multiple modules/lessons within a single course.
-        // 
-        // USAGE:
-        // 1. To set multiple modules at once:
-        //    setModules([
-        //      { title: "Module 1", explanation: "...", ... },
-        //      { title: "Module 2", explanation: "...", ... }
-        //    ]);
-        //
-        // 2. To add a new module:
-        //    addModule({ title: "New Module", explanation: "..." });
-        //
-        // 3. To update current module:
-        //    updateContent({ explanation: "New explanation" });
-        //
-        // 4. To navigate programmatically:
-        //    loadModule(2); // Load module at index 2
-        //
-        // Each module supports:
-        // - title, subtitle, videoId, explanation, keyPoints, funFact, audioSources
-        // ============================================
-
-        // Module Management System
+        // Module data structure
         let modules = [
-            // Default module - can be replaced or extended
             {
                 id: 0,
                 title: "Module 1: Introduction",
-                subtitle: "Lesson subtitle or brief description",
                 videoId: null,
-                explanation: "This is where the main explanation text will go. It should be clear, concise, and easy to understand.",
-                keyPoints: [
-                    "Key point one",
-                    "Key point two",
-                    "Key point three"
-                ],
-                funFact: "This is where an interesting fun fact related to the lesson will appear.",
-                audioSources: {}
+                funModule: "<p>Interactive content placeholder</p>",
+                test: "<p>Test questions placeholder</p>",
+                moduleAudio: null, // URL to Gemini TTS audio for module explanation
+                videoAudio: null,  // URL to video audio
+                funAudio: null     // URL to fun module audio
             }
         ];
 
         let currentModuleIndex = 0;
-        const STORAGE_KEY = 'current-module-index';
 
-        // Initialize module system
-        function initModules() {
-            // Load saved module index
-            const savedIndex = localStorage.getItem(STORAGE_KEY);
-            if (savedIndex !== null) {
-                currentModuleIndex = parseInt(savedIndex, 10);
-                if (currentModuleIndex >= modules.length) {
-                    currentModuleIndex = 0;
-                }
-            }
-
-            // Populate module selector
-            const selector = document.getElementById('module-selector');
-            selector.innerHTML = modules.map((module, index) => 
-                `<option value="${index}">${module.title}</option>`
-            ).join('');
-            selector.value = currentModuleIndex;
-
-            // Load initial module
-            loadModule(currentModuleIndex);
-            updateNavigation();
+        // Initialize
+        function init() {
+            loadModule(0);
         }
 
-        // Load a specific module
+        // Load module
         function loadModule(index) {
             if (index < 0 || index >= modules.length) return;
-
+            
             currentModuleIndex = index;
             const module = modules[index];
 
-            // Stop any playing audio
-            if (currentlyPlaying) {
-                currentlyPlaying.pause();
-                currentlyPlaying.currentTime = 0;
-                const prevButton = document.querySelector(`[data-audio-id="${currentlyPlaying.id.replace('audio-', '')}"]`);
-                if (prevButton) {
-                    prevButton.classList.remove('playing');
-                    updatePlayIcon(prevButton, false);
-                }
-                currentlyPlaying = null;
-            }
+            // Update title
+            document.getElementById('module-title').textContent = module.title;
 
-            // Update content
-            document.getElementById('lesson-title').textContent = module.title;
-            document.getElementById('lesson-subtitle').textContent = module.subtitle || '';
-            
             // Update video
             if (module.videoId) {
-                loadYouTubeVideo(module.videoId);
+                document.getElementById('youtube-video').src = 
+                    `https://www.youtube.com/embed/${module.videoId}?rel=0`;
             } else {
-                const iframe = document.getElementById('youtube-video');
-                const placeholder = document.getElementById('video-placeholder');
-                iframe.style.display = 'none';
-                placeholder.style.display = 'flex';
+                document.getElementById('youtube-video').src = '';
             }
 
-            // Update explanation
-            document.getElementById('explanation-text').textContent = module.explanation || '';
+            // Update fun module
+            document.getElementById('fun-module-content').innerHTML = module.funModule || '<p>No content</p>';
 
-            // Update key points
-            if (module.keyPoints && Array.isArray(module.keyPoints)) {
-                const keyPointsList = document.getElementById('key-points');
-                keyPointsList.innerHTML = module.keyPoints
-                    .map((point, idx) => `
-                        <li class="key-point-item">
-                            <span class="key-point-text">${point}</span>
-                            <button class="audio-control audio-control-small key-point-audio" data-audio-id="keypoint-${idx}" aria-label="Play audio">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                    <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
-                                    <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>
-                                </svg>
-                            </button>
-                            <audio id="audio-keypoint-${idx}" preload="none"></audio>
-                        </li>
-                    `)
-                    .join('');
-                
-                // Re-initialize audio controls
-                keyPointsList.querySelectorAll('.key-point-audio').forEach((button, idx) => {
-                    setupAudioControl(button, `keypoint-${idx}`);
-                });
-            }
-
-            // Timeline removed
-
-            // Update fun fact
-            document.getElementById('fun-fact-content').textContent = module.funFact || '';
+            // Update test
+            document.getElementById('test-content').innerHTML = module.test || '<p>No test</p>';
 
             // Update audio sources
-            if (module.audioSources) {
-                setAudioSources(module.audioSources);
+            if (module.moduleAudio) {
+                document.getElementById('module-audio').src = module.moduleAudio;
+            }
+            if (module.videoAudio) {
+                document.getElementById('video-audio').src = module.videoAudio;
+            }
+            if (module.funAudio) {
+                document.getElementById('fun-audio').src = module.funAudio;
             }
 
-            // Update module selector
-            document.getElementById('module-selector').value = index;
-            document.getElementById('module-progress').textContent = `${index + 1} of ${modules.length}`;
-
-            // Save current module
-            localStorage.setItem(STORAGE_KEY, index.toString());
-
-            // Save notes with module-specific key
-            const notesKey = `lesson-notes-module-${index}`;
-            const savedNotes = localStorage.getItem(notesKey);
-            const notesTextarea = document.getElementById('notes-textarea');
-            if (savedNotes) {
-                notesTextarea.value = savedNotes;
-            } else {
-                notesTextarea.value = '';
-            }
-
-            // Update notes save handler
-            notesTextarea.removeEventListener('input', notesTextarea._saveHandler);
-            notesTextarea._saveHandler = function() {
-                localStorage.setItem(notesKey, this.value);
-            };
-            notesTextarea.addEventListener('input', notesTextarea._saveHandler);
-
-            // Scroll to top
-            window.scrollTo({ top: 0, behavior: 'smooth' });
+            // Update navigation buttons
+            document.getElementById('prev-btn').disabled = index === 0;
+            document.getElementById('next-btn').disabled = index === modules.length - 1;
         }
 
-        // Update navigation buttons
-        function updateNavigation() {
-            const prevButton = document.getElementById('prev-module');
-            const nextButton = document.getElementById('next-module');
-
-            prevButton.disabled = currentModuleIndex === 0;
-            nextButton.disabled = currentModuleIndex === modules.length - 1;
-        }
-
-        // Navigation handlers
-        document.getElementById('prev-module').addEventListener('click', () => {
+        // Navigation
+        function previousModule() {
             if (currentModuleIndex > 0) {
                 loadModule(currentModuleIndex - 1);
-                updateNavigation();
             }
-        });
+        }
 
-        document.getElementById('next-module').addEventListener('click', () => {
+        function nextModule() {
             if (currentModuleIndex < modules.length - 1) {
                 loadModule(currentModuleIndex + 1);
-                updateNavigation();
             }
-        });
+        }
 
-        document.getElementById('module-selector').addEventListener('change', (e) => {
-            const newIndex = parseInt(e.target.value, 10);
-            loadModule(newIndex);
-            updateNavigation();
-        });
+        // Audio controls
+        function toggleModuleAudio() {
+            const audio = document.getElementById('module-audio');
+            const btn = document.getElementById('module-audio-btn');
+            
+            if (audio.paused) {
+                audio.play();
+                btn.textContent = '⏸️ Pause Module Explanation';
+                btn.classList.add('playing');
+            } else {
+                audio.pause();
+                btn.textContent = '🔊 Play Module Explanation';
+                btn.classList.remove('playing');
+            }
+        }
 
-        // Function to set modules programmatically
+        function toggleVideoAudio() {
+            const audio = document.getElementById('video-audio');
+            const btn = document.getElementById('video-audio-btn');
+            
+            if (audio.paused) {
+                audio.play();
+                btn.textContent = '⏸️ Pause';
+            } else {
+                audio.pause();
+                btn.textContent = '🔊 Video Audio';
+            }
+        }
+
+        function toggleFunAudio() {
+            const audio = document.getElementById('fun-audio');
+            const btn = document.getElementById('fun-audio-btn');
+            
+            if (audio.paused) {
+                audio.play();
+                btn.textContent = '⏸️ Pause';
+            } else {
+                audio.pause();
+                btn.textContent = '🔊 Play Audio';
+            }
+        }
+
+        // Set modules from external source
         function setModules(newModules) {
-            if (Array.isArray(newModules) && newModules.length > 0) {
-                modules = newModules;
-                initModules();
-            }
+            modules = newModules;
+            loadModule(0);
         }
 
-        // Example function to load YouTube video
-        function loadYouTubeVideo(videoId) {
-            const iframe = document.getElementById('youtube-video');
-            const placeholder = document.getElementById('video-placeholder');
-            
-            if (videoId) {
-                iframe.src = `https://www.youtube.com/embed/${videoId}`;
-                iframe.style.display = 'block';
-                placeholder.style.display = 'none';
-            }
-        }
-
-        // Example function to update current module content
-        function updateContent(data) {
-            if (currentModuleIndex >= 0 && currentModuleIndex < modules.length) {
-                const module = modules[currentModuleIndex];
-                
-                if (data.title) module.title = data.title;
-                if (data.subtitle) module.subtitle = data.subtitle;
-                if (data.explanation) module.explanation = data.explanation;
-                if (data.funFact) module.funFact = data.funFact;
-                if (data.videoId) module.videoId = data.videoId;
-                if (data.keyPoints) module.keyPoints = data.keyPoints;
-                // Timeline removed
-                if (data.audioSources) module.audioSources = data.audioSources;
-
-                // Reload current module to reflect changes
-                loadModule(currentModuleIndex);
-            }
-        }
-
-        // Function to add a new module
-        function addModule(moduleData) {
-            const newModule = {
-                id: modules.length,
-                title: moduleData.title || `Module ${modules.length + 1}`,
-                subtitle: moduleData.subtitle || '',
-                videoId: moduleData.videoId || null,
-                explanation: moduleData.explanation || '',
-                keyPoints: moduleData.keyPoints || [],
-                funFact: moduleData.funFact || '',
-                audioSources: moduleData.audioSources || {}
-            };
-            modules.push(newModule);
-            
-            // Update selector
-            const selector = document.getElementById('module-selector');
-            const option = document.createElement('option');
-            option.value = modules.length - 1;
-            option.textContent = newModule.title;
-            selector.appendChild(option);
-            
-            updateNavigation();
-            return modules.length - 1;
-        }
-
-        // Timeline functions removed
-
-        // Initialize notes saving (will be set per module in loadModule)
-        // Floating Notes Panel
-        const notesButton = document.getElementById('notes-button');
-        const notesPanel = document.getElementById('notes-panel');
-        const notesClose = document.getElementById('notes-close');
-        const notesTextarea = document.getElementById('notes-textarea');
-
-        notesButton.addEventListener('click', () => {
-            notesPanel.classList.toggle('open');
-        });
-
-        notesClose.addEventListener('click', () => {
-            notesPanel.classList.remove('open');
-        });
-
-        // Gemini Chatbot
-        // Get API key from meta tag (injected at runtime from environment variable)
-        const geminiApiKeyMeta = document.querySelector('meta[name="gemini-api-key"]');
-        const GEMINI_API_KEY = geminiApiKeyMeta ? geminiApiKeyMeta.getAttribute('content') : '';
-        if (!GEMINI_API_KEY || GEMINI_API_KEY === '{GEMINI_API_KEY}') {
-            console.warn('Gemini API key not set. Chatbot functionality will be disabled.');
-        }
-        const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent';
-
-        const chatbotButton = document.getElementById('chatbot-button');
-        const chatbotPanel = document.getElementById('chatbot-panel');
-        const chatbotClose = document.getElementById('chatbot-close');
-        const chatbotMessages = document.getElementById('chatbot-messages');
-        const chatbotInput = document.getElementById('chatbot-input');
-        const chatbotSend = document.getElementById('chatbot-send');
-
-        let conversationHistory = [];
-
-        chatbotButton.addEventListener('click', () => {
-            chatbotPanel.classList.toggle('open');
-        });
-
-        chatbotClose.addEventListener('click', () => {
-            chatbotPanel.classList.remove('open');
-        });
-
-        function addMessage(text, isUser) {
-            const messageDiv = document.createElement('div');
-            messageDiv.className = `chatbot-message ${isUser ? 'user' : 'bot'}`;
-            messageDiv.textContent = text;
-            chatbotMessages.appendChild(messageDiv);
-            chatbotMessages.scrollTop = chatbotMessages.scrollHeight;
-        }
-
-        function addLoadingMessage() {
-            const messageDiv = document.createElement('div');
-            messageDiv.className = 'chatbot-message bot';
-            messageDiv.innerHTML = '<span class="chatbot-loading"></span>';
-            messageDiv.id = 'loading-message';
-            chatbotMessages.appendChild(messageDiv);
-            chatbotMessages.scrollTop = chatbotMessages.scrollHeight;
-            return messageDiv;
-        }
-
-        function removeLoadingMessage() {
-            const loadingMsg = document.getElementById('loading-message');
-            if (loadingMsg) {
-                loadingMsg.remove();
-            }
-        }
-
-        async function sendMessage() {
-            const message = chatbotInput.value.trim();
-            if (!message) return;
-
-            chatbotInput.value = '';
-            chatbotSend.disabled = true;
-            addMessage(message, true);
-            conversationHistory.push({ role: 'user', parts: [{ text: message }] });
-
-            const loadingMsg = addLoadingMessage();
-
-            try {
-                const response = await fetch(`${GEMINI_API_URL}?key=${GEMINI_API_KEY}`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        contents: conversationHistory
-                    })
-                });
-
-                if (!response.ok) {
-                    throw new Error(`API error: ${response.status}`);
-                }
-
-                const data = await response.json();
-                
-                removeLoadingMessage();
-
-                if (data.candidates && data.candidates[0] && data.candidates[0].content) {
-                    const botResponse = data.candidates[0].content.parts[0].text;
-                    addMessage(botResponse, false);
-                    conversationHistory.push({ role: 'model', parts: [{ text: botResponse }] });
-                } else {
-                    addMessage('Sorry, I encountered an error. Please try again.', false);
-                }
-            } catch (error) {
-                removeLoadingMessage();
-                addMessage('Sorry, I encountered an error. Please try again.', false);
-                console.error('Gemini API error:', error);
-            } finally {
-                chatbotSend.disabled = false;
-                chatbotInput.focus();
-            }
-        }
-
-        chatbotSend.addEventListener('click', sendMessage);
-        chatbotInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                sendMessage();
-            }
-        });
-
-        // Text Selection - Ask Gemini Feature
-        const askGeminiButton = document.getElementById('ask-gemini-button');
-        let selectedText = '';
-        let lastSelectionText = '';
-        let selectionCheckInterval = null;
-
-        function getSelectedText() {
-            try {
-                const selection = window.getSelection();
-                if (!selection || selection.rangeCount === 0) return '';
-                const text = selection.toString().trim();
-                return text;
-            } catch (e) {
-                return '';
-            }
-        }
-
-        function showAskGeminiButton() {
-            const selection = window.getSelection();
-            if (!selection || selection.rangeCount === 0) {
-                hideAskGeminiButton();
-                return;
-            }
-
-            const text = getSelectedText();
-            if (text.length === 0 || text.length > 5000) {
-                hideAskGeminiButton();
-                return;
-            }
-
-            // Don't show if same text is already selected
-            if (text === lastSelectionText && askGeminiButton.style.display === 'flex') {
-                return;
-            }
-
-            selectedText = text;
-            lastSelectionText = text;
-            
-            try {
-                const range = selection.getRangeAt(0);
-                const rect = range.getBoundingClientRect();
-                
-                // Get viewport dimensions
-                const viewportWidth = window.innerWidth;
-                const viewportHeight = window.innerHeight;
-                
-                // Calculate position - use viewport coordinates (fixed positioning)
-                let buttonTop, buttonLeft;
-                
-                if (rect.top > 100) {
-                    // Position above selection
-                    buttonTop = rect.top - 60;
-                    buttonLeft = rect.left + (rect.width / 2) - 75;
-                } else {
-                    // Position below selection if near top
-                    buttonTop = rect.bottom + 15;
-                    buttonLeft = rect.left + (rect.width / 2) - 75;
-                }
-                
-                // Clamp to viewport bounds
-                buttonTop = Math.max(20, Math.min(buttonTop, viewportHeight - 70));
-                buttonLeft = Math.max(20, Math.min(buttonLeft, viewportWidth - 170));
-                
-                // Set button position and visibility
-                const styleStr = `position: fixed !important; display: flex !important; top: ${buttonTop}px !important; left: ${buttonLeft}px !important; z-index: 99999 !important; visibility: visible !important; opacity: 1 !important; pointer-events: auto !important; transform: none !important;`;
-                askGeminiButton.setAttribute('style', styleStr);
-                
-            } catch (e) {
-                // Fallback: center of screen
-                const viewportHeight = window.innerHeight;
-                const viewportWidth = window.innerWidth;
-                const styleStr = `position: fixed !important; display: flex !important; top: 50% !important; left: 50% !important; transform: translate(-50%, -50%) !important; z-index: 99999 !important; visibility: visible !important; opacity: 1 !important; pointer-events: auto !important;`;
-                askGeminiButton.setAttribute('style', styleStr);
-            }
-        }
-
-        let buttonJustShown = false;
-        let hideButtonTimeout = null;
-
-        function hideAskGeminiButton() {
-            // Don't hide if button was just shown
-            if (buttonJustShown) {
-                return;
-            }
-            
-            if (hideButtonTimeout) {
-                clearTimeout(hideButtonTimeout);
-            }
-            
-            hideButtonTimeout = setTimeout(() => {
-                askGeminiButton.style.display = 'none';
-                askGeminiButton.style.visibility = 'hidden';
-                selectedText = '';
-                lastSelectionText = '';
-            }, 200);
-        }
-
-        function checkSelectionNow() {
-            const activeElement = document.activeElement;
-            if (activeElement && (
-                activeElement.tagName === 'INPUT' ||
-                activeElement.tagName === 'TEXTAREA'
-            )) {
-                return;
-            }
-
-            const text = getSelectedText();
-            if (text.length > 0 && text.length < 5000) {
-                buttonJustShown = true;
-                showAskGeminiButton();
-                // Reset flag after delay to allow hiding later
-                setTimeout(() => {
-                    buttonJustShown = false;
-                }, 1000);
-            } else {
-                // Only hide if there's really no selection
-                if (!text || text.length === 0) {
-                    hideAskGeminiButton();
-                }
-            }
-        }
-
-        // Start polling for selections (fallback method)
-        function startSelectionPolling() {
-            if (selectionCheckInterval) return;
-            selectionCheckInterval = setInterval(() => {
-                checkSelectionNow();
-            }, 200);
-        }
-
-        function stopSelectionPolling() {
-            if (selectionCheckInterval) {
-                clearInterval(selectionCheckInterval);
-                selectionCheckInterval = null;
-            }
-        }
-
-        // Primary method: selectionchange event
-        document.addEventListener('selectionchange', () => {
-            requestAnimationFrame(checkSelectionNow);
-        });
-
-        // Mouseup event - check selection
-        document.addEventListener('mouseup', (e) => {
-            const target = e.target;
-            // Don't interfere with interactive elements
-            if (target.tagName === 'BUTTON' || 
-                target.tagName === 'SELECT' ||
-                target.tagName === 'TEXTAREA' ||
-                target.tagName === 'INPUT' ||
-                target.closest('.ask-gemini-button') ||
-                target.closest('.chatbot-container') ||
-                target.closest('.chatbot-panel')) {
-                setTimeout(checkSelectionNow, 150);
-                return;
-            }
-            
-            // Check after delay
-            setTimeout(() => {
-                requestAnimationFrame(checkSelectionNow);
-            }, 150);
-        });
-
-        // Mousedown - start polling temporarily
-        document.addEventListener('mousedown', (e) => {
-            if (e.target.closest('.ask-gemini-button')) {
-                return;
-            }
-            
-            // Don't hide button immediately on mousedown - user might be selecting
-            // Only check after a delay
-            setTimeout(() => {
-                const text = getSelectedText();
-                // Only hide if there's no selection AND button wasn't just shown
-                if (text.length === 0 && !buttonJustShown) {
-                    hideAskGeminiButton();
-                }
-            }, 500);
-            
-            // Start polling when mouse is pressed (user might be selecting)
-            startSelectionPolling();
-            
-            // Stop polling after a delay
-            setTimeout(() => {
-                stopSelectionPolling();
-                checkSelectionNow();
-            }, 2000);
-        });
-
-        // Also check on mouse move while selecting
-        document.addEventListener('mousemove', (e) => {
-            if (e.buttons === 1) { // Mouse button pressed
-                startSelectionPolling();
-            }
-        });
-
-        // Initialize polling - ALWAYS RUNNING as fallback
-        startSelectionPolling();
-        
-
-        // Handle Ask Gemini button click
-        askGeminiButton.addEventListener('click', () => {
-            if (selectedText) {
-                // Open chatbot if closed
-                if (!chatbotPanel.classList.contains('open')) {
-                    chatbotPanel.classList.add('open');
-                }
-                
-                // Add selected text to input (in quotes) and let user ask their question
-                const quotedText = `"${selectedText}"`;
-                
-                // If input already has text, append; otherwise set it
-                if (chatbotInput.value.trim()) {
-                    chatbotInput.value = `${chatbotInput.value} ${quotedText}`;
-                } else {
-                    chatbotInput.value = quotedText;
-                }
-                
-                // Focus input and place cursor at the end
-                chatbotInput.focus();
-                const length = chatbotInput.value.length;
-                chatbotInput.setSelectionRange(length, length);
-                
-                // Hide button
-                hideAskGeminiButton();
-                
-                // Clear selection
-                window.getSelection().removeAllRanges();
-            }
-        });
-
-        // Hide button on scroll
-        let scrollTimeout;
-        window.addEventListener('scroll', () => {
-            hideAskGeminiButton();
-            clearTimeout(scrollTimeout);
-        });
-
-        // Audio Player Functionality
-        let currentlyPlaying = null;
-
-        function setupAudioControl(button, audioId) {
-            const audio = document.getElementById(`audio-${audioId}`);
-            if (!audio) return;
-
-            button.addEventListener('click', function() {
-                // Stop currently playing audio if any
-                if (currentlyPlaying && currentlyPlaying !== audio) {
-                    currentlyPlaying.pause();
-                    currentlyPlaying.currentTime = 0;
-                    const prevButton = document.querySelector(`[data-audio-id="${currentlyPlaying.id.replace('audio-', '')}"]`);
-                    if (prevButton) {
-                        prevButton.classList.remove('playing');
-                        updatePlayIcon(prevButton, false);
-                    }
-                }
-
-                if (audio.paused) {
-                    audio.play();
-                    button.classList.add('playing');
-                    updatePlayIcon(button, true);
-                    currentlyPlaying = audio;
-                } else {
-                    audio.pause();
-                    audio.currentTime = 0;
-                    button.classList.remove('playing');
-                    updatePlayIcon(button, false);
-                    currentlyPlaying = null;
-                }
-            });
-
-            audio.addEventListener('ended', function() {
-                button.classList.remove('playing');
-                updatePlayIcon(button, false);
-                currentlyPlaying = null;
-            });
-
-            audio.addEventListener('pause', function() {
-                if (audio.currentTime === 0) {
-                    button.classList.remove('playing');
-                    updatePlayIcon(button, false);
-                }
-            });
-        }
-
-        function updatePlayIcon(button, isPlaying) {
-            const svg = button.querySelector('svg');
-            if (!svg) return;
-
-            if (isPlaying) {
-                // Pause icon
-                svg.innerHTML = `
-                    <rect x="6" y="4" width="4" height="16"></rect>
-                    <rect x="14" y="4" width="4" height="16"></rect>
-                `;
-            } else {
-                // Play icon
-                svg.innerHTML = `
-                    <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
-                    <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>
-                `;
-            }
-        }
-
-        // Initialize all audio controls
-        function initializeAudioControls() {
-            document.querySelectorAll('.audio-control').forEach(button => {
-                const audioId = button.getAttribute('data-audio-id');
-                if (audioId) {
-                    setupAudioControl(button, audioId);
-                }
-            });
-        }
-
-        // Initialize explanation audio control
-        const explanationAudioBtn = document.querySelector('.explanation-audio');
-        if (explanationAudioBtn) {
-            setupAudioControl(explanationAudioBtn, 'explanation');
-        }
-
-        // Initialize fun fact audio control
-        const funFactAudioBtn = document.querySelector('.fun-fact-audio');
-        if (funFactAudioBtn) {
-            setupAudioControl(funFactAudioBtn, 'funfact');
-        }
-
-        // Initialize video audio control
-        const videoAudioBtn = document.querySelector('.video-audio');
-        if (videoAudioBtn) {
-            setupAudioControl(videoAudioBtn, 'video');
-        }
-
-        // Timeline section removed
-
-        // Initialize interactive activity audio control
-        const interactiveAudioBtn = document.querySelector('.interactive-audio');
-        if (interactiveAudioBtn) {
-            setupAudioControl(interactiveAudioBtn, 'interactive');
-        }
-
-        // Initialize module system on page load
-        initModules();
-
-        // Function to set audio source for a control
-        function setAudioSource(audioId, audioUrl) {
-            const audio = document.getElementById(`audio-${audioId}`);
-            if (audio && audioUrl) {
-                audio.src = audioUrl;
-            }
-        }
-
-        // Function to set multiple audio sources
-        function setAudioSources(audioSources) {
-            if (audioSources && typeof audioSources === 'object') {
-                Object.keys(audioSources).forEach(audioId => {
-                    setAudioSource(audioId, audioSources[audioId]);
-                });
-            }
-        }
-
-        // Timeline functions removed
+        // Initialize on load
+        init();
     </script>
 </body>
 </html>
