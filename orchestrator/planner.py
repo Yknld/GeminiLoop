@@ -376,7 +376,6 @@ class Planner:
                     'videoId': module_spec.get('videoId'),
                     'explanation': module_spec.get('explanation'),
                     'keyPoints': module_spec.get('keyPoints', []),
-                    'timeline': module_spec.get('timeline', []),
                     'funFact': module_spec.get('funFact'),
                     'interactiveElement': None,  # Will be generated
                     'audioSources': {}
@@ -384,7 +383,6 @@ class Planner:
                 'requirements': {
                     'explanation': module_spec.get('explanation_desc', 'Main explanation text from notes'),
                     'keyPoints': module_spec.get('keyPoints_desc', 'Important concepts as array'),
-                    'timeline': module_spec.get('timeline_desc', 'Historical events/chronology (if applicable)'),
                     'funFact': module_spec.get('funFact_desc', 'Interesting fact'),
                     'interactiveElement': 'FUN interactive activity (calculator/simulation/game - NEVER quiz/test)',
                     'videoId': module_spec.get('videoId_desc', 'YouTube video ID (from provided videos)')

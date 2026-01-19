@@ -566,10 +566,6 @@ class LocalSubprocessOpenHandsClient(OpenHandsClient):
         else:
             prompt += f"  keyPoints: [],  // Add key points array from notes\n"
         
-        if requirements.get('timeline'):
-            prompt += f"  timeline: {json.dumps(requirements['timeline'])},  // Timeline events if applicable\n"
-        else:
-            prompt += f"  timeline: [],  // Timeline events if applicable\n"
         
         if requirements.get('funFact'):
             fun_fact = requirements['funFact'].replace('"', '\\"')
@@ -609,7 +605,7 @@ class LocalSubprocessOpenHandsClient(OpenHandsClient):
         prompt += f"   - description: 'Add complete Module {module_index + 1} ({module_title}) to modules array'\n"
         prompt += f"   - file_path: 'index.html'\n"
         prompt += f"   - Edit the modules array to add the COMPLETE module object (all fields) at the correct position\n"
-        prompt += f"3. The module object MUST include ALL fields: title, videoId, explanation, keyPoints, timeline, funFact, interactiveElement, audioSources\n"
+        prompt += f"3. The module object MUST include ALL fields: title, videoId, explanation, keyPoints, funFact, interactiveElement, audioSources\n"
         prompt += f"4. DO NOT make multiple edits - create the complete module in ONE edit operation\n\n"
         
         prompt += "**VERIFICATION:**\n"
@@ -1313,7 +1309,7 @@ class LocalSubprocessOpenHandsClient(OpenHandsClient):
             prompt += f"\n- Create as many module objects as appropriate based on the content structure"
             prompt += f"\n- Preserve the template structure: navigation system, module loading functions, audio controls, notes panel, chatbot"
             prompt += f"\n- You can modify colors and remove specific cards, but the skeleton structure must remain"
-            prompt += f"\n- Each module should have: title, videoId, explanation, keyPoints, timeline, funFact, interactiveElement, audioSources"
+            prompt += f"\n- Each module should have: title, videoId, explanation, keyPoints, funFact, interactiveElement, audioSources"
             prompt += f"\n\n**CRITICAL: YOUTUBE VIDEO EMBEDDING (REQUIRED):**"
             prompt += f"\n- YouTube videos have been found and saved to youtube_videos.json in your workspace"
             prompt += f"\n- READ the youtube_videos.json file to get the video IDs"
@@ -1350,7 +1346,7 @@ class LocalSubprocessOpenHandsClient(OpenHandsClient):
             prompt += f"\n- STEP 2: Create a Python script (e.g., generate_audio.py) that:"
             prompt += f"\n  1. Imports: from google.cloud import texttospeech"
             prompt += f"\n  2. Creates a client: client = texttospeech.TextToSpeechClient()"
-            prompt += f"\n  3. For EACH text section (explanation, each keyPoint, timeline events, funFact, interactive intro):"
+            prompt += f"\n  3. For EACH text section (explanation, each keyPoint, funFact, interactive intro):"
             prompt += f"\n     - Creates synthesis_input with the text"
             prompt += f"\n     - Sets voice to 'en-US-Neural2-D' (or 'en-US-Standard-C' if unavailable)"
             prompt += f"\n     - Sets audio_config to MP3 encoding"
