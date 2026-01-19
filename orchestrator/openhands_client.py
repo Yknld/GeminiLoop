@@ -1383,28 +1383,42 @@ class CloudOpenHandsClient(OpenHandsClient):
     """
     OpenHands Cloud API client for code generation.
     
-    Uses OpenHands Cloud API (https://app.all-hands.dev/api/conversations) to generate code remotely.
+    Uses OpenHands Runtime API (APIRemoteWorkspace) to generate code remotely in cloud sandboxes.
     The checker/evaluator runs on RunPod, but code generation happens in the cloud.
+    
+    Key Differences:
+    - Runtime API Key: Authenticates with OpenHands Runtime API to manage remote sandboxed environments,
+      containers, workspaces, and execute commands. Required for APIRemoteWorkspace.
+    - LLM API Key: Used to access the language model (Gemini, Claude, etc.) - passed separately via
+      GOOGLE_AI_STUDIO_API_KEY for Gemini models.
+    - Cloud API Key: Used for OpenHands Cloud UI/conversations API (not needed for APIRemoteWorkspace).
+    
+    For APIRemoteWorkspace, we only need the Runtime API Key.
     """
     
     def __init__(self, artifacts_dir: Optional[Path] = None):
         self.artifacts_dir = Path(artifacts_dir) if artifacts_dir else Path.cwd() / "artifacts"
         self.artifacts_dir.mkdir(parents=True, exist_ok=True)
         
-        # OpenHands Cloud API configuration
-        self.api_key = os.getenv("OPENHANDS_CLOUD_API_KEY")
-        self.api_base_url = os.getenv("OPENHANDS_CLOUD_API_URL", "https://app.all-hands.dev/api")
+        # OpenHands Runtime API configuration (for APIRemoteWorkspace)
         self.runtime_api_url = os.getenv("OPENHANDS_RUNTIME_API_URL", "https://runtime.eval.all-hands.dev")
         self.runtime_api_key = os.getenv("OPENHANDS_RUNTIME_API_KEY")
         
-        if not self.api_key:
-            raise RuntimeError("OPENHANDS_CLOUD_API_KEY environment variable is required for cloud mode")
-        if not self.runtime_api_key:
-            raise RuntimeError("OPENHANDS_RUNTIME_API_KEY environment variable is required for cloud mode")
+        # Optional: Cloud API key (for conversations API, not needed for APIRemoteWorkspace)
+        self.cloud_api_key = os.getenv("OPENHANDS_CLOUD_API_KEY")
+        self.cloud_api_url = os.getenv("OPENHANDS_CLOUD_API_URL", "https://app.all-hands.dev/api")
         
-        logger.info("☁️  Using CloudOpenHandsClient (OpenHands Cloud API)")
-        logger.info(f"   API Base URL: {self.api_base_url}")
+        if not self.runtime_api_key:
+            raise RuntimeError(
+                "OPENHANDS_RUNTIME_API_KEY environment variable is required for cloud mode.\n"
+                "This key authenticates with OpenHands Runtime API to manage remote sandboxed environments.\n"
+                "Get it from: https://app.all-hands.dev/settings/api-keys (Runtime API section)"
+            )
+        
+        logger.info("☁️  Using CloudOpenHandsClient (OpenHands Runtime API)")
         logger.info(f"   Runtime API URL: {self.runtime_api_url}")
+        if self.cloud_api_key:
+            logger.info(f"   Cloud API URL: {self.cloud_api_url} (optional, for conversations API)")
     
     def generate_code(self, task: str, workspace_path: str, detailed_requirements: Dict[str, Any] = None, template_file: str = None) -> Dict[str, Any]:
         """Generate code using OpenHands Cloud API with APIRemoteWorkspace"""
