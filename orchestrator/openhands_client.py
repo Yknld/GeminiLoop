@@ -1443,7 +1443,11 @@ class CloudOpenHandsClient(OpenHandsClient):
             if saved_prompt_path:
                 logger.info(f"   📄 Reusing saved prompt from: {saved_prompt_path}")
                 prompt = saved_prompt_path.read_text(encoding="utf-8")
-                logger.info(f"   ✅ Loaded prompt ({len(prompt)} characters) - skipping planner to save credits")
+                if len(prompt.strip()) == 0:
+                    logger.warning(f"   ⚠️  Prompt file is empty! Falling back to building new prompt.")
+                    prompt = self._build_generation_prompt(task, detailed_requirements, template_file, workspace_path)
+                else:
+                    logger.info(f"   ✅ Loaded prompt ({len(prompt)} characters) - skipping planner to save credits")
             else:
                 # Build detailed prompt for OpenHands (normal flow)
                 logger.info(f"   📝 Building new prompt (saved prompt not found in any location)")
