@@ -1437,7 +1437,11 @@ class CloudOpenHandsClient(OpenHandsClient):
             # For now, we'll send the task and let OpenHands Cloud handle it
             
             # Make API call to OpenHands Cloud Conversations API
-            conversations_url = f"{self.cloud_api_url}/conversations"
+            # Ensure we have the full URL with /conversations endpoint
+            if not self.cloud_api_url.endswith("/conversations"):
+                conversations_url = f"{self.cloud_api_url.rstrip('/')}/conversations"
+            else:
+                conversations_url = self.cloud_api_url
             logger.info(f"   Sending request to: {conversations_url}")
             
             headers = {
