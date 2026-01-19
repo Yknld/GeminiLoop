@@ -1412,7 +1412,8 @@ class CloudOpenHandsClient(OpenHandsClient):
             raise RuntimeError(
                 "OPENHANDS_RUNTIME_API_KEY environment variable is required for cloud mode.\n"
                 "This key authenticates with OpenHands Runtime API to manage remote sandboxed environments.\n"
-                "Get it from: https://app.all-hands.dev/settings/api-keys (Runtime API section)"
+                "Get it from: https://app.all-hands.dev/settings/api-keys\n"
+                "Click 'Create API Key' in the 'OpenHands API Keys' section (not the LLM Key section)"
             )
         
         logger.info("☁️  Using CloudOpenHandsClient (OpenHands Runtime API)")
