@@ -1487,6 +1487,8 @@ class CloudOpenHandsClient(OpenHandsClient):
                 logger.info("   ✅ Fallback agent created")
             
             # Use APIRemoteWorkspace for cloud execution
+            # APIRemoteWorkspace connects via HTTP/WebSocket to the runtime API URL
+            # It will handle connection errors and provide proper error messages
             logger.info(f"   Connecting to OpenHands Cloud Runtime API...")
             logger.info(f"   Runtime API URL: {self.runtime_api_url}")
             logger.info(f"   Runtime API Key: {'*' * 10}...{self.runtime_api_key[-4:] if len(self.runtime_api_key) > 4 else '****'}")
@@ -1496,9 +1498,6 @@ class CloudOpenHandsClient(OpenHandsClient):
             server_image = os.getenv("OPENHANDS_SERVER_IMAGE", "ghcr.io/openhands/agent-server:latest-python")
             logger.info(f"   Server image: {server_image}")
             
-            # Let APIRemoteWorkspace handle connection - it may use different connection methods
-            # that work better than raw DNS resolution. Remove early DNS check and let
-            # APIRemoteWorkspace handle the connection with proper error messages.
             with APIRemoteWorkspace(
                 runtime_api_url=self.runtime_api_url,
                 runtime_api_key=self.runtime_api_key,  # Pass as string, not SecretStr
