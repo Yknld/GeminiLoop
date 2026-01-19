@@ -1491,25 +1491,14 @@ class CloudOpenHandsClient(OpenHandsClient):
             logger.info(f"   Runtime API URL: {self.runtime_api_url}")
             logger.info(f"   Runtime API Key: {'*' * 10}...{self.runtime_api_key[-4:] if len(self.runtime_api_key) > 4 else '****'}")
             
-            # Test connectivity first
-            try:
-                import socket
-                from urllib.parse import urlparse
-                parsed = urlparse(self.runtime_api_url)
-                hostname = parsed.hostname
-                logger.info(f"   Testing DNS resolution for: {hostname}")
-                socket.gethostbyname(hostname)
-                logger.info(f"   ✅ DNS resolution successful")
-            except Exception as dns_error:
-                logger.error(f"   ❌ DNS resolution failed: {dns_error}")
-                logger.error(f"   This might be a network issue or incorrect URL")
-                raise RuntimeError(f"Failed to resolve Runtime API hostname: {dns_error}")
-            
             # APIRemoteWorkspace expects runtime_api_key as a string, not SecretStr
             # Based on official examples: use latest-python tag and image_pull_policy
             server_image = os.getenv("OPENHANDS_SERVER_IMAGE", "ghcr.io/openhands/agent-server:latest-python")
             logger.info(f"   Server image: {server_image}")
             
+            # Let APIRemoteWorkspace handle connection - it may use different connection methods
+            # that work better than raw DNS resolution. Remove early DNS check and let
+            # APIRemoteWorkspace handle the connection with proper error messages.
             with APIRemoteWorkspace(
                 runtime_api_url=self.runtime_api_url,
                 runtime_api_key=self.runtime_api_key,  # Pass as string, not SecretStr
