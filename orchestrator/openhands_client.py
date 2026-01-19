@@ -1432,24 +1432,28 @@ class CloudOpenHandsClient(OpenHandsClient):
         
         try:
             # Check if we should reuse a saved prompt file to save credits/time
-            # Try multiple locations: env var, /app/ (RunPod), local path
+            # Can be disabled by setting USE_SAVED_PROMPT=false
+            use_saved_prompt = os.getenv("USE_SAVED_PROMPT", "false").lower() in ("true", "1", "yes")
+            
             saved_prompt_path = None
-            possible_paths = [
-                os.getenv("OPENHANDS_PROMPT_FILE"),  # Environment variable
-                Path("/app/openhandsprompt.txt"),  # RunPod container
-                Path("/Users/danielntumba/match-me/openhandsprompt.txt"),  # Local macOS
-                Path(__file__).parent.parent / "openhandsprompt.txt",  # GeminiLoop root
-                Path.cwd() / "openhandsprompt.txt",  # Current directory
-            ]
+            if use_saved_prompt:
+                # Try multiple locations: env var, /app/ (RunPod), local path
+                possible_paths = [
+                    os.getenv("OPENHANDS_PROMPT_FILE"),  # Environment variable
+                    Path("/app/openhandsprompt.txt"),  # RunPod container
+                    Path("/Users/danielntumba/match-me/openhandsprompt.txt"),  # Local macOS
+                    Path(__file__).parent.parent / "openhandsprompt.txt",  # GeminiLoop root
+                    Path.cwd() / "openhandsprompt.txt",  # Current directory
+                ]
+                
+                for path_str in possible_paths:
+                    if path_str:
+                        path = Path(path_str) if isinstance(path_str, str) else path_str
+                        if path.exists():
+                            saved_prompt_path = path
+                            break
             
-            for path_str in possible_paths:
-                if path_str:
-                    path = Path(path_str) if isinstance(path_str, str) else path_str
-                    if path.exists():
-                        saved_prompt_path = path
-                        break
-            
-            if saved_prompt_path:
+            if saved_prompt_path and use_saved_prompt:
                 logger.info(f"   📄 Reusing saved prompt from: {saved_prompt_path}")
                 prompt = saved_prompt_path.read_text(encoding="utf-8")
                 if len(prompt.strip()) == 0:
