@@ -1488,6 +1488,23 @@ class CloudOpenHandsClient(OpenHandsClient):
             
             # Use APIRemoteWorkspace for cloud execution
             logger.info(f"   Connecting to OpenHands Cloud Runtime API...")
+            logger.info(f"   Runtime API URL: {self.runtime_api_url}")
+            logger.info(f"   Runtime API Key: {'*' * 10}...{self.runtime_api_key[-4:] if len(self.runtime_api_key) > 4 else '****'}")
+            
+            # Test connectivity first
+            try:
+                import socket
+                from urllib.parse import urlparse
+                parsed = urlparse(self.runtime_api_url)
+                hostname = parsed.hostname
+                logger.info(f"   Testing DNS resolution for: {hostname}")
+                socket.gethostbyname(hostname)
+                logger.info(f"   ✅ DNS resolution successful")
+            except Exception as dns_error:
+                logger.error(f"   ❌ DNS resolution failed: {dns_error}")
+                logger.error(f"   This might be a network issue or incorrect URL")
+                raise RuntimeError(f"Failed to resolve Runtime API hostname: {dns_error}")
+            
             # APIRemoteWorkspace expects runtime_api_key as a string, not SecretStr
             with APIRemoteWorkspace(
                 runtime_api_url=self.runtime_api_url,
