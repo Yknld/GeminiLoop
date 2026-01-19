@@ -1529,7 +1529,8 @@ class CloudOpenHandsClient(OpenHandsClient):
                     continue
                 
                 status_data = status_response.json()
-                status = status_data.get("status", "unknown")
+                # Check both 'status' and 'conversation_status' fields
+                status = status_data.get("status") or status_data.get("conversation_status", "unknown")
                 
                 logger.info(f"   Status: {status} (elapsed: {elapsed:.1f}s)")
                 
