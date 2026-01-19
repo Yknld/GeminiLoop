@@ -175,29 +175,135 @@
             color: var(--text-secondary);
         }
 
-        /* Module TTS Audio */
-        .module-audio-control {
+        /* Gemini Chatbot */
+        .chatbot-container {
             position: fixed;
             bottom: 24px;
             right: 24px;
-            padding: 12px 24px;
-            background: var(--primary);
-            color: white;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 16px;
-            font-weight: 500;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
             z-index: 1000;
         }
 
-        .module-audio-control:hover {
+        .chatbot-button {
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            background: var(--primary);
+            color: white;
+            border: none;
+            cursor: pointer;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            transition: transform 0.2s;
+        }
+
+        .chatbot-button:hover {
+            transform: scale(1.05);
+        }
+
+        .chatbot-panel {
+            position: absolute;
+            bottom: 70px;
+            right: 0;
+            width: 380px;
+            height: 500px;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+            display: none;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .chatbot-panel.open {
+            display: flex;
+        }
+
+        .chatbot-header {
+            padding: 16px;
+            background: var(--primary);
+            color: white;
+            font-weight: 600;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .chatbot-close {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 24px;
+            cursor: pointer;
+            padding: 0;
+            width: 28px;
+            height: 28px;
+        }
+
+        .chatbot-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .chatbot-message {
+            padding: 12px;
+            border-radius: 8px;
+            max-width: 80%;
+        }
+
+        .chatbot-message.user {
+            background: var(--primary);
+            color: white;
+            align-self: flex-end;
+        }
+
+        .chatbot-message.bot {
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            align-self: flex-start;
+        }
+
+        .chatbot-input-container {
+            display: flex;
+            padding: 12px;
+            border-top: 1px solid var(--border);
+            gap: 8px;
+        }
+
+        .chatbot-input {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-size: 14px;
+        }
+
+        .chatbot-send {
+            padding: 10px 20px;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .chatbot-send:hover {
             opacity: 0.9;
         }
 
-        .module-audio-control.playing {
-            background: #dc2626;
+        @media (max-width: 768px) {
+            .chatbot-panel {
+                width: calc(100vw - 48px);
+                height: calc(100vh - 120px);
+                right: -24px;
+            }
         }
 
         /* Hidden audio element */
@@ -254,11 +360,31 @@
         </div>
     </div>
 
-    <!-- Module TTS Audio Control -->
-    <button class="module-audio-control" id="module-audio-btn" onclick="toggleModuleAudio()">
-        🔊 Play Module Explanation
-    </button>
-    <audio id="module-audio" preload="none"></audio>
+    <!-- Gemini Chatbot -->
+    <div class="chatbot-container">
+        <div class="chatbot-panel" id="chatbot-panel">
+            <div class="chatbot-header">
+                <span>Gemini Assistant</span>
+                <button class="chatbot-close" id="chatbot-close">×</button>
+            </div>
+            <div class="chatbot-messages" id="chatbot-messages">
+                <div class="chatbot-message bot">
+                    Hello! I'm your Gemini assistant. How can I help you with this lesson?
+                </div>
+            </div>
+            <div class="chatbot-input-container">
+                <input 
+                    type="text" 
+                    class="chatbot-input" 
+                    id="chatbot-input"
+                    placeholder="Ask me anything..."
+                    autocomplete="off"
+                />
+                <button class="chatbot-send" id="chatbot-send">Send</button>
+            </div>
+        </div>
+        <button class="chatbot-button" id="chatbot-button">💬</button>
+    </div>
 
     <script>
         // Module data structure
@@ -336,21 +462,6 @@
         }
 
         // Audio controls
-        function toggleModuleAudio() {
-            const audio = document.getElementById('module-audio');
-            const btn = document.getElementById('module-audio-btn');
-            
-            if (audio.paused) {
-                audio.play();
-                btn.textContent = '⏸️ Pause Module Explanation';
-                btn.classList.add('playing');
-            } else {
-                audio.pause();
-                btn.textContent = '🔊 Play Module Explanation';
-                btn.classList.remove('playing');
-            }
-        }
-
         function toggleVideoAudio() {
             const audio = document.getElementById('video-audio');
             const btn = document.getElementById('video-audio-btn');
@@ -382,6 +493,88 @@
             modules = newModules;
             loadModule(0);
         }
+
+        // Gemini Chatbot
+        const geminiApiKeyMeta = document.querySelector('meta[name="gemini-api-key"]');
+        const GEMINI_API_KEY = geminiApiKeyMeta ? geminiApiKeyMeta.getAttribute('content') : '';
+        const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent';
+
+        const chatbotButton = document.getElementById('chatbot-button');
+        const chatbotPanel = document.getElementById('chatbot-panel');
+        const chatbotClose = document.getElementById('chatbot-close');
+        const chatbotMessages = document.getElementById('chatbot-messages');
+        const chatbotInput = document.getElementById('chatbot-input');
+        const chatbotSend = document.getElementById('chatbot-send');
+
+        let conversationHistory = [];
+
+        chatbotButton.addEventListener('click', () => {
+            chatbotPanel.classList.toggle('open');
+        });
+
+        chatbotClose.addEventListener('click', () => {
+            chatbotPanel.classList.remove('open');
+        });
+
+        function addMessage(text, isUser) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `chatbot-message ${isUser ? 'user' : 'bot'}`;
+            messageDiv.textContent = text;
+            chatbotMessages.appendChild(messageDiv);
+            chatbotMessages.scrollTop = chatbotMessages.scrollHeight;
+        }
+
+        async function sendMessage() {
+            const message = chatbotInput.value.trim();
+            if (!message || !GEMINI_API_KEY) return;
+
+            chatbotInput.value = '';
+            chatbotSend.disabled = true;
+            addMessage(message, true);
+            conversationHistory.push({ role: 'user', parts: [{ text: message }] });
+
+            const loadingDiv = document.createElement('div');
+            loadingDiv.className = 'chatbot-message bot';
+            loadingDiv.textContent = 'Thinking...';
+            loadingDiv.id = 'loading-message';
+            chatbotMessages.appendChild(loadingDiv);
+            chatbotMessages.scrollTop = chatbotMessages.scrollHeight;
+
+            try {
+                const response = await fetch(`${GEMINI_API_URL}?key=${GEMINI_API_KEY}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ contents: conversationHistory })
+                });
+
+                document.getElementById('loading-message').remove();
+
+                if (!response.ok) throw new Error(`API error: ${response.status}`);
+
+                const data = await response.json();
+                if (data.candidates && data.candidates[0] && data.candidates[0].content) {
+                    const botResponse = data.candidates[0].content.parts[0].text;
+                    addMessage(botResponse, false);
+                    conversationHistory.push({ role: 'model', parts: [{ text: botResponse }] });
+                } else {
+                    addMessage('Sorry, I encountered an error. Please try again.', false);
+                }
+            } catch (error) {
+                document.getElementById('loading-message')?.remove();
+                addMessage('Sorry, I encountered an error. Please try again.', false);
+                console.error('Gemini API error:', error);
+            } finally {
+                chatbotSend.disabled = false;
+                chatbotInput.focus();
+            }
+        }
+
+        chatbotSend.addEventListener('click', sendMessage);
+        chatbotInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
 
         // Initialize on load
         init();
