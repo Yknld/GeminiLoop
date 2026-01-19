@@ -1507,11 +1507,43 @@ class CloudOpenHandsClient(OpenHandsClient):
             # Include workspace context if we have files
             initial_message = prompt
             
+            # Get repository for template initialization
+            # Can be set via TEMPLATE_REPO_URL (for template) or OPENHANDS_REPO (for OpenHands Cloud)
+            template_repo = os.getenv("TEMPLATE_REPO_URL")
+            openhands_repo = os.getenv("OPENHANDS_REPO")
+            github_repo = os.getenv("GITHUB_REPO")
+            
+            # Prefer OPENHANDS_REPO, then TEMPLATE_REPO_URL, then GITHUB_REPO
+            repository = None
+            if openhands_repo:
+                repository = openhands_repo
+                logger.info(f"   Using repository from OPENHANDS_REPO: {repository}")
+            elif template_repo:
+                # Convert git URL to owner/repo format
+                # e.g., https://github.com/owner/repo.git -> owner/repo
+                if "github.com" in template_repo:
+                    parts = template_repo.replace(".git", "").split("/")
+                    if len(parts) >= 2:
+                        owner = parts[-2]
+                        repo = parts[-1]
+                        repository = f"{owner}/{repo}"
+                        logger.info(f"   Using repository from TEMPLATE_REPO_URL: {repository}")
+            elif github_repo:
+                repository = github_repo
+                logger.info(f"   Using repository from GITHUB_REPO: {repository}")
+            
             payload = {
                 "initial_user_msg": initial_message,
-                # Optional: repository if we want to work with a git repo
-                # "repository": os.getenv("GITHUB_REPO", ""),
             }
+            
+            # Add repository if available (OpenHands Cloud will clone it)
+            if repository:
+                payload["repository"] = repository
+                # Optionally specify branch
+                branch = os.getenv("TEMPLATE_REF") or os.getenv("OPENHANDS_BRANCH") or os.getenv("BASE_BRANCH")
+                if branch:
+                    payload["selected_branch"] = branch
+                    logger.info(f"   Using branch: {branch}")
             
             logger.info(f"   Sending POST request to: {conversations_url}")
             logger.info(f"   Message length: {len(initial_message)} characters")
