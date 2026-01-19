@@ -1506,8 +1506,14 @@ class CloudOpenHandsClient(OpenHandsClient):
                 
                 logger.info(f"   Status: {status} (elapsed: {elapsed:.1f}s)")
                 
-                if status == "completed":
+                if status == "STOPPED":
                     logger.info("   ✅ Conversation completed")
+                    # Check if it was successful or failed
+                    runtime_status = status_data.get("runtime_status", "")
+                    if "error" in runtime_status.lower() or "failed" in runtime_status.lower():
+                        error_msg = status_data.get("error", runtime_status)
+                        logger.error(f"   ❌ Conversation failed: {error_msg}")
+                        raise RuntimeError(f"OpenHands Cloud conversation failed: {error_msg}")
                     break
                 elif status == "failed" or status == "error":
                     error_msg = status_data.get("error", "Unknown error")
@@ -1516,13 +1522,22 @@ class CloudOpenHandsClient(OpenHandsClient):
                 
                 time.sleep(poll_interval)
             
-            # Get conversation results/files
-            # Note: The exact API for getting files may vary - this is a placeholder
-            # We may need to download files from the conversation or use a different endpoint
-            logger.info(f"   Downloading generated files...")
+            # Get conversation results
+            # The conversation may have created a PR or modified files in a repository
+            # For now, we'll check the conversation URL and PR number if available
+            conversation_url = status_data.get("url", "")
+            pr_number = status_data.get("pr_number")
             
-            # For now, we'll check if files were generated in the workspace
-            # The actual file retrieval API may need to be determined from OpenHands docs
+            if pr_number:
+                logger.info(f"   ✅ Pull request created: PR #{pr_number}")
+                logger.info(f"   View at: {conversation_url}")
+            
+            # Note: Files are typically in the repository or workspace managed by OpenHands Cloud
+            # We may need to clone the repository or use additional API endpoints to get files
+            # For now, we'll mark as successful and note that files are in the conversation/repo
+            logger.info(f"   Conversation URL: {conversation_url}")
+            
+            # Check local workspace for any files (in case we need to sync)
             after_files = self._capture_workspace_state(workspace_path)
             
             # Compute diffs
