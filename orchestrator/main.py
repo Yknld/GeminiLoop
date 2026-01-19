@@ -301,19 +301,35 @@ async def run_loop(task: str, max_iterations: int = 5, base_dir: Path = None, cu
             print(f"🧠 Phase 0c: Planning with Gemini")
             print(f"{'=' * 70}")
         
-        # Always use planner - it will use custom_notes if provided
-        planner = Planner()
-        plan = planner.generate_openhands_prompt(
-            user_requirements=task,
-            custom_notes=custom_notes,
-            youtube_videos=youtube_videos if youtube_videos else None
-        )
-        
-        # Save plan to artifacts
-        planner.save_plan(plan, state.artifacts_dir)
-        
-        # Store generated prompt for OpenHands
-        openhands_prompt = plan['prompt']
+        # Check if we should reuse a saved prompt file to save credits/time
+        saved_prompt_path = Path("/Users/danielntumba/match-me/openhandsprompt.txt")
+        if saved_prompt_path.exists():
+            print("📄 Reusing saved prompt to save credits/time...")
+            openhands_prompt = saved_prompt_path.read_text(encoding="utf-8")
+            print(f"   ✅ Loaded prompt ({len(openhands_prompt)} characters)")
+            # Create a minimal plan structure for compatibility
+            plan = {
+                'prompt': openhands_prompt,
+                'modules': [],
+                'metadata': {'reused_prompt': True, 'model': 'saved_prompt'}
+            }
+            # Still save it to artifacts for reference
+            plan_file = state.artifacts_dir / 'openhands_prompt.txt'
+            plan_file.write_text(openhands_prompt)
+        else:
+            # Always use planner - it will use custom_notes if provided
+            planner = Planner()
+            plan = planner.generate_openhands_prompt(
+                user_requirements=task,
+                custom_notes=custom_notes,
+                youtube_videos=youtube_videos if youtube_videos else None
+            )
+            
+            # Save plan to artifacts
+            planner.save_plan(plan, state.artifacts_dir)
+            
+            # Store generated prompt for OpenHands
+            openhands_prompt = plan['prompt']
         
         print(f"✅ Planning complete")
         print(f"   Generated prompt: {len(openhands_prompt)} characters")
