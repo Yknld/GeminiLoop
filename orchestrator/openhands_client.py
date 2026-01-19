@@ -1398,6 +1398,9 @@ class CloudOpenHandsClient(OpenHandsClient):
         
         # OpenHands Cloud Conversations API configuration
         self.cloud_api_key = os.getenv("OPENHANDS_CLOUD_API_KEY")
+        # Strip whitespace in case there's accidental spaces
+        if self.cloud_api_key:
+            self.cloud_api_key = self.cloud_api_key.strip()
         # Default to base URL without /api - we'll append /api/conversations
         self.cloud_api_url = os.getenv("OPENHANDS_CLOUD_API_URL", "https://app.all-hands.dev")
         
@@ -1407,6 +1410,12 @@ class CloudOpenHandsClient(OpenHandsClient):
                 "Get it from: https://app.all-hands.dev/settings/api-keys\n"
                 "Click 'Create API Key' in the 'OpenHands API Keys' section"
             )
+        
+        # Validate API key format (should start with sk-oh-)
+        if not self.cloud_api_key.startswith("sk-oh-"):
+            logger.warning(f"   ⚠️  API key doesn't start with 'sk-oh-'. Key length: {len(self.cloud_api_key)}")
+        else:
+            logger.info(f"   ✅ API key format looks correct (length: {len(self.cloud_api_key)})")
         
         logger.info("☁️  Using CloudOpenHandsClient (OpenHands Cloud Conversations API)")
         logger.info(f"   Cloud API URL: {self.cloud_api_url}")
@@ -1489,6 +1498,10 @@ class CloudOpenHandsClient(OpenHandsClient):
                 "Authorization": f"Bearer {self.cloud_api_key}",
                 "Content-Type": "application/json"
             }
+            
+            # Log API key info for debugging (without exposing the full key)
+            api_key_preview = f"{self.cloud_api_key[:10]}...{self.cloud_api_key[-4:]}" if len(self.cloud_api_key) > 14 else "***"
+            logger.info(f"   API Key preview: {api_key_preview} (length: {len(self.cloud_api_key)})")
             
             # Prepare the task message
             # Include workspace context if we have files
