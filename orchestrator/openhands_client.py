@@ -1465,11 +1465,10 @@ class CloudOpenHandsClient(OpenHandsClient):
             # Build the full conversations endpoint URL
             # The endpoint should be: https://app.all-hands.dev/api/conversations
             base_url = self.cloud_api_url.rstrip('/')
-            # If base_url already ends with /api, use it as-is, otherwise append /api
+            # Remove /api if it's already in the URL, then add /api/conversations
             if base_url.endswith('/api'):
-                conversations_url = f"{base_url}/conversations"
-            else:
-                conversations_url = f"{base_url}/api/conversations"
+                base_url = base_url[:-4]  # Remove '/api'
+            conversations_url = f"{base_url}/api/conversations"
             logger.info(f"   Cloud API Base URL (env): {self.cloud_api_url}")
             logger.info(f"   Cloud API Base URL (normalized): {base_url}")
             logger.info(f"   Conversations endpoint: {conversations_url}")
@@ -1523,10 +1522,10 @@ class CloudOpenHandsClient(OpenHandsClient):
             # Poll for conversation status until complete
             # Build status URL - ensure it has /api in the path
             base_url = self.cloud_api_url.rstrip('/')
+            # Remove /api if it's already in the URL, then add /api/conversations
             if base_url.endswith('/api'):
-                status_url = f"{base_url}/conversations/{conversation_id}"
-            else:
-                status_url = f"{base_url}/api/conversations/{conversation_id}"
+                base_url = base_url[:-4]  # Remove '/api'
+            status_url = f"{base_url}/api/conversations/{conversation_id}"
             timeout_seconds = float(os.getenv('OPENHANDS_TIMEOUT_SECONDS', '600'))  # 10 minutes default
             poll_interval = 5  # Poll every 5 seconds
             start_poll_time = time.time()
@@ -1640,10 +1639,10 @@ class CloudOpenHandsClient(OpenHandsClient):
                 # Use select-file endpoint: GET /api/conversations/{conversation_id}/select-file?file=path
                 # Build file URL - ensure it has /api in the path
                 base_url = self.cloud_api_url.rstrip('/')
+                # Remove /api if it's already in the URL, then add /api/conversations
                 if base_url.endswith('/api'):
-                    file_url = f"{base_url}/conversations/{conversation_id}/select-file"
-                else:
-                    file_url = f"{base_url}/api/conversations/{conversation_id}/select-file"
+                    base_url = base_url[:-4]  # Remove '/api'
+                file_url = f"{base_url}/api/conversations/{conversation_id}/select-file"
                 params = {"file": filename}
                 
                 # Note: API may use X-Session-API-Key header instead of Authorization

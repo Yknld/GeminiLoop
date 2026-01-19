@@ -43,5 +43,6 @@ COPY handler.py .
 COPY TEMPLATE_SUMMARY.md* ./
 COPY template.html* ./
 COPY openhandsprompt.txt* ./
+COPY openhandsprompt.txt* ./
 
 CMD ["python", "-u", "handler.py"]
