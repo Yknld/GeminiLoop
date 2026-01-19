@@ -1421,8 +1421,16 @@ class CloudOpenHandsClient(OpenHandsClient):
         logger.info(f"   Workspace: {workspace_path}")
         
         try:
-            # Build detailed prompt for OpenHands
-            prompt = self._build_generation_prompt(task, detailed_requirements, template_file, workspace_path)
+            # Check if we should reuse a saved prompt file to save credits/time
+            saved_prompt_path = Path("/Users/danielntumba/match-me/openhandsprompt.txt")
+            if saved_prompt_path.exists():
+                logger.info(f"   📄 Reusing saved prompt from: {saved_prompt_path}")
+                prompt = saved_prompt_path.read_text(encoding="utf-8")
+                logger.info(f"   ✅ Loaded prompt ({len(prompt)} characters) - skipping planner to save credits")
+            else:
+                # Build detailed prompt for OpenHands (normal flow)
+                logger.info(f"   📝 Building new prompt (saved prompt not found at {saved_prompt_path})")
+                prompt = self._build_generation_prompt(task, detailed_requirements, template_file, workspace_path)
             
             # Save prompt for debugging
             prompt_file = self.artifacts_dir / f"cloud_generation_prompt_{start_time.strftime('%Y%m%d_%H%M%S')}.txt"
