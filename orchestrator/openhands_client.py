@@ -1549,6 +1549,15 @@ class CloudOpenHandsClient(OpenHandsClient):
                     payload["selected_branch"] = branch
                     logger.info(f"   Using branch: {branch}")
             
+            # Specify model for OpenHands Cloud (if supported by API)
+            # Note: Model may also need to be configured in OpenHands account settings
+            openhands_model = os.getenv("OPENHANDS_MODEL", "gemini-3-pro-preview")
+            # Try adding model parameter (API may or may not support this)
+            # If not supported, model should be set in OpenHands account settings
+            payload["model"] = openhands_model
+            logger.info(f"   Requesting model: {openhands_model}")
+            logger.info(f"   Note: If API doesn't accept model parameter, ensure {openhands_model} is set in OpenHands account settings (Settings → LLM)")
+            
             logger.info(f"   Sending POST request to: {conversations_url}")
             logger.info(f"   Message length: {len(initial_message)} characters")
             logger.info(f"   Authorization header present: {'Authorization' in headers}")
