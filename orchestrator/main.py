@@ -302,9 +302,26 @@ async def run_loop(task: str, max_iterations: int = 5, base_dir: Path = None, cu
             print(f"{'=' * 70}")
         
         # Check if we should reuse a saved prompt file to save credits/time
-        saved_prompt_path = Path("/Users/danielntumba/match-me/openhandsprompt.txt")
-        if saved_prompt_path.exists():
-            print("📄 Reusing saved prompt to save credits/time...")
+        # Try multiple locations: env var, /app/ (RunPod), local path
+        saved_prompt_path = None
+        possible_paths = [
+            os.getenv("OPENHANDS_PROMPT_FILE"),  # Environment variable
+            Path("/app/openhandsprompt.txt"),  # RunPod container
+            Path("/Users/danielntumba/match-me/openhandsprompt.txt"),  # Local macOS
+            Path(__file__).parent.parent / "openhandsprompt.txt",  # GeminiLoop root
+            Path.cwd() / "openhandsprompt.txt",  # Current directory
+        ]
+        
+        for path_str in possible_paths:
+            if path_str:
+                path = Path(path_str) if isinstance(path_str, str) else path_str
+                if path.exists():
+                    saved_prompt_path = path
+                    break
+        
+        if saved_prompt_path:
+            print(f"📄 Reusing saved prompt to save credits/time...")
+            print(f"   Found at: {saved_prompt_path}")
             openhands_prompt = saved_prompt_path.read_text(encoding="utf-8")
             print(f"   ✅ Loaded prompt ({len(openhands_prompt)} characters)")
             # Create a minimal plan structure for compatibility

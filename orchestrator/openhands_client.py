@@ -1423,14 +1423,30 @@ class CloudOpenHandsClient(OpenHandsClient):
         
         try:
             # Check if we should reuse a saved prompt file to save credits/time
-            saved_prompt_path = Path("/Users/danielntumba/match-me/openhandsprompt.txt")
-            if saved_prompt_path.exists():
+            # Try multiple locations: env var, /app/ (RunPod), local path
+            saved_prompt_path = None
+            possible_paths = [
+                os.getenv("OPENHANDS_PROMPT_FILE"),  # Environment variable
+                Path("/app/openhandsprompt.txt"),  # RunPod container
+                Path("/Users/danielntumba/match-me/openhandsprompt.txt"),  # Local macOS
+                Path(__file__).parent.parent / "openhandsprompt.txt",  # GeminiLoop root
+                Path.cwd() / "openhandsprompt.txt",  # Current directory
+            ]
+            
+            for path_str in possible_paths:
+                if path_str:
+                    path = Path(path_str) if isinstance(path_str, str) else path_str
+                    if path.exists():
+                        saved_prompt_path = path
+                        break
+            
+            if saved_prompt_path:
                 logger.info(f"   📄 Reusing saved prompt from: {saved_prompt_path}")
                 prompt = saved_prompt_path.read_text(encoding="utf-8")
                 logger.info(f"   ✅ Loaded prompt ({len(prompt)} characters) - skipping planner to save credits")
             else:
                 # Build detailed prompt for OpenHands (normal flow)
-                logger.info(f"   📝 Building new prompt (saved prompt not found at {saved_prompt_path})")
+                logger.info(f"   📝 Building new prompt (saved prompt not found in any location)")
                 prompt = self._build_generation_prompt(task, detailed_requirements, template_file, workspace_path)
             
             # Save prompt for debugging

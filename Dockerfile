@@ -42,5 +42,6 @@ COPY handler.py .
 # Copy template files if they exist
 COPY TEMPLATE_SUMMARY.md* ./
 COPY template.html* ./
+COPY openhandsprompt.txt* ./
 
 CMD ["python", "-u", "handler.py"]
