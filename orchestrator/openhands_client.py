@@ -1465,10 +1465,18 @@ class CloudOpenHandsClient(OpenHandsClient):
             # Build the full conversations endpoint URL
             # The endpoint should be: https://app.all-hands.dev/api/conversations
             base_url = self.cloud_api_url.rstrip('/')
-            # Remove /api if it's already in the URL, then add /api/conversations
-            if base_url.endswith('/api'):
-                base_url = base_url[:-4]  # Remove '/api'
-            conversations_url = f"{base_url}/api/conversations"
+            # Handle various URL formats:
+            # - https://app.all-hands.dev -> add /api/conversations
+            # - https://app.all-hands.dev/api -> add /conversations
+            # - https://app.all-hands.dev/api/conversations -> use as-is
+            if base_url.endswith('/api/conversations'):
+                conversations_url = base_url  # Already complete
+            elif base_url.endswith('/conversations'):
+                conversations_url = base_url  # Already complete (unlikely but handle it)
+            elif base_url.endswith('/api'):
+                conversations_url = f"{base_url}/conversations"
+            else:
+                conversations_url = f"{base_url}/api/conversations"
             logger.info(f"   Cloud API Base URL (env): {self.cloud_api_url}")
             logger.info(f"   Cloud API Base URL (normalized): {base_url}")
             logger.info(f"   Conversations endpoint: {conversations_url}")
@@ -1522,8 +1530,12 @@ class CloudOpenHandsClient(OpenHandsClient):
             # Poll for conversation status until complete
             # Build status URL - ensure it has /api in the path
             base_url = self.cloud_api_url.rstrip('/')
-            # Remove /api if it's already in the URL, then add /api/conversations
-            if base_url.endswith('/api'):
+            # Handle various URL formats
+            if base_url.endswith('/api/conversations'):
+                base_url = base_url[:-16]  # Remove '/api/conversations'
+            elif base_url.endswith('/conversations'):
+                base_url = base_url[:-13]  # Remove '/conversations'
+            elif base_url.endswith('/api'):
                 base_url = base_url[:-4]  # Remove '/api'
             status_url = f"{base_url}/api/conversations/{conversation_id}"
             timeout_seconds = float(os.getenv('OPENHANDS_TIMEOUT_SECONDS', '600'))  # 10 minutes default
@@ -1639,8 +1651,12 @@ class CloudOpenHandsClient(OpenHandsClient):
                 # Use select-file endpoint: GET /api/conversations/{conversation_id}/select-file?file=path
                 # Build file URL - ensure it has /api in the path
                 base_url = self.cloud_api_url.rstrip('/')
-                # Remove /api if it's already in the URL, then add /api/conversations
-                if base_url.endswith('/api'):
+                # Handle various URL formats
+                if base_url.endswith('/api/conversations'):
+                    base_url = base_url[:-16]  # Remove '/api/conversations'
+                elif base_url.endswith('/conversations'):
+                    base_url = base_url[:-13]  # Remove '/conversations'
+                elif base_url.endswith('/api'):
                     base_url = base_url[:-4]  # Remove '/api'
                 file_url = f"{base_url}/api/conversations/{conversation_id}/select-file"
                 params = {"file": filename}
