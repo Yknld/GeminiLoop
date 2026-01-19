@@ -1446,9 +1446,18 @@ class CloudOpenHandsClient(OpenHandsClient):
             
             # Make API call to OpenHands Cloud Conversations API
             # Build the full conversations endpoint URL
+            # Ensure we have the correct base URL (should end with /api)
             base_url = self.cloud_api_url.rstrip('/')
+            if not base_url.endswith('/api'):
+                # If it doesn't end with /api, append it
+                if base_url.endswith('/'):
+                    base_url = f"{base_url}api"
+                else:
+                    base_url = f"{base_url}/api"
+            
             conversations_url = f"{base_url}/conversations"
-            logger.info(f"   Cloud API Base URL: {self.cloud_api_url}")
+            logger.info(f"   Cloud API Base URL (env): {self.cloud_api_url}")
+            logger.info(f"   Cloud API Base URL (normalized): {base_url}")
             logger.info(f"   Conversations endpoint: {conversations_url}")
             
             headers = {
@@ -1466,8 +1475,9 @@ class CloudOpenHandsClient(OpenHandsClient):
                 # "repository": os.getenv("GITHUB_REPO", ""),
             }
             
-            logger.info(f"   Sending conversation request...")
+            logger.info(f"   Sending POST request to: {conversations_url}")
             logger.info(f"   Message length: {len(initial_message)} characters")
+            logger.info(f"   Authorization header present: {'Authorization' in headers}")
             
             # Send request to create conversation
             response = httpx.post(
