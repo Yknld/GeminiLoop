@@ -1488,9 +1488,10 @@ class CloudOpenHandsClient(OpenHandsClient):
             
             # Use APIRemoteWorkspace for cloud execution
             logger.info(f"   Connecting to OpenHands Cloud Runtime API...")
+            # APIRemoteWorkspace expects runtime_api_key as a string, not SecretStr
             with APIRemoteWorkspace(
                 runtime_api_url=self.runtime_api_url,
-                runtime_api_key=SecretStr(self.runtime_api_key),
+                runtime_api_key=self.runtime_api_key,  # Pass as string, not SecretStr
                 server_image="ghcr.io/openhands/agent-server:main-python"
             ) as workspace:
                 logger.info(f"   ✅ Connected to cloud workspace")
