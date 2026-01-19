@@ -1506,10 +1506,15 @@ class CloudOpenHandsClient(OpenHandsClient):
                 raise RuntimeError(f"Failed to resolve Runtime API hostname: {dns_error}")
             
             # APIRemoteWorkspace expects runtime_api_key as a string, not SecretStr
+            # Based on official examples: use latest-python tag and image_pull_policy
+            server_image = os.getenv("OPENHANDS_SERVER_IMAGE", "ghcr.io/openhands/agent-server:latest-python")
+            logger.info(f"   Server image: {server_image}")
+            
             with APIRemoteWorkspace(
                 runtime_api_url=self.runtime_api_url,
                 runtime_api_key=self.runtime_api_key,  # Pass as string, not SecretStr
-                server_image="ghcr.io/openhands/agent-server:main-python"
+                server_image=server_image,
+                image_pull_policy="Always",  # Ensure we get latest image
             ) as workspace:
                 logger.info(f"   ✅ Connected to cloud workspace")
                 
@@ -1601,7 +1606,7 @@ class CloudOpenHandsClient(OpenHandsClient):
             }
     
     def _upload_workspace_to_cloud(self, workspace, local_workspace_path: Path):
-        """Upload local workspace files to cloud workspace"""
+        """Upload local workspace files to cloud workspace using file_upload method"""
         try:
             # Get all files in workspace
             uploaded_count = 0
@@ -1609,9 +1614,12 @@ class CloudOpenHandsClient(OpenHandsClient):
                 if file_path.is_file():
                     relative_path = file_path.relative_to(local_workspace_path)
                     try:
-                        content = file_path.read_text(encoding="utf-8")
-                        # APIRemoteWorkspace uses write_file method
-                        workspace.write_file(str(relative_path), content)
+                        # APIRemoteWorkspace uses file_upload method (not write_file)
+                        # Based on official examples: file_upload(source_path, destination_path)
+                        workspace.file_upload(
+                            source_path=str(file_path),
+                            destination_path=str(relative_path)
+                        )
                         uploaded_count += 1
                         logger.debug(f"   Uploaded: {relative_path}")
                     except UnicodeDecodeError:
@@ -1624,7 +1632,7 @@ class CloudOpenHandsClient(OpenHandsClient):
             logger.warning(f"   Error uploading workspace: {e}")
     
     def _download_workspace_from_cloud(self, workspace, local_workspace_path: Path):
-        """Download cloud workspace files to local workspace"""
+        """Download cloud workspace files to local workspace using file_download method"""
         try:
             downloaded_count = 0
             # Try to list files in workspace
@@ -1634,10 +1642,14 @@ class CloudOpenHandsClient(OpenHandsClient):
                     for file_info in files:
                         filename = file_info.get('path', file_info) if isinstance(file_info, dict) else str(file_info)
                         try:
-                            content = workspace.read_file(filename)
-                            file_path = local_workspace_path / filename
-                            file_path.parent.mkdir(parents=True, exist_ok=True)
-                            file_path.write_text(content, encoding="utf-8")
+                            # APIRemoteWorkspace uses file_download method
+                            # Based on official examples: file_download(source_path, destination_path)
+                            destination_path = local_workspace_path / filename
+                            destination_path.parent.mkdir(parents=True, exist_ok=True)
+                            workspace.file_download(
+                                source_path=filename,
+                                destination_path=str(destination_path)
+                            )
                             downloaded_count += 1
                             logger.debug(f"   Downloaded: {filename}")
                         except Exception as e:
@@ -1650,10 +1662,12 @@ class CloudOpenHandsClient(OpenHandsClient):
                 common_files = ["index.html", "style.css", "script.js", "template.html"]
                 for filename in common_files:
                     try:
-                        content = workspace.read_file(filename)
-                        file_path = local_workspace_path / filename
-                        file_path.parent.mkdir(parents=True, exist_ok=True)
-                        file_path.write_text(content, encoding="utf-8")
+                        destination_path = local_workspace_path / filename
+                        destination_path.parent.mkdir(parents=True, exist_ok=True)
+                        workspace.file_download(
+                            source_path=filename,
+                            destination_path=str(destination_path)
+                        )
                         downloaded_count += 1
                         logger.debug(f"   Downloaded: {filename}")
                     except Exception as e:
