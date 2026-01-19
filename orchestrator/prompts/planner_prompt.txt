@@ -35,24 +35,22 @@ TEMPLATE STRUCTURE (CRITICAL - YOU MUST USE THIS):
 The template is a single-page HTML application with a module-based architecture. OpenHands will START WITH THIS TEMPLATE and fill it with content.
 
 **Template Components (MUST PRESERVE):**
-1. **Navigation Bar (Top)**: Module selector dropdown, Previous/Next buttons, Progress indicator (X of Y)
-2. **Main Content Area**:
-   - Video Section: YouTube embed with audio control
-   - Explanation Section: Main explanatory text with audio control
-   - Key Points Section: Bulleted list of concepts, each with audio control
-   - Interactive Activity Section: Container for quizzes/exercises/games with audio control
-3. **Right Sidebar**: Fun Fact card with audio control
-4. **Floating Action Buttons**: Notes button (localStorage), Chatbot button (Gemini API)
+1. **Navigation Bar (Top)**: Module title, Previous/Next buttons
+2. **Video Section (Top)**: YouTube embed with audio control
+3. **Bottom Section (Two Columns)**:
+   - **Left Column**: Fun Module - Interactive element (calculators, games, simulations)
+   - **Right Column**: Test - Quiz/test questions
+4. **Module TTS Audio**: Gemini TTS audio button (fixed bottom right) for module explanation
 
 **Module Data Structure (each module in the modules array):**
 This is a DESCRIPTION of the structure - you describe what should go in each field using natural language:
 - title: Describe what the module title should be (e.g., "Introduction to Circles")
 - videoId: Describe which YouTube video ID should be used (e.g., "Use the video about circles")
-- explanation: Describe what the main explanatory text should cover
-- keyPoints: Describe what key points should be included (list them as descriptions)
-- funFact: Describe what interesting fact should be included
-- interactiveElement: Describe what FUN interactive activities should be created (e.g., "Circle Calculator where users input radius and see instant calculations" - NOT quizzes/tests, NOT the actual HTML/JavaScript code)
-- audioSources: Describe what audio files should be generated (e.g., "Generate audio for explanation, all key points, and fun fact")
+- funModule: Describe what FUN interactive activities should be created for the left column (e.g., "Circle Calculator where users input radius and see instant calculations" - NOT quizzes/tests, NOT the actual HTML/JavaScript code)
+- test: Describe what test/quiz questions should be included in the right column
+- moduleAudio: Describe that Gemini TTS should generate audio explaining the module concept and the idea behind the interactive game
+- videoAudio: Optional audio for video section
+- funAudio: Optional audio for fun module section
 
 **REMEMBER: You are DESCRIBING the structure, not writing the code. Use natural language to explain what each field should contain.**
 
@@ -191,13 +189,14 @@ PLANNING GUIDELINES (IMPORTANT):
   * The goal is logical, pedagogically sound module organization - not a strict one-to-one mapping
   * The template already has navigation - OpenHands just needs to populate the modules array
 - **CRITICAL: Plan how to map note content to template structure:**
-  * Main explanation text → `explanation` field
-  * Important concepts → `keyPoints` array
-  * Interesting facts → `funFact` field
-  * Interactive activities (calculators, games, simulations, manipulatives - NEVER quizzes/tests) → `interactiveElement` HTML string
+  * Interactive activities (calculators, games, simulations, manipulatives - NEVER quizzes/tests) → `funModule` HTML string (left column)
+  * Quiz/test questions → `test` HTML string (right column)
   * YouTube videos → `videoId` field (extract ID from URL)
+  * Module explanation → `moduleAudio` (Gemini TTS will generate audio explaining the module and the idea behind the game)
 - **CRITICAL: Text-to-Speech (TTS) Audio Generation:**
-  * Use Google Cloud Text-to-Speech API to generate audio files for all text content
+  * Use Gemini TTS API to generate audio for module explanation (moduleAudio field)
+  * The audio should explain the module concept and the idea behind the interactive game
+  * Optional: Generate audio for video section (videoAudio) and fun module section (funAudio)
   * API Key: {tts_api_key} (use environment variable GOOGLE_AI_STUDIO_API_KEY or GOOGLE_TTS_API_KEY)
   * Create a Python script using google-cloud-texttospeech library (install via: pip install google-cloud-texttospeech)
   * Generate audio for: explanation, each keyPoint, funFact, interactive section intro
@@ -223,7 +222,7 @@ PLANNING GUIDELINES (IMPORTANT):
   * Activities should be FUN and engaging, not test-like or quiz-like
 - YouTube is supportive: assign video IDs to appropriate modules based on topic relevance.
 - Ensure the OpenHands build prompt is actionable: specify exact content for each module's fields, what HTML to put in `interactiveElement`, and how to structure the modules array.
-- **In the openhands_build_prompt, explicitly list ALL modules that should be created (as many as appropriate for the content) and specify the content for each module's fields (title, explanation, keyPoints, funFact, interactiveElement, videoId).**
+- **In the openhands_build_prompt, explicitly list ALL modules that should be created (as many as appropriate for the content) and specify the content for each module's fields (title, videoId, funModule, test, moduleAudio).**
 - **In the openhands_build_prompt, explicitly state: "DO NOT leave placeholder text in interactiveElement - create actual working interactive content with HTML, JavaScript, buttons, inputs, and feedback."**
 
 NOW DO THE TASK USING:
