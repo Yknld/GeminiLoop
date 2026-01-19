@@ -1440,7 +1440,8 @@ class CloudOpenHandsClient(OpenHandsClient):
             # Build the full conversations endpoint URL
             base_url = self.cloud_api_url.rstrip('/')
             conversations_url = f"{base_url}/conversations"
-            logger.info(f"   Sending request to: {conversations_url}")
+            logger.info(f"   Cloud API Base URL: {self.cloud_api_url}")
+            logger.info(f"   Conversations endpoint: {conversations_url}")
             
             headers = {
                 "Authorization": f"Bearer {self.cloud_api_key}",
